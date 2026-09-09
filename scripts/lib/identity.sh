@@ -50,3 +50,9 @@ render_identity() {
   fi
   sed -i -e "s| *<!-- ${IDENTITY_KEEP_TAG} -->||" -e "s| *# ${IDENTITY_KEEP_TAG}||" "$@"
 }
+
+# Container/image names are derived from the checkout's folder name so a copied project never
+# clashes with another one (dev-container.sh, scripts/agent.sh).
+project_slug_from_dir() { # <dir>
+  basename "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//'
+}

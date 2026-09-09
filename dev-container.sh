@@ -16,7 +16,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Container/image/volume names are DERIVED from the workspace folder name (matches
 # devcontainer.json's ${localWorkspaceFolderBasename}-dind). Copy this project to any
 # folder and the names follow it — no per-project edits, no cross-project clashes.
-PROJECT_SLUG="$(basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/scripts/lib/identity.sh"
+PROJECT_SLUG="$(project_slug_from_dir "$SCRIPT_DIR")"
 CONTAINER_NAME="${PROJECT_SLUG}-dev"
 IMAGE_NAME="${PROJECT_SLUG}-dev-image"
 CHECKSUM_FILE="$SCRIPT_DIR/.devcontainer/.build-checksum"

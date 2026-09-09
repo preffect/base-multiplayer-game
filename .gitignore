@@ -35,8 +35,11 @@ data/
 # Claude personal notes
 CLAUDE.local.md
 
-# QA screenshots (baselines live in qa/baselines and ARE committed)
+# QA screenshots and agent logs (baselines live in qa/baselines and ARE committed)
 .qa/
+
+# Agent worktrees (scripts/agent.sh --branch)
+.worktrees/
 
 # Python bytecode (scripts/github)
 __pycache__/

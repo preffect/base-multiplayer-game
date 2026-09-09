@@ -69,6 +69,8 @@ stage on the linked Project board, epics as sub-issues, **assignee = waiting on 
 thread resolved before merge**, labels updated as tickets complete. Everything is done via the
 API — the human never clicks in GitHub's UI. Helpers: `scripts/project-sync.sh` (run at session
 start), `scripts/issue-status.sh <N> <Status>`, `.github/PULL_REQUEST_TEMPLATE.md` (review checklist).
+**[`TEAM.md`](./TEAM.md)** defines the agent roles (`.claude/roles/`), how to run one inside the
+devcontainer (`scripts/agent.sh`) and the scripted review loop (`scripts/land-pr.sh`).
 
 ## Toolchain inside the devcontainer
 
