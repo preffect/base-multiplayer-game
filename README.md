@@ -1,5 +1,8 @@
 # Base Multiplayer Game
 
+Repo: https://github.com/preffect/base-multiplayer-game — `main` is PR-protected (see `WORKFLOW.md`);
+template fixes are reviewed like game fixes, then pulled into games with `scripts/sync-from-template.sh`.
+
 A reusable **multiplayer game template**: a working client/server multiplayer skeleton
 (native WebSocket transport, lobby, rooms, a 60 Hz broadcast loop, reconnection/identity,
 and MCP game-state visibility) whose actual **game definition is deferred**.
