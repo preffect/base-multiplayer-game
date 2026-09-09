@@ -116,11 +116,7 @@ def graphql_batch(mutation_field: str, input_type: str, inputs: list[dict], sele
 spec = json.loads(Path(ISSUES_FILE).read_text())
 fill = lambda text: text.replace(TITLE_PLACEHOLDER, PROJECT_TITLE).replace(SLUG_PLACEHOLDER, SLUG)
 
-repo_info = graphql(
-    'query($o:String!,$n:String!){ repository(owner:$o,name:$n){ id milestones(first:100,states:[OPEN,CLOSED]){ nodes{ id title } } } }',
-    {"o": OWNER, "n": REPO_NAME},
-)["repository"]
-repository_id = repo_info["id"]
+repository_id = graphql('query($o:String!,$n:String!){ repository(owner:$o,name:$n){ id } }', {"o": OWNER, "n": REPO_NAME})["repository"]["id"]
 
 # ---------------------------------------------------------------- labels (one batched request)
 # gh label list paginates for us, so a repo with more than 100 labels is handled correctly.
@@ -135,7 +131,11 @@ for created in graphql_batch("createLabel", "CreateLabelInput", missing_labels, 
 print(f"labels: {len(spec['labels'])} ensured ({len(missing_labels)} created)")
 
 # ---------------------------------------------------------------- milestones (games only)
-milestone_ids = {m["title"]: m["id"] for m in repo_info["milestones"]["nodes"]}
+# --paginate walks every page, so a repo with more than 100 milestones is handled correctly.
+milestone_ids = {
+    m["title"]: m["node_id"]
+    for m in map(json.loads, gh("api", "--paginate", "--jq", ".[] | {title, node_id}", f"repos/{REPO}/milestones?state=all&per_page=100").splitlines())
+}
 if SEED_ISSUES:
     for title, description in spec["milestones"].items():
         if title not in milestone_ids:
