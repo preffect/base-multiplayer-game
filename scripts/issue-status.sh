@@ -9,8 +9,10 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091
-source "$SCRIPT_DIR/../.github/project.env"
+PROJECT_ENV="$SCRIPT_DIR/../.github/project.env"
+[[ -f "$PROJECT_ENV" ]] || { echo "error: $PROJECT_ENV missing — run scripts/github-setup.sh first." >&2; exit 1; }
+# shellcheck disable=SC1090
+source "$PROJECT_ENV" # REPO, PROJECT_OWNER, PROJECT_NUMBER, PROJECT_ID, STATUS_FIELD_ID
 
 ISSUE="${1:?issue number required}"
 STATUS="${2:?status name required}"

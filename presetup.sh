@@ -2,17 +2,17 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# presetup.sh — instantiate the base-multiplayer-game TEMPLATE into a project.
+# presetup.sh — instantiate the base-multiplayer-game TEMPLATE into a project. # KEEP_TEMPLATE_NAME
 #
 # Run ONCE, on the host, right after copying the template into a new folder and
 # BEFORE ./dev-container.sh — so the devcontainer's first `pnpm install` resolves
 # the FINAL package scope (@<project>).
 #
 # Rewrites the template's identity tokens in place:
-#   base-multiplayer-game / @base-multiplayer-game -> <project> / @<project>
+#   base-multiplayer-game / @base-multiplayer-game -> <project> / @<project> # KEEP_TEMPLATE_NAME
 #   Base Multiplayer Game (display title)          -> <Title>
-#   base-mp (slug + client-id storage key)         -> <slug>
-#   game-debug (MCP server name)                   -> <slug>-debug
+#   base-mp (slug + client-id storage key)         -> <slug> # KEEP_TEMPLATE_NAME
+#   game-debug (MCP server name)                   -> <slug>-debug # KEEP_TEMPLATE_NAME
 #   4400 / 4402 (only if you pass new ports)       -> <server-port> / <client-port>
 #
 # It does NOT touch container/image/DinD names — dev-container.sh derives those
@@ -61,8 +61,8 @@ name_ok() { [[ "$1" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; }
 name_ok "$PROJECT" || { echo "Invalid project name '$PROJECT' (lowercase letters, digits, - _ .)" >&2; exit 1; }
 name_ok "$SLUG"    || { echo "Invalid slug '$SLUG'" >&2; exit 1; }
 
-if [[ "$FORCE" != true ]] && ! grep -q '"name": "base-multiplayer-game"' "$ROOT/package.json" 2>/dev/null; then
-  echo "This doesn't look like a fresh template (root package.json name is not 'base-multiplayer-game')."
+if [[ "$FORCE" != true ]] && ! grep -q '"name": "base-multiplayer-game"' "$ROOT/package.json" 2>/dev/null; then # KEEP_TEMPLATE_NAME
+  echo "This doesn't look like a fresh template (root package.json name is not 'base-multiplayer-game')." # KEEP_TEMPLATE_NAME
   echo "Already instantiated? Re-run with --force to rewrite anyway."
   exit 1
 fi

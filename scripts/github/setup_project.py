@@ -36,21 +36,43 @@ VIEWS = [
 PAUSE_SECONDS = 0.3
 
 
+class GitHubError(RuntimeError):
+    """A gh / GraphQL call failed; setup cannot continue meaningfully."""
+
+
 def gh(*args: str, check: bool = True) -> str:
     result = subprocess.run(["gh", *args], capture_output=True, text=True)
     if result.returncode != 0 and check:
-        print(f"gh {' '.join(args[:3])} failed: {result.stderr.strip()[:300]}", file=sys.stderr)
+        raise GitHubError(f"gh {' '.join(args[:3])} failed: {result.stderr.strip()[:300]}")
     return result.stdout.strip()
 
 
-def graphql(query: str, variables: dict | None = None) -> dict:
+def graphql(query: str, variables: dict | None = None, tolerate: tuple[str, ...] = ()) -> dict:
+    """Run a GraphQL call and fail fast on transport or API errors.
+
+    `tolerate` lists error-message fragments that are expected on re-runs (e.g. adding a sub-issue
+    that is already linked); those return an empty result instead of raising.
+    """
     payload = json.dumps({"query": query, "variables": variables or {}})
     result = subprocess.run(["gh", "api", "graphql", "--input", "-"], input=payload, capture_output=True, text=True)
     data = json.loads(result.stdout or "{}")
-    if result.returncode != 0 or "errors" in data:
-        print(f"graphql failed: {(result.stderr or result.stdout)[:300]}", file=sys.stderr)
-    return data.get("data", {})
+    errors = data.get("errors", [])
+    if result.returncode != 0 or errors:
+        message = "; ".join(e.get("message", "") for e in errors) or result.stderr.strip()
+        if any(fragment in message for fragment in tolerate):
+            return {}
+        raise GitHubError(f"graphql failed: {message[:300]}")
+    return data["data"]
 
+
+def _report_github_error(exc_type, exc, tb):  # actionable one-liner instead of a stack trace
+    if issubclass(exc_type, GitHubError):
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    sys.__excepthook__(exc_type, exc, tb)
+
+
+sys.excepthook = _report_github_error
 
 spec = json.loads(Path(ISSUES_FILE).read_text())
 fill = lambda text: text.replace(TITLE_PLACEHOLDER, PROJECT_TITLE).replace(SLUG_PLACEHOLDER, SLUG)
@@ -59,7 +81,7 @@ fill = lambda text: text.replace(TITLE_PLACEHOLDER, PROJECT_TITLE).replace(SLUG_
 existing_labels = set(gh("label", "list", "-R", REPO, "--limit", "300", "--json", "name", "--jq", ".[].name").split())
 for name, (description, color) in spec["labels"].items():
     if name not in existing_labels:
-        gh("label", "create", name, "-R", REPO, "-d", description, "-c", color)
+        gh("label", "create", name, "-R", REPO, "-d", description, "-c", color, check=False)
 print(f"labels: {len(spec['labels'])} ensured")
 
 # ---------------------------------------------------------------- milestones
@@ -76,7 +98,7 @@ project = next((p for p in projects if p["title"] == PROJECT_TITLE and not p.get
 if project is None:
     project = json.loads(gh("project", "create", "--owner", OWNER, "--title", PROJECT_TITLE, "--format", "json"))
 project_number, project_id = project["number"], project["id"]
-gh("project", "link", str(project_number), "--owner", OWNER, "--repo", REPO, check=False)
+gh("project", "link", str(project_number), "--owner", OWNER, "--repo", REPO, check=False)  # already linked on re-run
 
 fields = json.loads(gh("project", "field-list", str(project_number), "--owner", OWNER, "--format", "json"))["fields"]
 status_field = next(f for f in fields if f["name"] == "Status")
@@ -124,7 +146,7 @@ for issue in spec["issues"]:
     time.sleep(PAUSE_SECONDS)
 print(f"issues: {len(numbers)} ensured")
 
-# Epic backlinks + sub-issue links (idempotent: addSubIssue on an existing child is a no-op error we ignore).
+# Epic backlinks + sub-issue links (idempotent: an already-linked child is a tolerated API error).
 node_ids = {key: gh("issue", "view", str(num), "-R", REPO, "--json", "id", "--jq", ".id") for key, num in numbers.items()}
 for epic in (i for i in spec["issues"] if i.get("epic")):
     for child_key in epic["children"]:
@@ -134,6 +156,7 @@ for epic in (i for i in spec["issues"] if i.get("epic")):
         graphql(
             'mutation($p:ID!,$c:ID!){ addSubIssue(input:{issueId:$p, subIssueId:$c}){ issue{ number } } }',
             {"p": node_ids[epic["key"]], "c": node_ids[child_key]},
+            tolerate=("already", "sub-issue"),
         )
         time.sleep(PAUSE_SECONDS)
 print("sub-issues linked")

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# sync-from-template.sh — pull template-owned files from base-multiplayer-game into this game.
+# sync-from-template.sh — pull template-owned files from base-multiplayer-game into this game. # KEEP_TEMPLATE_NAME
 #
 # Keeps a game in step with the template WITHOUT touching game-owned code (WORKFLOW.md "docs
 # stay in sync"; fixes are made in the template first, then copied here). Runs on the HOST
