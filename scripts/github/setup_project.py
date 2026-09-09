@@ -102,10 +102,16 @@ gh("project", "link", str(project_number), "--owner", OWNER, "--repo", REPO, che
 
 fields = json.loads(gh("project", "field-list", str(project_number), "--owner", OWNER, "--format", "json"))["fields"]
 status_field = next(f for f in fields if f["name"] == "Status")
+GITHUB_DEFAULT_STATUS_OPTIONS = ["Todo", "In Progress", "Done"]
+current_options = [o["name"] for o in status_field.get("options", [])]
 wanted_names = [name for name, _, _ in STATUS_OPTIONS]
-if [o["name"] for o in status_field.get("options", [])] != wanted_names:
+if current_options == GITHUB_DEFAULT_STATUS_OPTIONS:
+    # Replacing options without ids resets every item's Status, so only ever do it to a fresh board.
     options_literal = ",".join(f'{{name:"{n}",color:{c},description:"{d}"}}' for n, c, d in STATUS_OPTIONS)
     graphql(f'mutation {{ updateProjectV2Field(input:{{fieldId:"{status_field["id"]}", singleSelectOptions:[{options_literal}]}}) {{ projectV2Field {{ ... on ProjectV2SingleSelectField {{ id }} }} }} }}')
+elif current_options != wanted_names:
+    print(f"note: Status options are customised ({current_options}); leaving them untouched. "
+          f"project-sync.sh needs {['Backlog', 'Blocked', 'Done']} to exist.")
 field_ids = {f["name"]: f["id"] for f in fields}
 
 existing_views = {v["name"]: v["id"] for v in graphql(
@@ -132,7 +138,14 @@ Path(PROJECT_ENV_OUT).write_text(
 )
 
 # ---------------------------------------------------------------- issues
-existing_issues = {i["title"]: i["number"] for i in json.loads(gh("issue", "list", "-R", REPO, "--state", "all", "--limit", "500", "--json", "title,number") or "[]")}
+all_issues = json.loads(gh("issue", "list", "-R", REPO, "--state", "all", "--limit", "500", "--json", "title,number,id,body,labels") or "[]")
+existing_issues = {i["title"]: i["number"] for i in all_issues}
+seed_titles = {fill(i["title"]) for i in spec["issues"]}
+has_epics = any(label["name"] == "epic" for issue in all_issues for label in issue["labels"])
+if has_epics and not (seed_titles & set(existing_issues)):
+    print("issues: repo already has epics that were not seeded from this template — skipping the groundwork seed "
+          "so hand-written planning is not duplicated (nothing else to do).")
+    sys.exit(0)
 numbers: dict[str, int] = {}
 for issue in spec["issues"]:
     title = fill(issue["title"])
@@ -147,10 +160,12 @@ for issue in spec["issues"]:
 print(f"issues: {len(numbers)} ensured")
 
 # Epic backlinks + sub-issue links (idempotent: an already-linked child is a tolerated API error).
-node_ids = {key: gh("issue", "view", str(num), "-R", REPO, "--json", "id", "--jq", ".id") for key, num in numbers.items()}
+all_issues = json.loads(gh("issue", "list", "-R", REPO, "--state", "all", "--limit", "500", "--json", "number,id,body") or "[]")
+by_number = {i["number"]: i for i in all_issues}
+node_ids = {key: by_number[num]["id"] for key, num in numbers.items()}
 for epic in (i for i in spec["issues"] if i.get("epic")):
     for child_key in epic["children"]:
-        child_body = gh("issue", "view", str(numbers[child_key]), "-R", REPO, "--json", "body", "--jq", ".body")
+        child_body = by_number[numbers[child_key]]["body"] or ""
         if not child_body.startswith("**Epic:**"):
             gh("issue", "edit", str(numbers[child_key]), "-R", REPO, "-b", f"**Epic:** #{numbers[epic['key']]}\n\n{child_body}")
         graphql(

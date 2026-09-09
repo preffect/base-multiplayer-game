@@ -137,9 +137,7 @@ export const tagModuleFactory: GameModuleFactory = (args) => {
     },
     serializeRoomState: () => ({
       tick: 0,
-      players: {
-        /*...*/
-      },
+      players: {/*...*/},
       itPlayerId: it,
       timeLeftMs,
     }),
@@ -189,7 +187,7 @@ PORTS.env: packages/server/src/index.ts, packages/client/angular.json, proxy.con
 
 ## 6. ha-router integration
 
-> The devcontainer can't reach the live `ha-router` repo — only *prepare* the artifacts here;
+> The devcontainer can't reach the live `ha-router` repo — only _prepare_ the artifacts here;
 > the HOST applies them. End the session by emitting the Step 6 hand-off prompt from `ha-router/HA-ROUTER.md`.
 
 - **`ha-router/<slug>.yml`** (prepared in THIS repo) — from `ha-router/route.template.yml`

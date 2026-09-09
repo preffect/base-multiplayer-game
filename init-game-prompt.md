@@ -111,7 +111,7 @@ ALL of them, and `init-game.md` must make each concrete.
    selected a free pair on the host (checked against the live `ha-router` config the container
    can't see) and recorded it in **`PORTS.env`** (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — read
    that file and use those values. They're already baked into the eight integration files;
-   just confirm those files agree with `PORTS.env`. Use the slug + ports to *prepare* the
+   just confirm those files agree with `PORTS.env`. Use the slug + ports to _prepare_ the
    ha-router route YAML + landing card (see Identity for the icon hue).
 3. **Player model** — max players; avatars (indexed 0–5) vs named characters; teams/roles.
 4. **Tick model** — real-time fixed-tick (keep 60 Hz `game_snapshot`) vs turn-based
@@ -212,7 +212,7 @@ toward `PORTS.env`).
 
 ### 6. ha-router integration
 
-> **The container CANNOT edit the live `ha-router` repo (it isn't mounted).** So only *prepare*
+> **The container CANNOT edit the live `ha-router` repo (it isn't mounted).** So only _prepare_
 > the artifacts in THIS repo: a filled-in route file `ha-router/<slug>.yml` (from
 > `ha-router/route.template.yml`, slug + ports from `PORTS.env`) and a filled-in
 > `ha-router/landing-card.html` (slug, display title, icon hue). Do not touch

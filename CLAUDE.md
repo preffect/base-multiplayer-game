@@ -56,7 +56,7 @@
 
 ```bash
 ./dev-container.sh          # start or attach to container
-./dev-container.sh rebuild  # force rebuild
+./dev-container.sh rebuild  # force rebuild (DEVCONTAINER_YES=1 to confirm non-interactively)
 ./dev-container.sh stop     # stop the container
 ./dev-container.sh status   # show container status
 ```
@@ -73,7 +73,8 @@ start), `scripts/issue-status.sh <N> <Status>`, `.github/PULL_REQUEST_TEMPLATE.m
 ## Toolchain inside the devcontainer
 
 Node 24, pnpm 10, Claude Code, `gh` (authenticated via the mounted host `~/.config/gh`), git
-(identity from the mounted `~/.gitconfig`), python3, jq, ripgrep, ImageMagick, ffmpeg, and
+(pushes over HTTPS with `gh` as credential helper — no SSH key inside; identity from the host's
+gh account unless the container already has one), python3, jq, ripgrep, ImageMagick, ffmpeg, and
 Playwright Chromium for the `playwright` MCP (`.mcp.json`). Improvements to the container or the
 process belong upstream in `base-multiplayer-game` so the next game inherits them. <!-- KEEP_TEMPLATE_NAME -->
 

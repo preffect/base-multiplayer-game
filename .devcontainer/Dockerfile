@@ -38,7 +38,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 # the running game headlessly without a network fetch at runtime. Chromium is installed by the
 # playwright version bundled INSIDE @playwright/mcp, so the two can never mismatch.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
-RUN npm install -g @playwright/mcp@latest && \
+RUN npm install -g @playwright/mcp@0.0.80 && \
     cd "$(npm root -g)/@playwright/mcp" && npx playwright install --with-deps chromium && \
     chmod -R a+rX /opt/playwright && rm -rf /var/lib/apt/lists/*
 
