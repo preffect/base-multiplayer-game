@@ -106,6 +106,9 @@ docs that describe it in the same PR — `README.md`, `CLAUDE.md`, `WORKFLOW.md`
 (one fact, one home; the others link to it). A reviewer rejects a PR whose docs drift. Fixes that
 belong to the template are upstreamed to `base-multiplayer-game` so the next game inherits them. <!-- KEEP_TEMPLATE_NAME -->
 
+Who reviews what, and the scripted review loop that runs these steps with the agent team, is in
+`TEAM.md` (`scripts/land-pr.sh`).
+
 Branch names: `feat/<issue>-<slug>` / `fix/<issue>-<slug>`; PR body contains `Closes #N`.
 Graphics PRs attach before/after screenshots; gameplay PRs list the balance values touched.
 
@@ -116,6 +119,8 @@ Graphics PRs attach before/after screenshots; gameplay PRs list the balance valu
 | `scripts/github-setup.sh`       | host      | Create/push the repo, labels, milestones, Project + views, ruleset, seed groundwork epics.                                                                                                 |
 | `scripts/project-sync.sh`       | host/cont | Reconcile issues ↔ board (section 4).                                                                                                                                                      |
 | `scripts/issue-status.sh`       | host/cont | `issue-status.sh <N> <Status>` — move one ticket without hand-copying ids.                                                                                                                 |
+| `scripts/agent.sh`              | host/cont | `agent.sh <role> [--ticket N] [--branch B] "<task>"` — run one team role headlessly inside the devcontainer (`TEAM.md`).                                                       |
+| `scripts/land-pr.sh`            | host/cont | `land-pr.sh <PR> [--reviewers "roles"]` — reviewer roles review, engineer fixes, re-review, then auto-merge (`TEAM.md`).                                                     |
 | `scripts/sync-from-template.sh` | host      | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
 
 `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).

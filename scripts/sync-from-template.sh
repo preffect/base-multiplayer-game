@@ -55,12 +55,16 @@ main() {
 
   ALWAYS=(
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
-    scripts/lib/identity.sh
+    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh
+    .claude/roles/_common.md .claude/roles/architect.md .claude/roles/engineer.md .claude/roles/game-designer.md
+    .claude/roles/graphics-designer.md .claude/roles/ui-designer.md .claude/roles/audio-designer.md
+    .claude/roles/perf-engineer.md .claude/roles/devops.md .claude/roles/code-qa.md .claude/roles/gameplay-qa.md
+    .claude/roles/graphics-qa.md .claude/.gitignore
     scripts/github/setup_project.py scripts/github/groundwork-issues.json
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
     dev-container.sh run.sh validate.sh presetup.sh ai-pipeline.sh
     .mcp.json .gitignore .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
-    WORKFLOW.md ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md init-game-prompt.md base-project.md
+    WORKFLOW.md TEAM.md ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md init-game-prompt.md base-project.md
     ha-router/HA-ROUTER.md ha-router/route.template.yml ha-router/landing-card.html ha-router/insert-landing-card.py
   )
   CONDITIONAL=() # "src|dest|grep-marker-that-must-still-be-present-in-dest"
