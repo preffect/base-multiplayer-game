@@ -10,7 +10,7 @@ set -euo pipefail
 #
 # Rewrites the template's identity tokens in place:
 #   base-multiplayer-game / @base-multiplayer-game -> <project> / @<project> # KEEP_TEMPLATE_NAME
-#   Base Multiplayer Game (display title)          -> <Title>
+#   Base Multiplayer Game (display title)          -> <Title> # KEEP_TEMPLATE_NAME
 #   base-mp (slug + client-id storage key)         -> <slug> # KEEP_TEMPLATE_NAME
 #   game-debug (MCP server name)                   -> <slug>-debug # KEEP_TEMPLATE_NAME
 #   4400 / 4402 (only if you pass new ports)       -> <server-port> / <client-port>
