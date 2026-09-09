@@ -72,7 +72,8 @@ Applied as a **ruleset** on the default branch by `scripts/github-setup.sh`:
 - required status checks (`validate` from CI, `code-review` from the reviewer agent) are added
   **only once those checks exist** — requiring a check that never reports blocks every merge.
 
-All agents act as the human's GitHub account (mounted `~/.config/gh`), so GitHub cannot
+All agents act as the human's GitHub account (mounted `~/.config/gh`; git pushes over HTTPS
+with `gh` as the credential helper, set up by `.devcontainer/post-create.sh`), so GitHub cannot
 enforce "reviewer ≠ author". Reviews are therefore procedural (below) plus the `code-review`
 status.
 
