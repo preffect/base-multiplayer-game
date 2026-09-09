@@ -17,18 +17,11 @@
     "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
   ],
-  "forwardPorts": [
-    4400,
-    4402
-  ],
+  "forwardPorts": [4400, 4402],
   "postCreateCommand": "sudo git config --system --add safe.directory /workspace; pnpm install && pnpm exec prettier --write . > /dev/null 2>&1 || true",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "angular.ng-template",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
-      ],
+      "extensions": ["angular.ng-template", "dbaeumer.vscode-eslint", "esbenp.prettier-vscode"],
       "settings": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.formatOnSave": true

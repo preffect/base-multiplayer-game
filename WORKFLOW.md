@@ -7,15 +7,15 @@ GitHub API (`gh`, GraphQL) by scripts or agents — **the human never has to cli
 
 ## 1. Where things live
 
-| What                                  | Where                                                                                       |
-| ------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Tickets, labels, milestones           | The game's GitHub repo, **Issues** tab                                                      |
-| Stage of each ticket (the board)      | The GitHub **Project** linked to the repo (shows under the repo's **Projects** tab)          |
-| Epic → ticket hierarchy               | Native **sub-issues** (epics show a progress bar; closing a child updates the parent)       |
-| "Waiting on me" list for the human    | `https://github.com/issues/assigned` — anything **assigned to the human** is waiting on them |
-| Project identifiers used by scripts   | `.github/project.env` (written by `scripts/github-setup.sh`)                                |
+| What                                | Where                                                                                        |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- |
+| Tickets, labels, milestones         | The game's GitHub repo, **Issues** tab                                                       |
+| Stage of each ticket (the board)    | The GitHub **Project** linked to the repo (shows under the repo's **Projects** tab)          |
+| Epic → ticket hierarchy             | Native **sub-issues** (epics show a progress bar; closing a child updates the parent)        |
+| "Waiting on me" list for the human  | `https://github.com/issues/assigned` — anything **assigned to the human** is waiting on them |
+| Project identifiers used by scripts | `.github/project.env` (written by `scripts/github-setup.sh`)                                 |
 
-GitHub stores Projects under the user/org, not inside the repo; the project is *linked* to the
+GitHub stores Projects under the user/org, not inside the repo; the project is _linked_ to the
 repo so it appears in the repo's Projects tab and only holds this repo's issues.
 
 Repo-level "saved issue views" are **not API-editable** — do not use them; the Project views
@@ -27,7 +27,7 @@ cover the same need.
   design, architecture, gameplay, graphics, networking, ui, audio, qa, docs), `role:*` (the
   agent role that owns it), `priority:p0|p1|p2`, `epic`, `roadmap`, `needs-decision`, `pending`.
 - **Project Status says where it is.** `Backlog → Ready → In progress → In review → Done`,
-  plus `Blocked`. Status is the *only* stage field — no `status:*` labels.
+  plus `Blocked`. Status is the _only_ stage field — no `status:*` labels.
 - **Assignee means "waiting on a human".** Agents are not GitHub users, so the assignee field
   is reserved: assign the human when, and only when, a ticket needs their decision, credential,
   or approval.
@@ -101,11 +101,11 @@ Graphics PRs attach before/after screenshots; gameplay PRs list the balance valu
 
 ## 7. Scripts
 
-| Script                     | Runs on   | Purpose                                                                                     |
-| -------------------------- | --------- | ------------------------------------------------------------------------------------------- |
-| `scripts/github-setup.sh`  | host      | Create/push the repo, labels, milestones, Project + views, ruleset, seed groundwork epics.   |
-| `scripts/project-sync.sh`  | host/cont | Reconcile issues ↔ board (section 4).                                                       |
-| `scripts/issue-status.sh`  | host/cont | `issue-status.sh <N> <Status>` — move one ticket without hand-copying ids.                   |
-| `scripts/sync-from-template.sh` | host | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
+| Script                          | Runs on   | Purpose                                                                                                                                                                                    |
+| ------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/github-setup.sh`       | host      | Create/push the repo, labels, milestones, Project + views, ruleset, seed groundwork epics.                                                                                                 |
+| `scripts/project-sync.sh`       | host/cont | Reconcile issues ↔ board (section 4).                                                                                                                                                      |
+| `scripts/issue-status.sh`       | host/cont | `issue-status.sh <N> <Status>` — move one ticket without hand-copying ids.                                                                                                                 |
+| `scripts/sync-from-template.sh` | host      | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
 
 `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).
