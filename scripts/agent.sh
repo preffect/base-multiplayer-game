@@ -55,6 +55,8 @@ worktree_remove() {
 
 ensure_worktree() { # <branch> -> prints the worktree path relative to ROOT
   local branch="$1" path="$WORKTREES_DIR/$1"
+  # A branch checked out in the main tree cannot also be a worktree: work there instead.
+  if [[ "$(git -C "$ROOT" branch --show-current)" == "$branch" ]]; then echo "."; return 0; fi
   if [[ ! -d "$ROOT/$path" ]]; then
     run_in_workdir . git fetch -q origin
     if run_in_workdir . git show-ref -q --verify "refs/remotes/origin/$branch"; then

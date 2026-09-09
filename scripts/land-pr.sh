@@ -83,7 +83,7 @@ for ((round = 1; round <= rounds; round++)); do
   echo "   verdicts: $(jq -c .verdicts <<<"$state"); unresolved threads: $unresolved"
   if [[ -z "$missing" && "$unresolved" == "0" ]]; then
     gh pr merge "$pr" --squash --auto --delete-branch >/dev/null
-    "$AGENT" worktree-remove "$head_branch" >/dev/null
+    [[ -d "$ROOT/.worktrees/$head_branch" ]] && "$AGENT" worktree-remove "$head_branch" >/dev/null
     echo "== PR #$pr approved by [$reviewers]; auto-merge armed."
     exit 0
   fi
