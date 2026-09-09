@@ -1,0 +1,46 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(tmux list-panes:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm:*)",
+      "Bash(node:*)",
+      "Bash(chmod:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx ng:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm run:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(ss:*)",
+      "Bash(netstat:*)",
+      "Bash(find:*)",
+      "Bash(pgrep:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(./validate.sh:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "WebSearch",
+      "WebFetch(domain:angular.dev)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "mcp__game-debug__*",
+      "mcp__angular__*"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["game-debug", "angular"]
+}

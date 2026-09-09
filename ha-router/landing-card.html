@@ -1,0 +1,68 @@
+<!--
+  ha-router landing-page game card for base-multiplayer-game.
+  ----------------------------------------------------------------------------
+  WHERE TO PASTE: ha-router/landing/index.html, inside the Games section.
+  Find:  <!-- Games -->  then  <div class="cards">  (opens ~line 292).
+  Paste this <a class="card"> block as a SIBLING of the other game cards,
+  immediately after the `<div class="cards">` opening (or after any existing
+  game card). Markup matches the other game cards verbatim (card / card-icon /
+  card-body / card-name / card-host / card-arrow + badge-wip).
+
+  PLACEHOLDERS to replace:
+    <display-name>   e.g. "Base Multiplayer Game"
+    <slug>           e.g. "base-mp"  (host = <slug>.preffect-ha.preffect-home.net)
+    <r>,<g>,<b>      icon accent RGB. Pick an UNUSED hue (see below). The icon
+                     background/border reuse the same RGB at 0.1 / 0.15 alpha;
+                     the SVG stroke uses the matching hex <#hex>.
+    <#hex>           hex form of the same color (SVG stroke).
+    <icon-svg>       the inner SVG path(s). A generic gamepad icon is provided
+                     below as a default; swap for a game-specific glyph at init.
+
+  COLOR GUIDE — hues already used by Games cards (avoid these):
+    Treebeard's Revenge  #22c55e  (34,197,94)
+    Solar Drift          #38bdf8  (56,189,248)
+    Empires              #ef4444  (239,68,68)
+    Constructors         #fb923c  (251,146,60)
+    Super Morris Girls   #ec4899  (236,72,153)
+  Suggested free hue for this template: lime  #a3e635  (163,230,53).
+  ----------------------------------------------------------------------------
+-->
+<a class="card" href="https://<slug>.preffect-ha.preffect-home.net">
+  <div class="card-icon" style="background: rgba(<r>, <g>, <b>, 0.1); border: 1px solid rgba(<r>, <g>, <b>, 0.15);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="<#hex>" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <!-- <icon-svg>: default = gamepad. Replace with a game-specific glyph. -->
+      <rect x="2" y="6" width="20" height="12" rx="2"/>
+      <path d="M6 12h4"/>
+      <path d="M8 10v4"/>
+      <line x1="15" y1="13" x2="15.01" y2="13"/>
+      <line x1="18" y1="11" x2="18.01" y2="11"/>
+    </svg>
+  </div>
+  <div class="card-body">
+    <div class="card-name"><display-name> <span class="badge badge-wip">WIP</span></div>
+    <div class="card-host"><slug>.preffect-ha.preffect-home.net</div>
+  </div>
+  <span class="card-arrow">&rarr;</span>
+</a>
+
+<!--
+  Example, fully filled in (display "Base Multiplayer Game", slug "base-mp",
+  lime hue 163,230,53 / #a3e635):
+
+<a class="card" href="https://base-mp.preffect-ha.preffect-home.net">
+  <div class="card-icon" style="background: rgba(163, 230, 53, 0.1); border: 1px solid rgba(163, 230, 53, 0.15);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#a3e635" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2"/>
+      <path d="M6 12h4"/>
+      <path d="M8 10v4"/>
+      <line x1="15" y1="13" x2="15.01" y2="13"/>
+      <line x1="18" y1="11" x2="18.01" y2="11"/>
+    </svg>
+  </div>
+  <div class="card-body">
+    <div class="card-name">Base Multiplayer Game <span class="badge badge-wip">WIP</span></div>
+    <div class="card-host">base-mp.preffect-ha.preffect-home.net</div>
+  </div>
+  <span class="card-arrow">&rarr;</span>
+</a>
+-->

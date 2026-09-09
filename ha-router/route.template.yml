@@ -1,0 +1,85 @@
+# ha-router route template for base-multiplayer-game
+# ----------------------------------------------------------------------------
+# Copy this to the REAL ha-router repo as:  ha-router/config/<slug>.yml
+# Then replace the placeholders below. Traefik (file provider, watch:true)
+# picks the file up automatically — NO restart needed.
+#
+# PLACEHOLDERS (replace every occurrence):
+#   <slug>          URL slug + host label   (default suggestion: base-mp)
+#   <server-port>   server API+WS+MCP port  (default: 4400)
+#   <client-port>   Angular client port     (default: 4402)
+#
+# MODEL: single-port multiplayer (super-morris-girls pattern).
+#   ONE backend on <server-port> serves /api + /ws + /debug-mcp.
+#   The Angular dev server on <client-port> serves the UI.
+#   3 routers, all on Host(`<slug>.preffect-ha.preffect-home.net`):
+#     - <slug>-api  -> PathPrefix(/api) -> <slug>-api service (<server-port>)
+#     - <slug>-ws   -> PathPrefix(/ws)  -> <slug>-api service (<server-port>)
+#     - <slug>      -> everything else  -> <slug> service     (<client-port>)
+#   The /api and /ws routers use priority 100 so their PathPrefix rules win
+#   (must exceed the catch-all's DEFAULT priority = its rule length, ~55;
+#   the old value 20 silently lost and /api only worked via the Angular proxy)
+#   over the catch-all client router.
+#
+#   Do NOT add a separate WebSocket entrypoint — /ws rides the standard
+#   websecure entrypoint to the single backend (this is the morris model,
+#   simpler than treebeards' dual-port setup).
+# ----------------------------------------------------------------------------
+http:
+  routers:
+    <slug>-api:
+      rule: "Host(`<slug>.preffect-ha.preffect-home.net`) && PathPrefix(`/api`)"
+      entryPoints: [websecure]
+      service: <slug>-api
+      tls:
+        certResolver: cloudflare
+      priority: 100
+
+    <slug>-ws:
+      rule: "Host(`<slug>.preffect-ha.preffect-home.net`) && PathPrefix(`/ws`)"
+      entryPoints: [websecure]
+      service: <slug>-api
+      tls:
+        certResolver: cloudflare
+      priority: 100
+
+    # OPTIONAL: only if you want the MCP debug endpoint reachable remotely.
+    # Otherwise leave commented — debug-mcp is normally used over localhost.
+    # <slug>-mcp:
+    #   rule: "Host(`<slug>.preffect-ha.preffect-home.net`) && PathPrefix(`/debug-mcp`)"
+    #   entryPoints: [websecure]
+    #   service: <slug>-api
+    #   tls:
+    #     certResolver: cloudflare
+    #   priority: 100
+
+    <slug>:
+      rule: "Host(`<slug>.preffect-ha.preffect-home.net`)"
+      entryPoints: [websecure]
+      service: <slug>
+      tls:
+        certResolver: cloudflare
+
+  services:
+    <slug>:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:<client-port>"
+
+    <slug>-api:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:<server-port>"
+
+# ----------------------------------------------------------------------------
+# OPTIONAL — WebSocket upgrade fix (only if /ws fails to upgrade behind TLS).
+# Some clients/proxies negotiate HTTP/2 and break the WS Upgrade handshake.
+# If you hit that, pin TLS to HTTP/1.1 on the three routers above by adding
+# `options: <slug>-no-h2@file` under each router's `tls:` block, and append
+# the block below (mirrors solar-drift.yml). Leave it out unless WS breaks.
+# ----------------------------------------------------------------------------
+# tls:
+#   options:
+#     <slug>-no-h2:
+#       alpnProtocols:
+#         - http/1.1

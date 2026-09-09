@@ -1,0 +1,39 @@
+{
+  "name": "${localWorkspaceFolderBasename}",
+  "init": true,
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24",
+      "pnpmVersion": "10"
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-dind,target=/var/lib/docker,type=volume",
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
+  ],
+  "forwardPorts": [
+    4400,
+    4402
+  ],
+  "postCreateCommand": "sudo git config --system --add safe.directory /workspace; pnpm install && pnpm exec prettier --write . > /dev/null 2>&1 || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "angular.ng-template",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}

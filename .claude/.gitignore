@@ -1,0 +1,16 @@
+# Ignore everything by default (Claude Code creates runtime files here)
+*
+
+# Whitelist project config that should be committed
+!.gitignore
+!settings.json
+!commands/
+!commands/**
+!agents/
+!agents/**
+!rules/
+!rules/**
+!skills/
+!skills/**
+!hooks/
+!hooks/**

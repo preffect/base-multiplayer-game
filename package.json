@@ -1,0 +1,31 @@
+{
+  "name": "base-multiplayer-game",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Reusable multiplayer game template (client/server, native WebSocket multiplayer, MCP game-state visibility)",
+  "scripts": {
+    "dev:server": "pnpm --filter @base-multiplayer-game/server dev",
+    "dev:client": "pnpm --filter @base-multiplayer-game/client dev",
+    "dev": "pnpm dev:server & pnpm dev:client",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:watch": "vitest",
+    "lint": "eslint . && prettier --check .",
+    "lint:fix": "eslint . --fix && prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "angular-eslint": "^21.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}

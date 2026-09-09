@@ -1,0 +1,97 @@
+<!--
+  Generic multiplayer lobby / connection UI stub.
+  De-branded template shell. No game-specific UI lives here — the actual game
+  renders inside the "game area" TODO below via game/game-setup.ts.
+-->
+<header class="app-header">
+  <h1>{{ title }}</h1>
+  <p class="tagline">Multiplayer lobby</p>
+  <span class="conn" [class.on]="mp.connected()">
+    {{ mp.connected() ? 'connected' : 'disconnected' }}
+  </span>
+</header>
+
+@if (mp.lastError(); as err) {
+  <p class="error">Error: {{ err }}</p>
+}
+
+@if (!mp.inGame()) {
+  <!-- ===== Lobby ===== -->
+  <section class="panel">
+    <h2>Connection</h2>
+    <label>
+      Name
+      <input type="text" [ngModel]="playerName()" (ngModelChange)="playerName.set($event)" />
+    </label>
+    @if (!mp.connected()) {
+      <button (click)="connect()">Connect & Join Lobby</button>
+    } @else {
+      <button (click)="disconnect()">Disconnect</button>
+    }
+  </section>
+
+  <section class="panel">
+    <h2>Create Game</h2>
+    <label>
+      Game name
+      <input type="text" [ngModel]="newGameName()" (ngModelChange)="newGameName.set($event)" />
+    </label>
+    <label>
+      Max players
+      <input type="number" min="1" max="8" [ngModel]="maxPlayers()" (ngModelChange)="maxPlayers.set(+$event)" />
+    </label>
+    <!-- TODO(game): add game-specific create-game config fields here. -->
+    <button [disabled]="!mp.connected()" (click)="createGame()">Create</button>
+  </section>
+
+  <section class="panel">
+    <h2>Open Games</h2>
+    @if (mp.games().length === 0) {
+      <p class="muted">No games yet.</p>
+    }
+    <ul class="games">
+      @for (game of mp.games(); track game.gameId) {
+        <li>
+          <span class="game-name">{{ game.gameName }}</span>
+          <span class="muted">{{ game.players.length }}/{{ game.maxPlayers }}</span>
+          @if (game.started) {
+            <span class="badge">started</span>
+          }
+          <button (click)="joinGame(game.gameId)">Join</button>
+          <button (click)="startGame(game.gameId)">Start</button>
+          <button class="danger" (click)="deleteGame(game.gameId)">Delete</button>
+        </li>
+      }
+    </ul>
+  </section>
+} @else {
+  <!-- ===== In game ===== -->
+  <section class="panel">
+    <h2>Room</h2>
+    <p>
+      Game ID: <code>{{ mp.gameId() }}</code>
+    </p>
+    <p>
+      You: <code>{{ mp.playerId() }}</code> {{ mp.isHost() ? '(host)' : '' }}
+    </p>
+    <p>Players ({{ mp.playerIds().length }}):</p>
+    <ul class="players">
+      @for (pid of mp.playerIds(); track pid) {
+        <li>
+          <code>{{ pid }}</code>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="panel game-area">
+    <h2>Game Area</h2>
+    <!--
+      TODO(game): mount the real game canvas / board here and wire it to
+      game/game-setup.ts (input loop via mp.sendInput, render loop via
+      mp.latestSnapshot()). Until then we just show the raw snapshot JSON so
+      the snapshot round-trip is observable end-to-end.
+    -->
+    <pre class="snapshot">{{ snapshotJson() }}</pre>
+  </section>
+}

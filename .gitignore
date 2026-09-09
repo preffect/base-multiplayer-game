@@ -1,0 +1,39 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+
+# Dev artifacts
+*.log
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# pnpm store (local package cache)
+.pnpm-store/
+
+# Runtime files
+.game-logs/
+.game.pid
+
+# Game data
+data/
+
+# Angular cache
+.angular/
+
+# Devcontainer build artifact
+.devcontainer/.build-checksum
+
+# Claude personal notes
+CLAUDE.local.md
+
+# QA screenshots (baselines live in qa/baselines and ARE committed)
+.qa/

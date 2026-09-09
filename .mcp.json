@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "game-debug": {
+      "type": "http",
+      "url": "http://localhost:4400/debug-mcp"
+    },
+    "angular": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/angular-mcp"
+      ]
+    },
+    "playwright": {
+      "command": "playwright-mcp",
+      "args": [
+        "--headless",
+        "--viewport-size",
+        "1280,800",
+        "--output-dir",
+        ".qa/screenshots"
+      ]
+    }
+  }
+}
