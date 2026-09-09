@@ -37,3 +37,7 @@ CLAUDE.local.md
 
 # QA screenshots (baselines live in qa/baselines and ARE committed)
 .qa/
+
+# Python bytecode (scripts/github)
+__pycache__/
+*.pyc

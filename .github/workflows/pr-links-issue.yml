@@ -1,0 +1,24 @@
+# Hard gate: every PR must close a ticket (WORKFLOW.md §5). The job name `pr-links-issue` is a
+# required status check in the branch ruleset applied by scripts/github-setup.sh, so a PR whose
+# body has no `Closes #N` / `Fixes #N` / `Resolves #N` cannot be merged.
+name: pr-links-issue
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  pr-links-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a closing issue reference in the PR body
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$BODY" | grep -qiE '\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(#[0-9]+|https://github\.com/[^/]+/[^/]+/issues/[0-9]+)'; then
+            echo "OK: PR closes a ticket."
+          else
+            echo "::error::No ticket linked. Every PR must contain 'Closes #<issue>' (WORKFLOW.md §5). Create the ticket first, then edit the PR body."
+            exit 1
+          fi

@@ -33,7 +33,7 @@ main() {
     case "$1" in
       --template) TEMPLATE="$2"; shift 2 ;;
       --dry-run) DRY_RUN=true; shift ;;
-      -h | --help) print_help | sed 's/^# \{0,1\}//'; exit 0 ;;
+      -h | --help) print_help; exit 0 ;;
       *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
   done

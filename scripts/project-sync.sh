@@ -56,9 +56,26 @@ done < <(jq -r --arg repo "$REPO" \
   '.items[] | select(.content.type=="Issue" and .content.repository==$repo)
    | [.content.number, .id, (.status // "")] | @tsv' <<<"$items_json")
 
-set_status() { # item-id option-id
+# Status changes are queued and sent as ONE GraphQL request per batch (aliased mutations):
+# GitHub's secondary rate limit counts requests, and a board of 50 tickets used to be 50 calls.
+BATCH_SIZE=20
+queued_items=() queued_options=()
+set_status() { # item-id option-id  (queued; flushed by flush_status)
+  queued_items+=("$1"); queued_options+=("$2")
+}
+flush_status() {
   $DRY_RUN && return 0
-  gh project item-edit --project-id "$PROJECT_ID" --id "$1" --field-id "$STATUS_FIELD_ID" --single-select-option-id "$2" >/dev/null
+  local start n count
+  for ((start = 0; start < ${#queued_items[@]}; start += BATCH_SIZE)); do
+    count=$(( ${#queued_items[@]} - start )); ((count > BATCH_SIZE)) && count=$BATCH_SIZE
+    local query="mutation {"
+    for ((n = 0; n < count; n++)); do
+      query+=" m${n}: updateProjectV2ItemFieldValue(input:{projectId:\"${PROJECT_ID}\", itemId:\"${queued_items[start + n]}\", fieldId:\"${STATUS_FIELD_ID}\", value:{singleSelectOptionId:\"${queued_options[start + n]}\"}}) { projectV2Item { id } }"
+    done
+    query+=" }"
+    jq -cn --arg q "$query" '{query:$q}' | gh api graphql --input - >/dev/null
+    sleep 1
+  done
 }
 
 added=0 done=0 blocked=0 unblocked=0
@@ -84,6 +101,7 @@ while IFS=$'\t' read -r number url state has_pending; do
     set_status "$item_id" "$OPT_BACKLOG"; unblocked=$((unblocked + 1))
   fi
 done < <(jq -r --arg p "$PENDING_LABEL" '.[] | [.number, .url, .state, (any(.labels[]; .name==$p))] | @tsv' <<<"$issues_json")
+flush_status
 
 $DRY_RUN && echo "(dry run — nothing changed)"
 printf '%-32s %s\n' "added to project:" "$added" "closed -> Done:" "$done" \

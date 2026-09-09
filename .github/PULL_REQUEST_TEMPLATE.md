@@ -1,4 +1,4 @@
-Closes #
+Closes #<!-- required: the ticket this PR completes; the pr-links-issue check blocks merge without it -->
 
 ## What / why
 

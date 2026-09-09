@@ -64,13 +64,22 @@ ticket between stages with `gh project item-edit` (ids in `.github/project.env`)
 
 ## 5. Branch and PR rules
 
+**Every piece of work starts as a ticket — no exceptions, including template and tooling work.**
+Create the issue first (or pick one up), work on a branch named after it, and put `Closes #N` in
+the PR body. Work on a different repository gets its own Project and its own tickets there
+(`scripts/github-setup.sh --no-seed` for repos that are not games); never track one repo's work
+in another repo's board.
+
 Applied as a **ruleset** on the default branch by `scripts/github-setup.sh`:
 
 - a pull request is required — no direct pushes, no force pushes, no branch deletion;
+- **the `pr-links-issue` status check must pass** — `.github/workflows/pr-links-issue.yml` fails
+  any PR whose body has no `Closes #N` / `Fixes #N` / `Resolves #N`, so a PR without a ticket
+  cannot be merged (this is the hard enforcement of the rule above);
 - **every review thread must be resolved before merge**;
 - stale approvals are dismissed on new commits;
-- required status checks (`validate` from CI, `code-review` from the reviewer agent) are added
-  **only once those checks exist** — requiring a check that never reports blocks every merge.
+- the `validate` (CI) and `code-review` (reviewer agent) checks are added **only once those
+  checks exist** — requiring a check that never reports blocks every merge.
 
 All agents act as the human's GitHub account (mounted `~/.config/gh`; git pushes over HTTPS
 with `gh` as the credential helper, set up by `.devcontainer/post-create.sh`), so GitHub cannot
