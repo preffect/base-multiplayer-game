@@ -16,8 +16,11 @@ extension points, ready to be filled in.
 One command on the host does everything up to "define the game":
 
 ```bash
-../new-game.sh my-game --title "My Game"     # from /home/preffect/source
+./base-multiplayer-game/new-game.sh my-game --title "My Game"   # from /home/preffect/source
 ```
+
+`new-game.sh` lives in this repo (a thin `new-game.sh` wrapper at `/home/preffect/source` calls it);
+games are created as siblings of the template folder.
 
 It copies the template, picks free ports, instantiates (`presetup.sh`), registers the game in the
 live **ha-router** (route + landing card, DNS check), builds and starts the **devcontainer**

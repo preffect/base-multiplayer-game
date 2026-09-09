@@ -73,6 +73,9 @@ echo "  title   : $TITLE"
 echo "  ports   : server $SERVER_PORT / client $CLIENT_PORT"
 echo
 
+# new-game.sh is template-only (it scaffolds games); a game copy must not carry it.
+rm -f "$ROOT/new-game.sh"
+
 # The template's README describes how to CREATE games; a game gets the game-facing README.
 if [[ -f "$ROOT/README.game.md" ]]; then
   mv -f "$ROOT/README.game.md" "$ROOT/README.md"
