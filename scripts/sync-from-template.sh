@@ -56,7 +56,8 @@ main() {
   ALWAYS=(
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
     scripts/lib/identity.sh
-    scripts/github/setup_project.py scripts/github/groundwork-issues.json
+    scripts/github/setup_project.py scripts/github/groundwork-issues.json scripts/github/main-ruleset.json
+    .github/workflows/pr-links-issue.yml
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
     dev-container.sh run.sh validate.sh presetup.sh ai-pipeline.sh
     .mcp.json .gitignore .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
