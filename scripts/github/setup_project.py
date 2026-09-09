@@ -117,13 +117,14 @@ spec = json.loads(Path(ISSUES_FILE).read_text())
 fill = lambda text: text.replace(TITLE_PLACEHOLDER, PROJECT_TITLE).replace(SLUG_PLACEHOLDER, SLUG)
 
 repo_info = graphql(
-    'query($o:String!,$n:String!){ repository(owner:$o,name:$n){ id labels(first:100){ nodes{ id name } } milestones(first:100,states:[OPEN,CLOSED]){ nodes{ id title } } } }',
+    'query($o:String!,$n:String!){ repository(owner:$o,name:$n){ id milestones(first:100,states:[OPEN,CLOSED]){ nodes{ id title } } } }',
     {"o": OWNER, "n": REPO_NAME},
 )["repository"]
 repository_id = repo_info["id"]
 
 # ---------------------------------------------------------------- labels (one batched request)
-label_ids = {label["name"]: label["id"] for label in repo_info["labels"]["nodes"]}
+# gh label list paginates for us, so a repo with more than 100 labels is handled correctly.
+label_ids = {label["name"]: label["id"] for label in json.loads(gh("label", "list", "-R", REPO, "--limit", "1000", "--json", "name,id") or "[]")}
 missing_labels = [
     {"repositoryId": repository_id, "name": name, "color": color, "description": description}
     for name, (description, color) in spec["labels"].items() if name not in label_ids

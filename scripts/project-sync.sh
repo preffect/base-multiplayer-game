@@ -73,7 +73,13 @@ flush_status() {
       query+=" m${n}: updateProjectV2ItemFieldValue(input:{projectId:\"${PROJECT_ID}\", itemId:\"${queued_items[start + n]}\", fieldId:\"${STATUS_FIELD_ID}\", value:{singleSelectOptionId:\"${queued_options[start + n]}\"}}) { projectV2Item { id } }"
     done
     query+=" }"
-    jq -cn --arg q "$query" '{query:$q}' | gh api graphql --input - >/dev/null
+    # Retry on GitHub's secondary rate limit so a transient throttle cannot leave the board half-updated.
+    local attempt output
+    for attempt in 1 2 3 4 5; do
+      if output="$(jq -cn --arg q "$query" '{query:$q}' | gh api graphql --input - 2>&1)"; then break; fi
+      if [[ "$output" == *"rate limit"* || "$output" == *"secondary"* ]] && ((attempt < 5)); then sleep 60; continue; fi
+      echo "error: board update failed: ${output:0:200}" >&2; return 1
+    done
     sleep 1
   done
 }
