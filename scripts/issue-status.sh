@@ -1,33 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 # ---------------------------------------------------------------------------
-# issue-status.sh — move one ticket to a project Status without hand-copying ids.
+# issue-status.sh — move one or more tickets to a project Status in TWO API calls total.
 #
-# Usage:  ./scripts/issue-status.sh <issue-number> <Backlog|Ready|"In progress"|"In review"|Blocked|Done>
-# Needs:  gh (project scope), jq, .github/project.env (from github-setup.sh)
+#   scripts/issue-status.sh <Status> <issue> [issue...]     e.g. issue-status.sh "In review" 21 22 23
+#   scripts/issue-status.sh <issue> <Status>                (single-ticket form, kept for habit)
+#
+# One GraphQL query finds the project item of every issue (adding missing ones), one aliased
+# mutation sets all their Status values. Never lists the whole project.
+# Needs .github/project.env from scripts/github-setup.sh.
 # ---------------------------------------------------------------------------
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ENV="$SCRIPT_DIR/../.github/project.env"
 [[ -f "$PROJECT_ENV" ]] || { echo "error: $PROJECT_ENV missing — run scripts/github-setup.sh first." >&2; exit 1; }
 # shellcheck disable=SC1090
 source "$PROJECT_ENV" # REPO, PROJECT_OWNER, PROJECT_NUMBER, PROJECT_ID, STATUS_FIELD_ID
+OWNER="${REPO%/*}" NAME="${REPO#*/}"
 
-ISSUE="${1:?issue number required}"
-STATUS="${2:?status name required}"
+if [[ "${1:-}" =~ ^[0-9]+$ ]]; then status="${2:?status name required}"; issues=("$1")
+else status="${1:?status name required}"; shift; issues=("$@"); fi
+[[ ${#issues[@]} -gt 0 ]] || { echo "usage: issue-status.sh <Status> <issue> [issue...]" >&2; exit 1; }
 
-fields_json="$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json)"
-option_id="$(jq -r --arg n "$STATUS" '.fields[] | select(.name=="Status") | .options[] | select(.name==$n) | .id' <<<"$fields_json")"
-[[ -n "$option_id" ]] || { echo "error: unknown status '$STATUS'" >&2; exit 1; }
+issue_fields=""
+for n in "${issues[@]}"; do
+  issue_fields+="i$n: issue(number:$n){ id projectItems(first:20){ nodes{ id project{ id } } } } "
+done
+state="$(gh api graphql -f query="query { node(id:\"$PROJECT_ID\"){ ... on ProjectV2 { field(name:\"Status\"){ ... on ProjectV2SingleSelectField { options { id name } } } } }
+  repository(owner:\"$OWNER\", name:\"$NAME\"){ $issue_fields } }")"
+option_id="$(jq -r --arg s "$status" '.data.node.field.options[] | select(.name==$s) | .id' <<<"$state")"
+[[ -n "$option_id" ]] || { echo "error: unknown status '$status'" >&2; exit 1; }
 
-item_id="$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json --limit 1000 \
-  | jq -r --arg repo "$REPO" --argjson n "$ISSUE" \
-    '.items[] | select(.content.type=="Issue" and .content.repository==$repo and .content.number==$n) | .id')"
-if [[ -z "$item_id" ]]; then
-  url="$(gh issue view "$ISSUE" -R "$REPO" --json url --jq .url)"
-  item_id="$(gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --url "$url" --format json | jq -r .id)"
+# Issues not yet on the project are added in one aliased mutation, then everything is set.
+add_fields="" item_ids=()
+for n in "${issues[@]}"; do
+  item="$(jq -r --arg p "$PROJECT_ID" ".data.repository.i$n.projectItems.nodes[] | select(.project.id==\$p) | .id" <<<"$state" | head -1)"
+  if [[ -z "$item" ]]; then
+    content="$(jq -r ".data.repository.i$n.id" <<<"$state")"
+    add_fields+="a$n: addProjectV2ItemById(input:{projectId:\"$PROJECT_ID\", contentId:\"$content\"}){ item { id } } "
+  else item_ids+=("$n=$item"); fi
+done
+if [[ -n "$add_fields" ]]; then
+  added="$(gh api graphql -f query="mutation { $add_fields }")"
+  for n in "${issues[@]}"; do
+    id="$(jq -r ".data.a$n.item.id // empty" <<<"$added")"; [[ -z "$id" ]] || item_ids+=("$n=$id")
+  done
 fi
-
-gh project item-edit --project-id "$PROJECT_ID" --id "$item_id" --field-id "$STATUS_FIELD_ID" --single-select-option-id "$option_id" >/dev/null
-echo "#$ISSUE -> $STATUS"
+set_fields=""
+for pair in "${item_ids[@]}"; do
+  set_fields+="s${pair%%=*}: updateProjectV2ItemFieldValue(input:{projectId:\"$PROJECT_ID\", itemId:\"${pair#*=}\", fieldId:\"$STATUS_FIELD_ID\", value:{singleSelectOptionId:\"$option_id\"}}){ projectV2Item { id } } "
+done
+gh api graphql -f query="mutation { $set_fields }" >/dev/null
+echo "#${issues[*]} -> $status"

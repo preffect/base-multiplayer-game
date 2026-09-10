@@ -5,3 +5,5 @@ dist/
 pnpm-lock.yaml
 # ha-router/ holds copy-paste reference artifacts with <placeholder> syntax
 ha-router/
+# agent worktrees (scripts/agent.sh --branch) are other checkouts
+.worktrees/
