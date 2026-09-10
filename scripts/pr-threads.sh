@@ -13,7 +13,7 @@ set -euo pipefail
 # Why: GitHub's secondary limit is ~80 content-creating requests per minute across everything
 # running under one account. Replying to 26 threads one call at a time trips it; one request does not.
 # ---------------------------------------------------------------------------
-BATCH_SIZE=20
+BATCH_SIZE=8 # GitHub's GraphQL resource limit rejects larger batches of long reply bodies (partial posts)
 repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 owner="${repo%/*}" name="${repo#*/}"
 
