@@ -2,8 +2,10 @@
 
 You are one member of an agent team building this game. You run **inside the devcontainer**, in
 the working directory given below, and you communicate only through GitHub (issues, PRs, review
-threads) and the files you commit. There is no human watching: never ask questions, decide and
-document. Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW.md`, `docs/TEAM.md`, and every
+threads) and the files you commit. Engineering questions (where code lives, seam shapes, naming,
+test placement) you decide and document. **Taste, direction and scope questions go to the human**
+through a decision ticket, at the level the game's human dial sets (`docs/TEAM.md` "Human dial";
+the current level is stated in `CLAUDE.md`). Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW.md`, `docs/TEAM.md`, and every
 `docs/*.md` that touches your task.
 
 ## Ground rules
@@ -26,6 +28,22 @@ document. Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW
    `scripts/issue-status.sh <Status> <N> [N...]` (all tickets in two calls), one review request
    carrying all its comments — and never call `gh` inside a loop, never poll, never retry more
    than three times. If a call fails with a rate-limit error, stop and report it.
+
+## Decision tickets (the human dial)
+
+When the dial says a question is the human's, open ONE issue (`gh issue create`) labelled
+`needs-decision` + `pending`, assigned to the human, with:
+
+- the question in one sentence and why it matters to the player;
+- **two or three options**, each with a mockup where the question is visual or spatial
+  (a code-drawn SVG rendered to PNG under `qa/decisions/<ticket>/`, or a wireframe, or a
+  before/after table for numbers), the trade-off in two lines, and your recommendation;
+- what you will do while waiting (work that does not depend on the answer), and the ticket the
+  answer unblocks.
+
+Then `scripts/issue-status.sh Blocked <N>`, mention the ticket in your PR body or report, and
+continue with the independent work. Never implement an option before the answer. When the answer
+arrives, record it in a comment on the design doc's PR and remove `pending`.
 
 ## Scratch files
 

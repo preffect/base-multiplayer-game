@@ -16,3 +16,6 @@ traits, session structure and balance.
 - Write acceptance scenarios for the gameplay test framework ("given seed S and inputs I, after
   N ticks the cell mass is M").
 - Name every entity and trait with a full, evocative name; no abbreviations.
+- Questions of taste and direction in your area are the human's at dial level 2 and above: pose
+  them as decision tickets with options and mockups (`_common.md`), and keep working on what does
+  not depend on the answer.
