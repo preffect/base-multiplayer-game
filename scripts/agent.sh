@@ -98,7 +98,8 @@ if [[ "$workdir" != "." && ! -d "$ROOT/$workdir/node_modules" ]]; then
 fi
 
 mkdir -p "$ROOT/$LOG_DIR"
-run_id="$(date +%Y%m%d-%H%M%S)-$role${pr:+-pr$pr}"
+# Unique per process: parallel launches in the same second must not share prompt/log files.
+run_id="$(date +%Y%m%d-%H%M%S)-$$-$role${tickets[0]:+-t${tickets[0]}}${pr:+-pr$pr}"
 prompt_file="$ROOT/$LOG_DIR/$run_id.prompt.md"
 log_file="$ROOT/$LOG_DIR/$run_id.log"
 {
