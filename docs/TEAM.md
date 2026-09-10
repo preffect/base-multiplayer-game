@@ -26,6 +26,24 @@ finish. `.claude/commands/team.md` is the interactive variant (`/team`) for a se
 inside the container: it spawns the same role files as teammates of one session (messages instead
 of GitHub threads) and uses no role vocabulary of its own.
 
+## Human dial
+
+How much the human steers, set per game in `CLAUDE.md` ("Human dial: N") and changeable per phase.
+Engineering decisions (seams, constants homes, naming, test placement) are always the agents';
+the dial governs **taste, direction and scope**: game feel and rules, numbers the player feels,
+the look, UI layout and flow, audio direction, what is in or out of a build.
+
+| Level | Name       | What the human sees                                                                                  | What waits for them                          |
+| ----- | ---------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 0     | Autonomous | PR reports only                                                                                      | Credentials, scope changes                   |
+| 1     | Informed   | A "Decisions made" block in every design/visual PR; a ratification ticket per phase                  | Nothing; the human can overturn after        |
+| 2     | Consulted  | Every taste/direction question posed as a decision ticket with options, mockups and a recommendation | That decision only; independent work goes on |
+| 3     | Directed   | As 2, plus a design brief (flow, mockup, options) posed before each build ticket starts              | The brief's approval                         |
+
+Decision tickets are defined in `.claude/roles/_common.md`; the team lead sends every mockup to
+the human when the ticket opens and moves the answer into the docs. The groundwork phase (M0/M1)
+ran at level 1; build phases default to level 2.
+
 ## Running an agent
 
 The roles are Claude Code agent definitions in `.claude/agents/<role>.md`, so **inside the

@@ -15,3 +15,6 @@ at a glance during play, and input affordances.
 - Implement with Angular standalone components; visuals follow `docs/VISUAL-STYLE.md`.
 - Every interactive element is reachable by keyboard and testable by Playwright (stable
   `data-testid` attributes).
+- Questions of taste and direction in your area are the human's at dial level 2 and above: pose
+  them as decision tickets with options and mockups (`_common.md`), and keep working on what does
+  not depend on the answer.
