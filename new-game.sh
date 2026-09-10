@@ -162,8 +162,7 @@ apply_ha_router() {
   if [[ ! -f "$route" ]]; then
     echo "==> ha-router: writing config/${SLUG_FINAL}.yml"
     sed -e "s/<slug>/${SLUG_FINAL}/g" -e "s/<server-port>/${SERVER_PORT}/g" -e "s/<client-port>/${CLIENT_PORT}/g" \
-      "$TARGET/ha-router/route.template.yml" | grep -vE '^#' | cat -s > "$route"
-    cp "$route" "$TARGET/ha-router/${SLUG_FINAL}.yml"
+      "$TEMPLATE/ha-router/route.template.yml" | grep -vE '^#' | cat -s > "$route"
   fi
   local landing="$HA_ROUTER/landing/index.html"
   if ! grep -q "https://${HOST}" "$landing"; then

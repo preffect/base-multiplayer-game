@@ -11,11 +11,14 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # a PR like any other change.
 #
 #   * Template-owned files (always synced): scripts, devcontainer, run/validate helpers,
-#     process + standards docs, ha-router artifacts, .mcp.json, PR template, .gitignore.
+#     process + standards docs, .mcp.json, PR template, .gitignore.
 #   * Synced only while still template-default: README.md (until its "Status: not yet
 #     defined" banner is replaced).
 #   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md.
-#   * Never synced: packages/**, init-game.md, PORTS.env, .github/project.env, data/, docs/.
+#   * Never synced: packages/**, init-game.md, init-game-prompt.md (one-shot), PORTS.env,
+#     .github/project.env, data/, docs/.
+#   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
+#     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh).
 #
 # After copying, the template identity is re-applied exactly as presetup.sh does
 # (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME.
@@ -59,10 +62,9 @@ main() {
     .claude/.gitignore
     scripts/github/setup_project.py scripts/github/groundwork-issues.json
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
-    dev-container.sh run.sh validate.sh presetup.sh ai-pipeline.sh
+    dev-container.sh run.sh validate.sh ai-pipeline.sh
     .mcp.json .gitignore .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
-    WORKFLOW.md TEAM.md ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md init-game-prompt.md base-project.md
-    ha-router/HA-ROUTER.md ha-router/route.template.yml ha-router/landing-card.html ha-router/insert-landing-card.py
+    WORKFLOW.md TEAM.md ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md
   )
   # Every team role the template defines (a role added there is synced without editing this list).
   for f in "$TEMPLATE"/.claude/roles/*.md; do ALWAYS+=(".claude/roles/$(basename "$f")"); done
@@ -99,6 +101,12 @@ main() {
     IFS='|' read -r src dest marker <<<"$entry"
     if [[ ! -f "$ROOT/$dest" ]] || grep -q "$marker" "$ROOT/$dest"; then copy_file "$src" "$dest"; fi
   done
+  # Template-only files (scripts/lib/identity.sh TEMPLATE_ONLY_PATHS) are removed if they crept in.
+  removed=()
+  for f in "${TEMPLATE_ONLY_PATHS[@]}"; do
+    [[ -e "$ROOT/$f" ]] || continue
+    removed+=("$f"); $DRY_RUN || rm -rf "${ROOT:?}/$f"
+  done
   drifted=()
   for f in "${MANUAL[@]}"; do
     [[ -f "$TEMPLATE/$f" && -f "$ROOT/$f" ]] || continue
@@ -107,13 +115,17 @@ main() {
     rm -f "$rendered"
   done
 
+  if ((${#removed[@]})); then
+    $DRY_RUN && echo "Would remove template-only files:" || echo "Removed template-only files:"
+    printf '  %s\n' "${removed[@]}"
+  fi
   if ((${#drifted[@]})); then
     echo "Differs from the template but is edited in place by agents — merge manually if the template change matters:"
     printf '  %s\n' "${drifted[@]}"
   fi
-  if ((${#copied[@]} == 0)); then
+  if ((${#copied[@]} + ${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
-  else
+  elif ((${#copied[@]})); then
     $DRY_RUN && echo "Would update (dry run):" || echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
     printf '  %s\n' "${copied[@]}"
     $DRY_RUN || echo "Review with 'git diff', then land via a PR (WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
