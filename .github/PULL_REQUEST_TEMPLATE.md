@@ -10,7 +10,7 @@ Closes #<!-- required: the ticket this PR completes; the pr-links-issue check bl
 ./validate.sh all   →  paste the summary lines here
 ```
 
-## Review checklist (author fills in; reviewers verify — see WORKFLOW.md §6)
+## Review checklist (author fills in; reviewers verify — see docs/WORKFLOW.md §6)
 
 - [ ] **No magic strings/numbers** — every meaningful literal is a named constant or `data/*.json`
 - [ ] **No duplicated real logic** — searched for existing helpers/patterns: <!-- what you searched -->
@@ -19,7 +19,7 @@ Closes #<!-- required: the ticket this PR completes; the pr-links-issue check bl
 - [ ] **Full descriptive names** — no abbreviations (allow `x`, `y`, `id`); predicate booleans; units in names
 - [ ] **Unit tests** for all new logic; **integration test** if crossing a subsystem; **gameplay scenario** if rules/balance changed
 - [ ] **Determinism preserved** — no `Math.random` / `Date.now` / `performance.now` in simulation code
-- [ ] **Docs in sync** — `README.md` / `CLAUDE.md` / `WORKFLOW.md` (and any doc describing what changed) updated in this PR and consistent with each other; template-level fixes upstreamed to `base-multiplayer-game` <!-- KEEP_TEMPLATE_NAME -->
+- [ ] **Docs in sync** — `README.md` / `CLAUDE.md` / `docs/WORKFLOW.md` (and any doc describing what changed) updated in this PR and consistent with each other; template-level fixes upstreamed to `base-multiplayer-game` <!-- KEEP_TEMPLATE_NAME -->
 - [ ] Constants / `data/*.json` updated
 - [ ] Graphics PRs: before/after screenshots attached (motion capture if animation changed)
 - [ ] Gameplay PRs: balance values touched are listed

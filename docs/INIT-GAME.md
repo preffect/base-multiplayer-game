@@ -1,21 +1,19 @@
-# Initialize Your Multiplayer Game
+# Define Your Multiplayer Game
 
-You are running this prompt against **`base-multiplayer-game`** — a working multiplayer
-game TEMPLATE whose game definition is **DEFERRED**. Connect / reconnect / identity, the
-lobby, rooms, the 60 Hz broadcast loop, MCP game-state visibility, and ha-router
+You are running this prompt against a game scaffolded from **`base-multiplayer-game`** — a
+working multiplayer TEMPLATE whose game definition is **DEFERRED**. Connect / reconnect /
+identity, the lobby, rooms, the 60 Hz broadcast loop, MCP game-state visibility, and ha-router
 integration ALL work today against a placeholder **echo** game.
 
-Your job in this session is **NOT to write game code yet**. It is to:
+Your job in this session is **NOT to write game code**. It is to:
 
 1. Read this prompt and the wiring notes below so you understand every extension point.
 2. **Interview the user** with the focused questions in the "Interview" section.
-3. Once every question is answered, **GENERATE the file `init-game.md`** — a concrete,
-   build-ready prompt (exact file paths, exact code blocks, ordered edits) that a build
-   team will later execute verbatim to turn this template into the user's actual game.
-
-A skeleton of the artifact you will produce already exists at `init-game.md` (filled with
-`<PLACEHOLDERS>` and one illustrative example). You will OVERWRITE it with the concrete,
-user-specific version. Do not start editing template source files in this session.
+3. Once every question is answered, **produce two things**: `docs/GDD.md` (what the game IS —
+   decisions, numbers, contracts) and the **first build epic with its tickets on GitHub** (what
+   gets built first, one ticket per unit of work with exact file paths and interfaces).
+   Planning lives in issues, never in a markdown plan.
+4. Remove this prompt and the "START HERE" banner (section 8).
 
 > **Build environment — assume you are INSIDE the devcontainer.** This prompt and every
 > prompt it generates run inside the devcontainer (`./dev-container.sh` from the host opens
@@ -30,9 +28,9 @@ user-specific version. Do not start editing template source files in this sessio
 `new-game.sh` already: registered the game in ha-router, built the devcontainer, verified the
 public URL, and seeded GitHub with the **groundwork epics** (devcontainer verified, tooling/MCP,
 team, quality gates, testing foundations, design, architecture/build plan) plus the project board
-and branch ruleset. Your output — `init-game.md` and the design docs it needs — is the work of the
+and branch ruleset. Your output — `docs/GDD.md` and the first build epic — is the work of the
 "Game design" and "Architecture and build plan" epics; file game-specific design tickets under
-the design epic as the interview reveals them. Follow **`WORKFLOW.md`** for tickets, the board,
+the design epic as the interview reveals them. Follow **`docs/WORKFLOW.md`** for tickets, the board,
 the waiting-on-human rule, and the PR/review rules. **Epics scope one phase of groundwork, never
 the whole game** — later build phases go in the roadmap issue until the user approves them.
 
@@ -40,10 +38,10 @@ the whole game** — later build phases go in the roadmap issue until the user a
 
 - **One Fastify server on port 4400** serves `/api` + `/ws` + `/debug-mcp`. The Angular
   client runs on **4402** and proxies those three paths to 4400 (`packages/client/proxy.conf.json`).
-- **Standards (READ and enforce):** `ENGINEERING.md` (the `./validate.sh all` gate, testing,
-  TS/lint, architecture, Definition of Done), `ASSET-GENERATION.md` (the code-drawn visual
-  quality bar), and `AUDIO-PIPELINE.md` (the opt-in Google-default audio pipeline). Every edit
-  `init-game.md` prescribes must comply with these; the generated build plan must reference them.
+- **Standards (READ and enforce):** `docs/ENGINEERING.md` (the `./validate.sh all` gate, testing,
+  TS/lint, architecture, Definition of Done), `docs/ASSET-GENERATION.md` (the code-drawn visual
+  quality bar), and `docs/AUDIO-PIPELINE.md` (the opt-in Google-default audio pipeline). Every edit
+  the tickets prescribe must comply with these; every ticket body references them.
 - **Generic message envelope** lives in `packages/shared/src/types/messages.ts`:
   - Client → Server gameplay verb: `player_input { type:'player_input', payload: GameInput }`.
   - Server → Client gameplay verb: `game_snapshot { type:'game_snapshot', snapshot: GameSnapshot }`.
@@ -100,7 +98,7 @@ the whole game** — later build phases go in the roadmap issue until the user a
 ## DEFERRED REQUIREMENTS you must resolve (the 12-item list)
 
 These are the decisions the template intentionally left open. Your interview must resolve
-ALL of them, and `init-game.md` must make each concrete.
+ALL of them, and `docs/GDD.md` must make each concrete.
 
 1. **Identity** — game name, one-line theme/concept, URL slug, display title, landing-card
    icon hue.
@@ -158,11 +156,22 @@ assets or art direction? 12. MCP: which game-state details should Claude be able
 
 ---
 
-## After answers — GENERATE `init-game.md`
+## After answers — PRODUCE `docs/GDD.md` and the first build epic
 
-Overwrite `init-game.md` with a concrete, build-ready prompt using this structure. Use
-exact file paths and real code blocks (no open questions, no `<PLACEHOLDERS>` left). A
-build team will execute it verbatim.
+**`docs/GDD.md`** holds sections 1, 5 and 6 below plus every rule and number the interview
+settled (constants named as they will appear in `packages/shared/src/constants/*`). It states
+decisions, not tasks.
+
+**The first build epic** (`gh issue create`, labels from `docs/WORKFLOW.md` §2, milestone
+"M2 First playable"; link tickets as sub-issues with ONE batched `addSubIssue` GraphQL request)
+scopes only the first playable slice. One ticket per unit of work, in this order, each carrying
+the exact file paths, interfaces and acceptance criteria from sections 2–4 and 7:
+
+1. shared contract (section 2) · 2. server module (section 3) · 3. client (section 4) ·
+2. game-specific MCP tools · 5. verification (section 7). Later phases go in the roadmap issue.
+
+Use exact file paths and real code blocks in ticket bodies (no open questions, no
+`<PLACEHOLDERS>`). A build team executes the tickets verbatim, one PR each.
 
 ### 1. Game Definition
 
@@ -210,7 +219,7 @@ toward `PORTS.env`).
 ### 6. Public URL
 
 Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the
-slug from `PORTS.env`. Only record it in `init-game.md`; do not create route files here.
+slug from `PORTS.env`. Only record it in `docs/GDD.md`; do not create route files here.
 
 ### 7. Verification
 
@@ -219,30 +228,30 @@ Run everything INSIDE the devcontainer (open it from the host with `./dev-contai
 confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe
 `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
 
-Additionally, the generated `init-game.md` MUST instruct the build team to:
+Additionally, every build ticket MUST instruct the build team to:
 
-- treat **`ENGINEERING.md`** as binding: extract game logic into pure functions with unit tests
+- treat **`docs/ENGINEERING.md`** as binding: extract game logic into pure functions with unit tests
   (happy/edge/error), add `*.integration.test.ts` for input→reduce→snapshot and lobby→room→
   broadcast wiring, validate every new WS verb in `message-schemas.ts`, and make
   **`./validate.sh all` green** with the **Definition of Done** satisfied before declaring done;
-- meet **`ASSET-GENERATION.md`**'s per-asset checklist for every visual asset in
+- meet **`docs/ASSET-GENERATION.md`**'s per-asset checklist for every visual asset in
   `game-setup.ts` (layered, shaded, palette-named, animated, silhouette-legible — no flat
   rectangles);
-- if the game has audio, stand up **`AUDIO-PIPELINE.md`** (`ai-pipeline.sh` + `tools/` + the
+- if the game has audio, stand up **`docs/AUDIO-PIPELINE.md`** (`ai-pipeline.sh` + `tools/` + the
   `.env.example` keys, Google/Gemini default) and leave `./ai-pipeline.sh check` clean — never
   running `sync` unsolicited.
 
 ---
 
-Emit `init-game.md` as concrete, build-ready instructions. Do not write any template source
-code in this session — only interview and produce `init-game.md`.
+Do not write any template source code in this session — only interview, write `docs/GDD.md`,
+file the epic and tickets, and clean up.
 
 ### 8. Cleanup — the game is now defined
 
 As the last action of this session, remove the scaffolding that only made sense before the
-game existed, in the same commit as `init-game.md`:
+game existed, in the same PR as `docs/GDD.md`:
 
-- delete `init-game-prompt.md` (this file);
+- delete `docs/INIT-GAME.md` (this file);
 - delete the "START HERE — is this game defined yet?" banner at the top of `CLAUDE.md` and
   replace the Architecture paragraph's "extension points to be filled in" wording with a
   sentence about this game;

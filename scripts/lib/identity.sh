@@ -70,6 +70,6 @@ container_name_from_dir() { echo "$(project_slug_from_dir "$1")$CONTAINER_NAME_S
 
 
 # Files that exist only to CREATE games and must not survive in one. presetup.sh deletes them
-# at instantiation; scripts/sync-from-template.sh deletes any that reappear. (init-game-prompt.md
+# at instantiation; scripts/sync-from-template.sh deletes any that reappear. (docs/INIT-GAME.md
 # is not here: a game keeps it until the init step has defined the game, then that step removes it.)
 TEMPLATE_ONLY_PATHS=(new-game.sh presetup.sh base-project.md README.game.md ha-router)

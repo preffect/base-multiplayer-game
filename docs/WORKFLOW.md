@@ -1,7 +1,7 @@
 # Workflow — GitHub issues, project board, reviews
 
 The single source of truth for **how work is tracked and merged** in a game built from this
-template. `CLAUDE.md`, `init-game-prompt.md`, the seeded GitHub issues, and every agent role
+template. `CLAUDE.md`, `docs/INIT-GAME.md`, the seeded GitHub issues, and every agent role
 prompt point here instead of restating these rules. Everything below is done through the
 GitHub API (`gh`, GraphQL) by scripts or agents — **the human never has to click in GitHub's UI.**
 
@@ -93,20 +93,20 @@ status.
 2. **Code review** against the checklist in `.github/PULL_REQUEST_TEMPLATE.md`. Findings are
    **line-anchored PR review comments**; reviewers request changes rather than fixing silently.
 3. **Domain review** where the change is playable or visible (with screenshots for visuals).
-   Which roles review which PR is the table in `TEAM.md`.
+   Which roles review which PR is the table in `docs/TEAM.md`.
 4. The author fixes, **replies on every thread** saying what changed, and the reviewer resolves
    after verifying. The author never resolves their own threads.
 5. Merge only with `./validate.sh all` output in the PR, all threads resolved, all checks green.
    The author never merges their own PR when a reviewer role exists.
 
 **Docs stay in sync.** Any PR that changes behaviour, scripts, tooling, or process updates the
-docs that describe it in the same PR — `README.md`, `CLAUDE.md`, `WORKFLOW.md`, `ENGINEERING.md`,
+docs that describe it in the same PR — `README.md`, `CLAUDE.md`, `docs/WORKFLOW.md`, `docs/ENGINEERING.md`,
 `ha-router/HA-ROUTER.md` (template only), `.devcontainer/*` comments — and keeps them consistent with each other
 (one fact, one home; the others link to it). A reviewer rejects a PR whose docs drift. Fixes that
 belong to the template are upstreamed to `base-multiplayer-game` so the next game inherits them. <!-- KEEP_TEMPLATE_NAME -->
 
 The reviewer table and the scripted review loop that runs these steps with the agent team
-(`scripts/land-pr.sh`) are in `TEAM.md`.
+(`scripts/land-pr.sh`) are in `docs/TEAM.md`.
 
 Branch names: `feat/<issue>-<slug>` / `fix/<issue>-<slug>`; PR body contains `Closes #N`.
 Graphics PRs attach before/after screenshots; gameplay PRs list the balance values touched.
@@ -119,9 +119,9 @@ Graphics PRs attach before/after screenshots; gameplay PRs list the balance valu
 | `scripts/project-sync.sh`        | host/cont | Reconcile issues ↔ board (section 4).                                                                                                                                                      |
 | `scripts/issue-status.sh`        | host/cont | `issue-status.sh <Status> <N> [N...]` — move tickets to a Status in two API calls.                                                                                                         |
 | `scripts/pr-threads.sh`          | host/cont | `pr-threads.sh list\|unresolved <PR>`; `reply <PR> actions.json` — read and answer/resolve review threads in one request each.                                                             |
-| `scripts/agent.sh`               | host/cont | `agent.sh <role> [--ticket N] [--branch B] "<task>"` — run one team role headlessly inside the devcontainer (`TEAM.md`).                                                                   |
-| `scripts/worktree.sh`            | host/cont | `worktree.sh add\|remove <branch>` — one git worktree per branch under `.worktrees/` for parallel agents (`TEAM.md`).                                                                      |
-| `scripts/land-pr.sh`             | host/cont | `land-pr.sh <PR> [--reviewers "roles"]` — reviewer roles review, engineer fixes, re-review, then auto-merge (`TEAM.md`).                                                                   |
+| `scripts/agent.sh`               | host/cont | `agent.sh <role> [--ticket N] [--branch B] "<task>"` — run one team role headlessly inside the devcontainer (`docs/TEAM.md`).                                                              |
+| `scripts/worktree.sh`            | host/cont | `worktree.sh add\|remove <branch>` — one git worktree per branch under `.worktrees/` for parallel agents (`docs/TEAM.md`).                                                                 |
+| `scripts/land-pr.sh`             | host/cont | `land-pr.sh <PR> [--reviewers "roles"]` — reviewer roles review, engineer fixes, re-review, then auto-merge (`docs/TEAM.md`).                                                              |
 | `scripts/resume-in-container.sh` | host/cont | Copy a Claude Code transcript under the other side's project key so `claude --resume <id>` continues the same conversation inside the devcontainer (or back on the host).                  |
 | `scripts/sync-from-template.sh`  | host/cont | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
 

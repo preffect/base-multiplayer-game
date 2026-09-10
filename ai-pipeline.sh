@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # AI-audio asset pipeline (music + voice + SFX). Google / Gemini is the DEFAULT for both
-# music (Lyria 3 Pro) and voice (Chirp 3 HD); other providers are opt-in. See AUDIO-PIPELINE.md.
+# music (Lyria 3 Pro) and voice (Chirp 3 HD); other providers are opt-in. See docs/AUDIO-PIPELINE.md.
 #
 # Two subcommands:
 #   check  (default)  OFFLINE. Refresh manifests, diff vs disk, exit 1 if anything is missing.
@@ -45,11 +45,11 @@ command -v pnpm >/dev/null || {
   exit 2
 }
 
-# TODO(seam): when a game adds audio, scaffold tools/ from AUDIO-PIPELINE.md (check-assets.ts,
+# TODO(seam): when a game adds audio, scaffold tools/ from docs/AUDIO-PIPELINE.md (check-assets.ts,
 # music/, voice/, sfx/). Until then this guard keeps `check` honest instead of erroring out.
 if [[ ! -d tools ]]; then
   echo "No tools/ audio pipeline scaffolded yet."
-  echo "This game has no audio, or it has not been wired up. See AUDIO-PIPELINE.md to add it."
+  echo "This game has no audio, or it has not been wired up. See docs/AUDIO-PIPELINE.md to add it."
   # `check` on a game with no audio is trivially clean -> exit 0; `sync` has nothing to do.
   exit 0
 fi
@@ -128,7 +128,7 @@ fi
 
 status=0
 # TODO(seam): these pnpm scripts must exist in package.json once audio is wired:
-#   music:sync, voice:sync, sfx:sync (each: tsx tools/<kind>/generate.ts). See AUDIO-PIPELINE.md.
+#   music:sync, voice:sync, sfx:sync (each: tsx tools/<kind>/generate.ts). See docs/AUDIO-PIPELINE.md.
 ((rm)) && {
   echo "-- MUSIC --"
   pnpm music:sync "${dry[@]}" "${m[@]}" || status=$?

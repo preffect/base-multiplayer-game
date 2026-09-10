@@ -17,7 +17,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   4400 / 4402 (only if you pass new ports)       -> <server-port> / <client-port> # KEEP_TEMPLATE_NAME
 #
 # It does NOT touch container/image/DinD names — dev-container.sh derives those
-# from the folder name. It does NOT touch gameplay — that's init-game-prompt.md.
+# from the folder name. It does NOT touch gameplay — that's docs/INIT-GAME.md.
 #
 # Usage:
 #   ./presetup.sh [project-name] [--slug s] [--title "T"] [--server-port n] [--client-port m] [--force]
@@ -112,5 +112,5 @@ echo "Done."
 echo
 echo "Next:"
 echo "  ./dev-container.sh        # build + start the devcontainer (installs deps under @$PROJECT)"
-echo "  # then open init-game-prompt.md with Claude Code to define the actual game."
+echo "  # then open docs/INIT-GAME.md with Claude Code to define the actual game."
 rm -f "$ROOT/presetup.sh" # one-shot: a game never carries the instantiation script

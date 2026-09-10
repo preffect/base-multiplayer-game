@@ -1,8 +1,8 @@
 # The agent team
 
 How work on this game is done by a team of AI agents, each running **inside the devcontainer**
-as one role, coordinated through GitHub tickets and pull requests (process rules: `WORKFLOW.md`;
-quality bar: `ENGINEERING.md`). The human's only job is answering the tickets assigned to them.
+as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`;
+quality bar: `docs/ENGINEERING.md`). The human's only job is answering the tickets assigned to them.
 
 ## Roles
 
@@ -80,7 +80,7 @@ scripts/land-pr.sh 57 --reviewers "architect gameplay-qa"    # code-qa is always
    engineer run that fails is reported and counts as a round; otherwise the script exits non-zero
    with the PR state and the team lead decides.
 
-**Who reviews what** (this table is the home of the rule; `WORKFLOW.md` section 6 points here):
+**Who reviews what** (this table is the home of the rule; `docs/WORKFLOW.md` section 6 points here):
 
 | PR touches                                                           | Reviewers                 |
 | -------------------------------------------------------------------- | ------------------------- |
@@ -111,6 +111,6 @@ document is `docs/GAME-DESIGN.md` as the design tickets name it.
 
 ## Definition of Done (per ticket)
 
-`ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is
+`docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is
 resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or
 playable) the PR carries evidence from graphics-qa or gameplay-qa.

@@ -5,7 +5,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # ---------------------------------------------------------------------------
 # sync-from-template.sh — pull template-owned files from base-multiplayer-game into this game. # KEEP_TEMPLATE_NAME
 #
-# Keeps a game in step with the template WITHOUT touching game-owned code (WORKFLOW.md "docs
+# Keeps a game in step with the template WITHOUT touching game-owned code (docs/WORKFLOW.md "docs
 # stay in sync"; fixes are made in the template first, then copied here). Runs on the HOST
 # (the template repo is not mounted in the devcontainer). Review the diff, then land it via
 # a PR like any other change.
@@ -15,7 +15,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   * Synced only while still template-default: README.md (until its "Status: not yet
 #     defined" banner is replaced).
 #   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md.
-#   * Never synced: packages/**, init-game.md, init-game-prompt.md (one-shot), PORTS.env,
+#   * Never synced: packages/**, docs/* except the template docs listed below, docs/INIT-GAME.md (one-shot), PORTS.env,
 #     .github/project.env, data/, docs/.
 #   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
 #     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh).
@@ -64,7 +64,7 @@ main() {
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
     dev-container.sh run.sh validate.sh ai-pipeline.sh
     .mcp.json .gitignore .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
-    WORKFLOW.md TEAM.md ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md
+    docs/WORKFLOW.md docs/TEAM.md docs/ENGINEERING.md docs/ASSET-GENERATION.md docs/AUDIO-PIPELINE.md
   )
   # Every team role the template defines (a role added there is synced without editing this list).
   for f in "$TEMPLATE"/.claude/roles/*.md; do ALWAYS+=(".claude/roles/$(basename "$f")"); done
@@ -128,7 +128,7 @@ main() {
   elif ((${#copied[@]})); then
     $DRY_RUN && echo "Would update (dry run):" || echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
     printf '  %s\n' "${copied[@]}"
-    $DRY_RUN || echo "Review with 'git diff', then land via a PR (WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
+    $DRY_RUN || echo "Review with 'git diff', then land via a PR (docs/WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
   fi
 }
 

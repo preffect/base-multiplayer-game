@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # ---------------------------------------------------------------------------
-# worktree.sh — one git worktree per branch under .worktrees/, for parallel agents (TEAM.md).
+# worktree.sh — one git worktree per branch under .worktrees/, for parallel agents (docs/TEAM.md).
 #
 #   scripts/worktree.sh add <branch>      -> prints the worktree path; creates it if missing
 #   scripts/worktree.sh remove <branch>

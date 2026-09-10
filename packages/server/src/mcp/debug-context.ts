@@ -22,7 +22,7 @@ export interface DebugContext {
    * falls back to the room's opaque snapshot from `room.getSnapshot()` plus a
    * "no game logic wired yet" note.
    *
-   * Wire this to your real game state in the init step (see init-game-prompt.md).
+   * Wire this to your real game state in the init step (see docs/INIT-GAME.md).
    */
   readonly getRoomGameState?: (gameId: string) => unknown;
 }

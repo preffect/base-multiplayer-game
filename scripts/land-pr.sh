@@ -8,7 +8,7 @@ set -euo pipefail
 # Each round: every pending reviewer role reviews (scripts/agent.sh, inside the devcontainer),
 # then, if any verdict is REQUEST_CHANGES or any review thread (including Copilot's) is still
 # unresolved, an engineer run addresses the threads and the roles that objected re-review.
-# code-qa is always a reviewer (TEAM.md) and is the one that re-checks open threads.
+# code-qa is always a reviewer (docs/TEAM.md) and is the one that re-checks open threads.
 # All reviews are posted from the same GitHub account as the author, so verdicts travel in the
 # review body ("<role> verdict: APPROVE|REQUEST_CHANGES") instead of GitHub's approve button.
 # Merge happens only when every reviewer's latest verdict is APPROVE and no thread is open.

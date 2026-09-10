@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """GitHub project + issue seeding for a game repo (called by scripts/github-setup.sh).
 
-Everything here goes through the GitHub API so the human never clicks in the UI (WORKFLOW.md).
+Everything here goes through the GitHub API so the human never clicks in the UI (docs/WORKFLOW.md).
 Idempotent: re-running finds existing labels/milestones/project/views/issues by name/title.
 Write calls are BATCHED (many aliased mutations per GraphQL request) and paced, because GitHub's
 secondary rate limit counts requests, not mutations, and trips on bursts of single creates.

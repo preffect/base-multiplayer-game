@@ -3,22 +3,17 @@
 > # 🟢 START HERE — is this game defined yet?
 >
 > **If this game has NOT been defined yet** — it was just scaffolded with `new-game.sh`,
-> gameplay is still the placeholder **echo** game, and **`init-game.md` still contains
-> `<PLACEHOLDER>` tokens / says "(GENERATED ARTIFACT — skeleton)"** — then your **FIRST
-> action in this session, before anything else**, is:
+> gameplay is still the placeholder **echo** game, and **`docs/GDD.md` does not exist** —
+> then your **FIRST action in this session, before anything else**, is:
 >
-> 👉 **Read [`init-game-prompt.md`](./init-game-prompt.md) and follow it.**
+> 👉 **Read [`docs/INIT-GAME.md`](./docs/INIT-GAME.md) and follow it.**
 >
-> It will walk you through interviewing the user about the game they want to build, then
-> generating a concrete `init-game.md` build plan. **Do NOT start editing game source files
-> yet** — defining the game comes first. This is the expected next step right after
-> `./new-game.sh` builds the devcontainer and you open it.
->
-> **Once the game IS defined** (`init-game.md` no longer has placeholders / the echo game has
-> been replaced), this banner no longer applies — ignore it and use the guidance below.
+> It interviews the user about the game, then produces `docs/GDD.md` and the game's first
+> build epic + tickets on GitHub (planning lives in issues, not in files). **Do NOT start
+> editing game source files yet.** When it is done it removes itself and this banner.
 
 > **Build environment — work INSIDE the devcontainer.** Assume every command here (and in
-> any helper prompt such as `init-game-prompt.md` / `init-game.md`) runs inside the
+> any helper prompt such as `docs/INIT-GAME.md` / `init-game.md`) runs inside the
 > devcontainer. Open it from the host with `./dev-container.sh`. **All dependency installs
 > (`pnpm install`, `./run.sh --install`) happen in the container — never install on the host.**
 > System tools belong in `.devcontainer/Dockerfile`; project deps go in the workspace via pnpm.
@@ -63,13 +58,17 @@
 
 ## Project workflow (GitHub issues, board, reviews)
 
-**[`WORKFLOW.md`](./WORKFLOW.md)** is the single source of truth: tickets + labels on GitHub Issues,
+**Planning lives in GitHub issues** — epics, tickets, roadmaps, task lists. Files under `docs/`
+hold what is decided (design, architecture, standards, process), never what is planned; a
+document with a to-do list in it is a ticket that was filed in the wrong place.
+
+**[`docs/WORKFLOW.md`](docs/WORKFLOW.md)** is the single source of truth: tickets + labels on GitHub Issues,
 stage on the linked Project board, epics as sub-issues, **assignee = waiting on the human**
 (`pending` label + `Blocked`), PR required with **reviewers run on every PR and every review
 thread resolved before merge**, labels updated as tickets complete. Everything is done via the
 API — the human never clicks in GitHub's UI. Helpers: `scripts/project-sync.sh` (run at session
 start), `scripts/issue-status.sh <Status> <N...>`, `scripts/pr-threads.sh` (batched review threads), `.github/PULL_REQUEST_TEMPLATE.md` (review checklist).
-**[`TEAM.md`](./TEAM.md)** defines the agent roles (`.claude/agents/`, spawned with the Agent tool in
+**[`docs/TEAM.md`](docs/TEAM.md)** defines the agent roles (`.claude/agents/`, spawned with the Agent tool in
 session, or headlessly with `scripts/agent.sh`) and the scripted review loop (`scripts/land-pr.sh`).
 
 ## Toolchain inside the devcontainer
@@ -87,19 +86,19 @@ process belong upstream in `base-multiplayer-game` so the next game inherits the
 
 These docs are the enforceable quality bar for any work in this repo. Read and follow them.
 
-- **[`ENGINEERING.md`](./ENGINEERING.md)** — coding, architecture, and testing rules. The single
+- **[`docs/ENGINEERING.md`](docs/ENGINEERING.md)** — coding, architecture, and testing rules. The single
   gate is **`./validate.sh all`** (lint + typecheck + test): no task is done until it is green;
   never run the underlying tools directly; never commit red. All new logic needs unit tests;
   cross-subsystem wiring needs `*.integration.test.ts`. See its **Definition of Done** checklist.
-- **[`ASSET-GENERATION.md`](./ASSET-GENERATION.md)** — visual asset quality bar. All visual assets
+- **[`docs/ASSET-GENERATION.md`](docs/ASSET-GENERATION.md)** — visual asset quality bar. All visual assets
   are code-drawn (zero bitmaps); every player/monster/item is layered, shaded, palette-disciplined,
   animated, and silhouette-legible. "It renders" is not done — meet the per-asset checklist.
-- **[`AUDIO-PIPELINE.md`](./AUDIO-PIPELINE.md)** — the opt-in music + voice + SFX pipeline.
+- **[`docs/AUDIO-PIPELINE.md`](docs/AUDIO-PIPELINE.md)** — the opt-in music + voice + SFX pipeline.
   **Google/Gemini is the default** for both music (Lyria) and voice (Chirp). `./ai-pipeline.sh check`
   is offline; `sync` spends money and never runs unsolicited.
 
 > **The gate:** after any change, `./validate.sh all` must pass, the Definition of Done in
-> `ENGINEERING.md` must hold, and any new visual/audio asset must meet its doc's criteria.
+> `docs/ENGINEERING.md` must hold, and any new visual/audio asset must meet its doc's criteria.
 
 ## Architecture
 
@@ -118,7 +117,7 @@ pnpm monorepo with three packages:
 - **Shared:** `packages/shared/src/types/messages.ts` — `GameInput`, `GameSnapshot`, `GameSessionConfig`.
 - **Server:** `packages/server/src/game/game-module.ts` — `GameModule` impl (`submitInput` / `reduceGameState` / `serializeRoomState` / `add`/`removePlayer`); wire the factory into `src/index.ts`. MCP game-state visibility via `DebugContext.getRoomGameState(gameId)`.
 - **Client:** `packages/client/src/app/game/game-setup.ts` — the game loop + renderer.
-- **Init:** see `init-game-prompt.md` to interview and generate `init-game.md`.
+- **Init:** see `docs/INIT-GAME.md` to interview the user and produce `docs/GDD.md` + the first build epic.
 
 ### Trust model
 
@@ -148,7 +147,7 @@ change ports inside the container; they are already baked into the integration f
 - ESLint with angular-eslint for Angular-specific rules
 - Prettier: 2-space indent, single quotes, trailing commas, semicolons, 120 char width
 - TypeScript strict: noUnusedLocals, noUnusedParameters, noUncheckedIndexedAccess, verbatimModuleSyntax
-- See **`ENGINEERING.md`** for the full enforceable TS/lint/testing/architecture standards.
+- See **`docs/ENGINEERING.md`** for the full enforceable TS/lint/testing/architecture standards.
 
 ### MCP Servers
 
