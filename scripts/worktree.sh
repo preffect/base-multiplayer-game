@@ -33,8 +33,8 @@ fast_forward() { # <path> <branch>
 
 add() { # <branch> -> path relative to ROOT
   local branch="$1" path="$WORKTREES_DIR/$1"
-  if [[ "$(git branch --show-current)" == "$branch" ]]; then echo "."; return 0; fi
   git fetch -q origin
+  if [[ "$(git branch --show-current)" == "$branch" ]]; then fast_forward . "$branch"; echo "."; return 0; fi
   [[ -d "$path" ]] || create "$branch" "$path"
   fast_forward "$path" "$branch"
   echo "$path"
