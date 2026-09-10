@@ -10,7 +10,7 @@
     },
     "playwright": {
       "command": "playwright-mcp",
-      "args": ["--headless", "--viewport-size", "1280,800", "--output-dir", ".qa/screenshots"]
+      "args": ["--headless", "--browser", "chromium", "--viewport-size", "1280,800", "--output-dir", ".qa/screenshots"]
     }
   }
 }
