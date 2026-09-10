@@ -103,7 +103,7 @@ These docs are the enforceable quality bar for any work in this repo. Read and f
 
 ## Architecture
 
-Reusable multiplayer game template (client/server, native WebSocket multiplayer, MCP game-state visibility). The generic multiplayer/lobby/room/connection/MCP plumbing is provided and working; the actual game logic is left as clearly-marked extension points (`// TODO(game)` / `// TODO(init)`) to be filled in later by the init step.
+Built from the base-multiplayer-game template: client/server, native WebSocket multiplayer, MCP game-state visibility. The generic multiplayer/lobby/room/connection/MCP plumbing is provided and working; game logic lives in the extension points below (`// TODO(game)` / `// TODO(init)` until the init step fills them). <!-- KEEP_TEMPLATE_NAME -->
 
 ### Monorepo Structure
 

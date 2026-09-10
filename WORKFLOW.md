@@ -101,7 +101,7 @@ status.
 
 **Docs stay in sync.** Any PR that changes behaviour, scripts, tooling, or process updates the
 docs that describe it in the same PR — `README.md`, `CLAUDE.md`, `WORKFLOW.md`, `ENGINEERING.md`,
-`ha-router/HA-ROUTER.md`, `.devcontainer/*` comments — and keeps them consistent with each other
+`ha-router/HA-ROUTER.md` (template only), `.devcontainer/*` comments — and keeps them consistent with each other
 (one fact, one home; the others link to it). A reviewer rejects a PR whose docs drift. Fixes that
 belong to the template are upstreamed to `base-multiplayer-game` so the next game inherits them. <!-- KEEP_TEMPLATE_NAME -->
 

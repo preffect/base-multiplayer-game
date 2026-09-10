@@ -73,13 +73,15 @@ echo "  title   : $TITLE"
 echo "  ports   : server $SERVER_PORT / client $CLIENT_PORT"
 echo
 
-# new-game.sh is template-only (it scaffolds games); a game copy must not carry it.
-rm -f "$ROOT/new-game.sh"
-
 # The template's README describes how to CREATE games; a game gets the game-facing README.
 if [[ -f "$ROOT/README.game.md" ]]; then
   mv -f "$ROOT/README.game.md" "$ROOT/README.md"
 fi
+
+# Template-only files never belong in a game (scripts/sync-from-template.sh removes any that
+# reappear; the list lives in scripts/lib/identity.sh so both agree). presetup.sh itself is
+# removed at the very end of this run.
+for template_only in "${TEMPLATE_ONLY_PATHS[@]}"; do rm -rf "${ROOT:?}/$template_only"; done
 
 # ---- rewrite every file that mentions a template identity token ----
 mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.angular \
@@ -87,6 +89,9 @@ mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-di
   "${IDENTITY_TEMPLATE_TITLE}|${IDENTITY_TEMPLATE_PROJECT}|${IDENTITY_TEMPLATE_MCP}|${IDENTITY_TEMPLATE_SLUG}|\\b${IDENTITY_TEMPLATE_SERVER_PORT}\\b|\\b${IDENTITY_TEMPLATE_CLIENT_PORT}\\b|${IDENTITY_KEEP_TAG}" \
   "$ROOT" 2>/dev/null || true)
 render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${identity_files[@]}"
+
+# The root package description is the game's (set after the identity pass so the template name survives).
+sed -i "s|^  \"description\": \".*\",$|  \"description\": \"$TITLE — multiplayer game built from the base-multiplayer-game template\",|" "$ROOT/package.json" # KEEP_TEMPLATE_NAME
 
 # Record the chosen ports + slug so the in-container session reads them instead of
 # guessing (it can't see the host or the live ha-router repo). These values are already
@@ -108,3 +113,4 @@ echo
 echo "Next:"
 echo "  ./dev-container.sh        # build + start the devcontainer (installs deps under @$PROJECT)"
 echo "  # then open init-game-prompt.md with Claude Code to define the actual game."
+rm -f "$ROOT/presetup.sh" # one-shot: a game never carries the instantiation script

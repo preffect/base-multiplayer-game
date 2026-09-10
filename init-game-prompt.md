@@ -92,11 +92,8 @@ the whole game** — later build phases go in the roadmap issue until the user a
   win/lose, collisions) get computed in `reduceGameState` and merged into the snapshot.
 - **No persistence, no physics engine, no `@fastify/static`.** Add persistence only if the
   game truly needs saved state.
-- **ha-router integration deliverables** are pre-authored under `ha-router/`:
-  - `route.template.yml` — Traefik 3-router template (`<slug>`-api / -ws / client),
-    single backend on 4400 for `/api`+`/ws`+`/debug-mcp`, client on 4402.
-  - `landing-card.html` — a landing-page game-card snippet.
-  - `HA-ROUTER.md` — how to copy these into the real `ha-router` repo.
+- **ha-router integration is already done** by `new-game.sh` on the host (Traefik route,
+  landing card, DNS check); the public URL is in `README.md`. Nothing to prepare here.
 
 ---
 
@@ -210,18 +207,10 @@ Verify they are consistent across `packages/server/src/index.ts`,
 (they should already match, baked in by `presetup.sh`; state "no change" if so, otherwise fix
 toward `PORTS.env`).
 
-### 6. ha-router integration
+### 6. Public URL
 
-> **The container CANNOT edit the live `ha-router` repo (it isn't mounted).** So only _prepare_
-> the artifacts in THIS repo: a filled-in route file `ha-router/<slug>.yml` (from
-> `ha-router/route.template.yml`, slug + ports from `PORTS.env`) and a filled-in
-> `ha-router/landing-card.html` (slug, display title, icon hue). Do not touch
-> `/home/preffect/source/ha-router`.
-
-Then, as the **final action of the session**, emit the copy-paste **hand-off prompt for the
-host AI** exactly as specified in `ha-router/HA-ROUTER.md` **Step 6** (with `<slug>` /
-`<server-port>` / `<client-port>` substituted from `PORTS.env`), so the user can pass it to
-the host AI to apply the route + landing card and verify the live URL.
+Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the
+slug from `PORTS.env`. Only record it in `init-game.md`; do not create route files here.
 
 ### 7. Verification
 
@@ -247,3 +236,18 @@ Additionally, the generated `init-game.md` MUST instruct the build team to:
 
 Emit `init-game.md` as concrete, build-ready instructions. Do not write any template source
 code in this session — only interview and produce `init-game.md`.
+
+### 8. Cleanup — the game is now defined
+
+As the last action of this session, remove the scaffolding that only made sense before the
+game existed, in the same commit as `init-game.md`:
+
+- delete `init-game-prompt.md` (this file);
+- delete the "START HERE — is this game defined yet?" banner at the top of `CLAUDE.md` and
+  replace the Architecture paragraph's "extension points to be filled in" wording with a
+  sentence about this game;
+- replace the "Status: not yet defined" banner in `README.md` with the game's one-line
+  description and its public URL;
+- make sure `package.json`'s root `description` names this game.
+
+Nothing else in the repo refers to this prompt; `scripts/sync-from-template.sh` never brings it back.

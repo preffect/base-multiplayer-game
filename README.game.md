@@ -20,8 +20,8 @@ Everything runs **inside the devcontainer**; ports come from `PORTS.env`.
 ```
 
 - Local: `http://localhost:<CLIENT_PORT>` — public: `https://base-mp.preffect-ha.preffect-home.net`
-  (Traefik route + landing card in the ha-router repo; per-host DNS record required —
-  `ha-router/HA-ROUTER.md`).
+  (Traefik route + landing card in the ha-router repo, applied by the template's `new-game.sh`;
+  per-host DNS record required — see `ha-router/HA-ROUTER.md` in `base-multiplayer-game`). <!-- KEEP_TEMPLATE_NAME -->
 
 ## How work happens
 
