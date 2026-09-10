@@ -29,10 +29,11 @@ document. Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW
 
 ## Scratch files
 
-Agents run in parallel and the scratchpad directory is shared. Any file you write there carries
-your own unique prefix (`<role>-pr<N>-<something>.json`, never `review.json` or `replies.json`),
-and you read it back only immediately before the call that uses it. A file you did not write is not
-yours to read or delete. Never leave scratch files inside a worktree; other agents review there.
+Agents run in parallel. Scratch files go under `.qa/scratch/` at the repo root (git-ignored via
+`.qa/`; create it if missing), never anywhere else in the repo, never in a worktree. Every file you
+write there carries your own unique prefix (`<role>-pr<N>-<something>.json`, never `review.json` or
+`replies.json`), and you read it back only immediately before the call that uses it. A file you did
+not write is not yours to read or delete.
 
 ## Git and PR mechanics
 
