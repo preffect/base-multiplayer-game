@@ -6,20 +6,20 @@ quality bar: `ENGINEERING.md`). The human's only job is answering the tickets as
 
 ## Roles
 
-| Role                | Owns                                                                 | Prompt                              |
-| ------------------- | -------------------------------------------------------------------- | ----------------------------------- |
-| team-lead           | Planning, tickets, epics, sequencing, running the scripts below      | the interactive session             |
-| architect           | Structure, contracts, where constants live, design + code review     | `.claude/roles/architect.md`        |
-| engineer            | Implementation with unit + integration tests, review fixes           | `.claude/roles/engineer.md`         |
-| game-designer       | GDD, rules, numbers, progression, balance, acceptance scenarios      | `.claude/roles/game-designer.md`    |
-| graphics-designer   | Style guide, palette, motion, code-drawn visuals                     | `.claude/roles/graphics-designer.md`|
-| ui-designer         | HUD, overlays, onboarding, information design                        | `.claude/roles/ui-designer.md`      |
-| audio-designer      | Sound event catalogue, asset manifest, audio hooks                   | `.claude/roles/audio-designer.md`   |
-| perf-engineer       | Simulation and render budgets, measurements                          | `.claude/roles/perf-engineer.md`    |
-| devops              | Devcontainer, scripts, CI, GitHub plumbing (template first)          | `.claude/roles/devops.md`           |
-| code-qa             | PR review against the engineering standards                          | `.claude/roles/code-qa.md`          |
-| gameplay-qa         | Rules/balance verification, scenarios, bots, play sessions           | `.claude/roles/gameplay-qa.md`      |
-| graphics-qa         | Visual verification with screenshots and frame-time checks           | `.claude/roles/graphics-qa.md`      |
+| Role              | Owns                                                             | Prompt                               |
+| ----------------- | ---------------------------------------------------------------- | ------------------------------------ |
+| team-lead         | Planning, tickets, epics, sequencing, running the scripts below  | the interactive session              |
+| architect         | Structure, contracts, where constants live, design + code review | `.claude/roles/architect.md`         |
+| engineer          | Implementation with unit + integration tests, review fixes       | `.claude/roles/engineer.md`          |
+| game-designer     | GDD, rules, numbers, progression, balance, acceptance scenarios  | `.claude/roles/game-designer.md`     |
+| graphics-designer | Style guide, palette, motion, code-drawn visuals                 | `.claude/roles/graphics-designer.md` |
+| ui-designer       | HUD, overlays, onboarding, information design                    | `.claude/roles/ui-designer.md`       |
+| audio-designer    | Sound event catalogue, asset manifest, audio hooks               | `.claude/roles/audio-designer.md`    |
+| perf-engineer     | Simulation and render budgets, measurements                      | `.claude/roles/perf-engineer.md`     |
+| devops            | Devcontainer, scripts, CI, GitHub plumbing (template first)      | `.claude/roles/devops.md`            |
+| code-qa           | PR review against the engineering standards                      | `.claude/roles/code-qa.md`           |
+| gameplay-qa       | Rules/balance verification, scenarios, bots, play sessions       | `.claude/roles/gameplay-qa.md`       |
+| graphics-qa       | Visual verification with screenshots and frame-time checks       | `.claude/roles/graphics-qa.md`       |
 
 `.claude/roles/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to
 finish. `.claude/commands/team.md` is the interactive variant (`/team`) for a session opened
@@ -60,13 +60,13 @@ for anything visible. A design-only PR (docs) is reviewed by architect + the rel
 
 ## Handoffs and artifacts
 
-| Stage        | Produces                                                        | Consumed by            |
-| ------------ | --------------------------------------------------------------- | ---------------------- |
+| Stage        | Produces                                                                               | Consumed by            |
+| ------------ | -------------------------------------------------------------------------------------- | ---------------------- |
 | Design       | `docs/GDD.md`, `docs/TRAITS.md`, `docs/VISUAL-STYLE.md`, `docs/UI.md`, `docs/AUDIO.md` | architect, engineer    |
-| Architecture | `docs/ARCHITECTURE.md` (contracts, file plan, test plan)         | engineer, reviewers    |
-| Build        | code + tests + docs in one PR, `Closes #N`                       | reviewers              |
-| Review       | review threads, verdicts, `qa/evidence/<pr>/` screenshots         | engineer, team lead    |
-| Verify       | gameplay scenarios, bot runs, screenshots                        | team lead, next design |
+| Architecture | `docs/ARCHITECTURE.md` (contracts, file plan, test plan)                               | engineer, reviewers    |
+| Build        | code + tests + docs in one PR, `Closes #N`                                             | reviewers              |
+| Review       | review threads, verdicts, `qa/evidence/<pr>/` screenshots                              | engineer, team lead    |
+| Verify       | gameplay scenarios, bot runs, screenshots                                              | team lead, next design |
 
 ## Definition of Done (per ticket)
 
