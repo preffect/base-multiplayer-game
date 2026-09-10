@@ -60,7 +60,8 @@ main() {
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
     scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/worktree.sh scripts/resume-in-container.sh scripts/pr-threads.sh
     .claude/.gitignore
-    scripts/github/setup_project.py scripts/github/groundwork-issues.json
+    scripts/github/setup_project.py scripts/github/groundwork-issues.json scripts/github/main-ruleset.json
+    .github/workflows/pr-links-issue.yml
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
     dev-container.sh run.sh validate.sh ai-pipeline.sh
     .mcp.json .gitignore .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
@@ -122,6 +123,10 @@ main() {
   if ((${#drifted[@]})); then
     echo "Differs from the template but is edited in place by agents — merge manually if the template change matters:"
     printf '  %s\n' "${drifted[@]}"
+  fi
+  # Re-rendering shortens/lengthens words inside markdown tables; let the game's prettier re-align.
+  if ((${#copied[@]})) && ! $DRY_RUN && [[ -x "$ROOT/node_modules/.bin/prettier" ]]; then
+    (cd "$ROOT" && node_modules/.bin/prettier --write "${copied[@]}" >/dev/null 2>&1 || true)
   fi
   if ((${#copied[@]} + ${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
