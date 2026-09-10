@@ -13,7 +13,7 @@
 > editing game source files yet.** When it is done it removes itself and this banner.
 
 > **Build environment — work INSIDE the devcontainer.** Assume every command here (and in
-> any helper prompt such as `docs/INIT-GAME.md` / `init-game.md`) runs inside the
+> any helper prompt such as `docs/INIT-GAME.md`) runs inside the
 > devcontainer. Open it from the host with `./dev-container.sh`. **All dependency installs
 > (`pnpm install`, `./run.sh --install`) happen in the container — never install on the host.**
 > System tools belong in `.devcontainer/Dockerfile`; project deps go in the workspace via pnpm.
