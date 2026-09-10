@@ -6,9 +6,9 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # sync-from-template.sh — pull template-owned files from base-multiplayer-game into this game. # KEEP_TEMPLATE_NAME
 #
 # Keeps a game in step with the template WITHOUT touching game-owned code (WORKFLOW.md "docs
-# stay in sync"; fixes are made in the template first, then copied here). Runs on the HOST
-# (the template repo is not mounted in the devcontainer). Review the diff, then land it via
-# a PR like any other change.
+# stay in sync"; fixes are made in the template first, then copied here). Runs on the host or
+# inside the devcontainer (dev-container.sh mounts the template checkout at /base-multiplayer-game). # KEEP_TEMPLATE_NAME
+# Review the diff, then land it via a PR like any other change.
 #
 #   * Template-owned files (always synced): scripts, devcontainer, run/validate helpers,
 #     process + standards docs, ha-router artifacts, .mcp.json, PR template, .gitignore.
@@ -28,6 +28,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 main() {
   ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   TEMPLATE="$(cd "$ROOT/.." && pwd)/base-multiplayer-game" # KEEP_TEMPLATE_NAME
+  [[ -f "$TEMPLATE/presetup.sh" || ! -f /base-multiplayer-game/presetup.sh ]] || TEMPLATE=/base-multiplayer-game # mounted by dev-container.sh # KEEP_TEMPLATE_NAME
   DRY_RUN=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -37,7 +38,7 @@ main() {
       *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
   done
-  [[ -f "$TEMPLATE/presetup.sh" ]] || { echo "error: template not found at $TEMPLATE (run on the host; use --template)" >&2; exit 1; }
+  [[ -f "$TEMPLATE/presetup.sh" ]] || { echo "error: template not found at $TEMPLATE (use --template)" >&2; exit 1; }
   [[ "$(cd "$TEMPLATE" && pwd)" != "$ROOT" ]] || { echo "error: this IS the template." >&2; exit 1; }
 
   # The identity-render engine comes from the TEMPLATE (always its newest version).
@@ -55,7 +56,7 @@ main() {
 
   ALWAYS=(
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
-    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh
+    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/resume-in-container.sh
     .claude/roles/_common.md .claude/roles/architect.md .claude/roles/engineer.md .claude/roles/game-designer.md
     .claude/roles/graphics-designer.md .claude/roles/ui-designer.md .claude/roles/audio-designer.md
     .claude/roles/perf-engineer.md .claude/roles/devops.md .claude/roles/code-qa.md .claude/roles/gameplay-qa.md

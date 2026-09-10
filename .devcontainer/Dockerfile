@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ripgrep \
     jq \
     imagemagick \
+    librsvg2-bin \
+    fonts-dejavu-core \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && locale-gen en_US.UTF-8

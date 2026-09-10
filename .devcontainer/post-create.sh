@@ -12,6 +12,7 @@ set -euo pipefail
 # System-level git config is used because /home/vscode/.gitconfig may be a read-only mount.
 # ---------------------------------------------------------------------------
 sudo git config --system --add safe.directory /workspace
+sudo git config --system --add safe.directory /base-multiplayer-game # template mount (dev-container.sh) # KEEP_TEMPLATE_NAME
 sudo git config --system url."https://github.com/".insteadOf "git@github.com:"
 sudo git config --system credential."https://github.com".helper '!gh auth git-credential'
 if [[ -z "$(git config --get user.name || true)" ]] && gh auth status >/dev/null 2>&1; then
