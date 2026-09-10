@@ -21,7 +21,7 @@ quality bar: `docs/ENGINEERING.md`). The human's only job is answering the ticke
 | gameplay-qa       | Rules/balance verification, scenarios, bots, play sessions            | `.claude/agents/gameplay-qa.md`       |
 | graphics-qa       | Visual verification with screenshots, baselines, frame-time checks    | `.claude/agents/graphics-qa.md`       |
 
-`.claude/agents/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to
+`.claude/roles/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to
 finish. `.claude/commands/team.md` is the interactive variant (`/team`) for a session opened
 inside the container: it spawns the same role files as teammates of one session (messages instead
 of GitHub threads) and uses no role vocabulary of its own.
