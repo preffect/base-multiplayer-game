@@ -9,7 +9,7 @@ Your job in this session is **NOT to write game code**. It is to:
 
 1. Read this prompt and the wiring notes below so you understand every extension point.
 2. **Interview the user** with the focused questions in the "Interview" section.
-3. Once every question is answered, **produce two things**: `docs/GDD.md` (what the game IS —
+3. Once every question is answered, **produce two things**: `docs/GAME-DESIGN.md` (what the game IS —
    decisions, numbers, contracts) and the **first build epic with its tickets on GitHub** (what
    gets built first, one ticket per unit of work with exact file paths and interfaces).
    Planning lives in issues, never in a markdown plan.
@@ -28,7 +28,7 @@ Your job in this session is **NOT to write game code**. It is to:
 `new-game.sh` already: registered the game in ha-router, built the devcontainer, verified the
 public URL, and seeded GitHub with the **groundwork epics** (devcontainer verified, tooling/MCP,
 team, quality gates, testing foundations, design, architecture/build plan) plus the project board
-and branch ruleset. Your output — `docs/GDD.md` and the first build epic — is the work of the
+and branch ruleset. Your output — `docs/GAME-DESIGN.md` and the first build epic — is the work of the
 "Game design" and "Architecture and build plan" epics; file game-specific design tickets under
 the design epic as the interview reveals them. Follow **`docs/WORKFLOW.md`** for tickets, the board,
 the waiting-on-human rule, and the PR/review rules. **Epics scope one phase of groundwork, never
@@ -98,7 +98,7 @@ the whole game** — later build phases go in the roadmap issue until the user a
 ## DEFERRED REQUIREMENTS you must resolve (the 12-item list)
 
 These are the decisions the template intentionally left open. Your interview must resolve
-ALL of them, and `docs/GDD.md` must make each concrete.
+ALL of them, and `docs/GAME-DESIGN.md` must make each concrete.
 
 1. **Identity** — game name, one-line theme/concept, URL slug, display title, landing-card
    icon hue.
@@ -156,9 +156,9 @@ assets or art direction? 12. MCP: which game-state details should Claude be able
 
 ---
 
-## After answers — PRODUCE `docs/GDD.md` and the first build epic
+## After answers — PRODUCE `docs/GAME-DESIGN.md` and the first build epic
 
-**`docs/GDD.md`** holds sections 1, 5 and 6 below plus every rule and number the interview
+**`docs/GAME-DESIGN.md`** holds sections 1, 5 and 6 below plus every rule and number the interview
 settled (constants named as they will appear in `packages/shared/src/constants/*`). It states
 decisions, not tasks.
 
@@ -219,7 +219,7 @@ toward `PORTS.env`).
 ### 6. Public URL
 
 Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the
-slug from `PORTS.env`. Only record it in `docs/GDD.md`; do not create route files here.
+slug from `PORTS.env`. Only record it in `docs/GAME-DESIGN.md`; do not create route files here.
 
 ### 7. Verification
 
@@ -243,13 +243,13 @@ Additionally, every build ticket MUST instruct the build team to:
 
 ---
 
-Do not write any template source code in this session — only interview, write `docs/GDD.md`,
+Do not write any template source code in this session — only interview, write `docs/GAME-DESIGN.md`,
 file the epic and tickets, and clean up.
 
 ### 8. Cleanup — the game is now defined
 
 As the last action of this session, remove the scaffolding that only made sense before the
-game existed, in the same PR as `docs/GDD.md`:
+game existed, in the same PR as `docs/GAME-DESIGN.md`:
 
 - delete `docs/INIT-GAME.md` (this file);
 - delete the "START HERE — is this game defined yet?" banner at the top of `CLAUDE.md` and

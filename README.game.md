@@ -2,7 +2,7 @@
 
 > **Status: not yet defined.** This game still runs the placeholder **echo** game. The next step
 > is the init interview — open the devcontainer and follow the **START HERE** banner in `CLAUDE.md`.
-> Replace this paragraph with the game's own description once `docs/GDD.md` exists.
+> Replace this paragraph with the game's own description once `docs/GAME-DESIGN.md` exists.
 > Scaffolded from the `base-multiplayer-game` template; template-level fixes go upstream there. <!-- KEEP_TEMPLATE_NAME -->
 
 Multiplayer client/server game: Angular client, Fastify + WebSocket server, a 60 Hz snapshot
@@ -21,7 +21,7 @@ Everything runs **inside the devcontainer**; ports come from `PORTS.env`.
 
 - Local: `http://localhost:<CLIENT_PORT>` — public: `https://base-mp.preffect-ha.preffect-home.net`
   (Traefik route + landing card in the ha-router repo, applied by the template's `new-game.sh`;
-  per-host DNS record required — see `ha-router/HA-ROUTER.md` in `base-multiplayer-game`). <!-- KEEP_TEMPLATE_NAME -->
+  per-host DNS record required).
 
 ## How work happens
 

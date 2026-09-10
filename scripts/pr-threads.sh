@@ -17,12 +17,20 @@ BATCH_SIZE=8 # GitHub's GraphQL resource limit rejects larger batches of long re
 repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 owner="${repo%/*}" name="${repo#*/}"
 
+THREADS_PAGE_SIZE=100
+COMMENTS_PAGE_SIZE=50
 list_threads() { # <pr> <unresolved-only:true|false>
-  gh api graphql -F owner="$owner" -F name="$name" -F pr="$1" -f query='
-    query($owner:String!,$name:String!,$pr:Int!){ repository(owner:$owner,name:$name){ pullRequest(number:$pr){
-      reviewThreads(first:100){ nodes{ id isResolved isOutdated path line
-        comments(first:50){ nodes{ author{ login } body createdAt } } } } } } }' \
-    | jq --arg only "$2" '.data.repository.pullRequest.reviewThreads.nodes
+  gh api graphql -F owner="$owner" -F name="$name" -F pr="$1" \
+    -F threadsPage="$THREADS_PAGE_SIZE" -F commentsPage="$COMMENTS_PAGE_SIZE" -f query='
+    query($owner:String!,$name:String!,$pr:Int!,$threadsPage:Int!,$commentsPage:Int!){
+      repository(owner:$owner,name:$name){ pullRequest(number:$pr){
+      reviewThreads(first:$threadsPage){ totalCount nodes{ id isResolved isOutdated path line
+        comments(first:$commentsPage){ totalCount nodes{ author{ login } body createdAt } } } } } } }' \
+    | jq --arg only "$2" --argjson threadsPage "$THREADS_PAGE_SIZE" --argjson commentsPage "$COMMENTS_PAGE_SIZE" '
+      .data.repository.pullRequest.reviewThreads
+      | if .totalCount > $threadsPage then error("PR exceeds one page of review threads; raise THREADS_PAGE_SIZE") else . end
+      | .nodes
+      | if any(.[]; .comments.totalCount > $commentsPage) then error("a thread exceeds one page of comments; raise COMMENTS_PAGE_SIZE") else . end
       | map(select($only=="false" or (.isResolved|not)))
       | map({id, isResolved, isOutdated, path, line,
              author: .comments.nodes[0].author.login, body: .comments.nodes[0].body,
@@ -47,7 +55,6 @@ reply_threads() { # <pr> <actions.json>
 # and the number of unresolved threads — the whole merge decision in one 1-point query. Reviews are
 # read newest-last, so only the threads page has to be complete.
 REVIEWS_PAGE_SIZE=50
-THREADS_PAGE_SIZE=100
 pr_state() { # <pr>
   gh api graphql -F owner="$owner" -F name="$name" -F pr="$1" \
     -F reviewsPage="$REVIEWS_PAGE_SIZE" -F threadsPage="$THREADS_PAGE_SIZE" -f query='
@@ -59,7 +66,7 @@ pr_state() { # <pr>
       .data.repository.pullRequest
       | if .reviewThreads.totalCount > $threadsPage
         then error("PR exceeds one page of review threads; raise THREADS_PAGE_SIZE") else . end
-      | {verdicts: ([.reviews.nodes[].body // "" | capture("^(?<key>[a-z-]+) verdict: (?<value>[A-Z_]+)")] | from_entries),
+      | {verdicts: ([.reviews.nodes[].body // "" | capture("^(?<key>[a-z-]+) verdict: (?<value>[A-Z_]+)")?] | from_entries),
          unresolved: ([.reviewThreads.nodes[] | select(.isResolved | not)] | length)}'
 }
 

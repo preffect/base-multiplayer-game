@@ -11,7 +11,7 @@
 
 **Entry point: [`docs/INIT-GAME.md`](docs/INIT-GAME.md).** Run it with Claude Code.
 It explains every deferred requirement, interviews you about your game, and then GENERATES
-`docs/GDD.md` plus a GitHub build epic with tickets — the plan a build team executes to
+`docs/GAME-DESIGN.md` plus a GitHub build epic with tickets — the plan a build team executes to
 realize this template into your specific game (planning lives in issues, not files).
 
 ### Architecture at a glance

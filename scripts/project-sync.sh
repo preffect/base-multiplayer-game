@@ -33,13 +33,17 @@ DRY_RUN=false
 # every item (hundreds of points per call). This query asks only for what the rules need: the
 # Status options, and per item its id, issue number/repository and current Status (~4 points).
 PAGE_SIZE=100
-fetch_page() { # <cursor-or-empty> -> JSON
-  gh api graphql -F id="$PROJECT_ID" -F first="$PAGE_SIZE" -F after="${1:-null}" -f query='
+fetch_page() { # <cursor-or-empty> -> JSON  (an empty cursor is sent as GraphQL null, not the string "null")
+  local variables
+  variables="$(jq -cn --arg id "$PROJECT_ID" --argjson first "$PAGE_SIZE" --arg after "${1:-}" \
+    '{id:$id, first:$first, after:(if $after=="" then null else $after end)}')"
+  jq -cn --argjson v "$variables" --arg q '
     query($id:ID!,$first:Int!,$after:String){ node(id:$id){ ... on ProjectV2 {
       field(name:"Status"){ ... on ProjectV2SingleSelectField { options { id name } } }
       items(first:$first, after:$after){ totalCount pageInfo{ hasNextPage endCursor } nodes{ id
         status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name } }
-        content{ ... on Issue { number repository{ nameWithOwner } } } } } } } }'
+        content{ ... on Issue { number repository{ nameWithOwner } } } } } } } }' \
+    '{query:$q, variables:$v}' | gh api graphql --input -
 }
 first_page="$(fetch_page)"
 option_id() { jq -r --arg n "$1" '.data.node.field.options[] | select(.name==$n) | .id' <<<"$first_page"; }
@@ -66,7 +70,7 @@ while :; do
   jq -e '.data.node.items.pageInfo.hasNextPage' <<<"$page" >/dev/null || break
   page="$(fetch_page "$(jq -r '.data.node.items.pageInfo.endCursor' <<<"$page")")"
 done
-issues_json="$(gh issue list -R "$REPO" --state all --limit "$ITEM_LIMIT" --json number,url,state,labels)"
+issues_json="$(gh issue list -R "$REPO" --state all --limit "$ITEM_LIMIT" --json number,id,state,labels)"
 
 # Status changes are queued and sent as ONE GraphQL request per batch (aliased mutations):
 # GitHub's secondary rate limit counts requests, and a board of 50 tickets used to be 50 calls.
@@ -85,26 +89,60 @@ flush_status() {
       query+=" m${n}: updateProjectV2ItemFieldValue(input:{projectId:\"${PROJECT_ID}\", itemId:\"${queued_items[start + n]}\", fieldId:\"${STATUS_FIELD_ID}\", value:{singleSelectOptionId:\"${queued_options[start + n]}\"}}) { projectV2Item { id } }"
     done
     query+=" }"
-    # Retry on GitHub's secondary rate limit so a transient throttle cannot leave the board half-updated.
-    local attempt output
-    for attempt in 1 2 3 4 5; do
-      if output="$(jq -cn --arg q "$query" '{query:$q}' | gh api graphql --input - 2>&1)"; then break; fi
-      if [[ "$output" == *"rate limit"* || "$output" == *"secondary"* ]] && ((attempt < 5)); then sleep 60; continue; fi
-      echo "error: board update failed: ${output:0:200}" >&2; return 1
+    graphql_with_retry "$query" >/dev/null || return 1
+    sleep 1
+  done
+}
+
+# Retry a throttled request a few times so a transient limit cannot leave the board half-updated.
+MAX_ATTEMPTS=3
+RETRY_SECONDS=60
+graphql_with_retry() { # <query> -> response JSON
+  local attempt output
+  for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
+    if output="$(jq -cn --arg q "$1" '{query:$q}' | gh api graphql --input - 2>&1)"; then echo "$output"; return 0; fi
+    if [[ "$output" == *"rate limit"* || "$output" == *"secondary"* ]] && ((attempt < MAX_ATTEMPTS)); then sleep "$RETRY_SECONDS"; continue; fi
+    echo "error: board update failed: ${output:0:200}" >&2; return 1
+  done
+}
+
+# Issues missing from the board are added in ONE aliased mutation per batch; their item ids
+# then feed the status queue like everyone else's.
+add_items() { # <number=content-id ...> -> sets item_id_by_number
+  local start count n query response
+  local pairs=("$@")
+  for ((start = 0; start < ${#pairs[@]}; start += BATCH_SIZE)); do
+    count=$(( ${#pairs[@]} - start )); ((count > BATCH_SIZE)) && count=$BATCH_SIZE
+    query="mutation {"
+    for ((n = 0; n < count; n++)); do
+      query+=" a${pairs[start + n]%%=*}: addProjectV2ItemById(input:{projectId:\"${PROJECT_ID}\", contentId:\"${pairs[start + n]#*=}\"}) { item { id } }"
+    done
+    query+=" }"
+    response="$(graphql_with_retry "$query")" || return 1
+    for ((n = 0; n < count; n++)); do
+      local number="${pairs[start + n]%%=*}"
+      item_id_by_number["$number"]="$(jq -r ".data.a$number.item.id" <<<"$response")"
     done
     sleep 1
   done
 }
 
-added=0 done=0 blocked=0 unblocked=0
-while IFS=$'\t' read -r number url state has_pending; do
+issue_rows="$(jq -r --arg p "$PENDING_LABEL" '.[] | [.number, .id, .state, (any(.labels[]; .name==$p))] | @tsv' <<<"$issues_json")"
+
+# Pass 1: add every issue that is not on the board yet (one request per batch).
+missing=()
+while IFS=$'\t' read -r number content_id state has_pending; do
+  [[ -n "${item_id_by_number[$number]:-}" ]] || missing+=("$number=$content_id")
+done <<<"$issue_rows"
+added=${#missing[@]}
+if ((added)) && ! $DRY_RUN; then add_items "${missing[@]}"; fi
+
+# Pass 2: queue the status rules.
+done=0 blocked=0 unblocked=0
+while IFS=$'\t' read -r number content_id state has_pending; do
   item_id="${item_id_by_number[$number]:-}"
   current="${status_by_number[$number]:-}"
-  if [[ -z "$item_id" ]]; then
-    if ! $DRY_RUN; then
-      item_id="$(gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --url "$url" --format json | jq -r '.id')"
-    fi
-    added=$((added + 1))
+  if [[ -z "$current" && -z "${status_by_number[$number]+x}" ]]; then # newly added this run
     if [[ "$state" == "CLOSED" ]]; then set_status "$item_id" "$OPT_DONE"
     elif [[ "$has_pending" == "true" ]]; then set_status "$item_id" "$OPT_BLOCKED"
     else set_status "$item_id" "$OPT_BACKLOG"
@@ -118,7 +156,7 @@ while IFS=$'\t' read -r number url state has_pending; do
   elif [[ "$state" == "OPEN" && "$has_pending" == "false" && "$current" == "Blocked" ]]; then
     set_status "$item_id" "$OPT_BACKLOG"; unblocked=$((unblocked + 1))
   fi
-done < <(jq -r --arg p "$PENDING_LABEL" '.[] | [.number, .url, .state, (any(.labels[]; .name==$p))] | @tsv' <<<"$issues_json")
+done <<<"$issue_rows"
 flush_status
 
 $DRY_RUN && echo "(dry run — nothing changed)"

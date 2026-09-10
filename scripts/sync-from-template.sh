@@ -68,7 +68,7 @@ main() {
     docs/WORKFLOW.md docs/TEAM.md docs/ENGINEERING.md docs/ASSET-GENERATION.md docs/AUDIO-PIPELINE.md
   )
   # Every team role the template defines (a role added there is synced without editing this list).
-  for f in "$TEMPLATE"/.claude/roles/*.md; do ALWAYS+=(".claude/roles/$(basename "$f")"); done
+  ALWAYS+=(.claude/roles/_common.md) # the shared ground rules; the roles themselves are the agent definitions
   for f in "$TEMPLATE"/.claude/agents/*.md; do ALWAYS+=(".claude/agents/$(basename "$f")"); done
   CONDITIONAL=() # "src|dest|grep-marker-that-must-still-be-present-in-dest"
   CONDITIONAL+=("README.game.md|README.md|Status: not yet defined")
@@ -126,7 +126,7 @@ main() {
   fi
   # Re-rendering shortens/lengthens words inside markdown tables; let the game's prettier re-align.
   if ((${#copied[@]})) && ! $DRY_RUN && [[ -x "$ROOT/node_modules/.bin/prettier" ]]; then
-    (cd "$ROOT" && node_modules/.bin/prettier --write "${copied[@]}" >/dev/null 2>&1 || true)
+    (cd "$ROOT" && node_modules/.bin/prettier --write --ignore-unknown "${copied[@]}" >/dev/null 2>&1 || true)
   fi
   if ((${#copied[@]} + ${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
