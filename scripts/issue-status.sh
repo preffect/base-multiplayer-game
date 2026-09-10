@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # ---------------------------------------------------------------------------
-# issue-status.sh — move one or more tickets to a project Status in TWO API calls total.
+# issue-status.sh — move one or more tickets to a project Status in two API calls (three when some are not on the board yet).
 #
 #   scripts/issue-status.sh <Status> <issue> [issue...]     e.g. issue-status.sh "In review" 21 22 23
 #   scripts/issue-status.sh <issue> <Status>                (single-ticket form, kept for habit)

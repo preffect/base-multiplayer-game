@@ -40,7 +40,7 @@ main() {
       *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
   done
-  [[ -f "$TEMPLATE/presetup.sh" ]] || { echo "error: template not found at $TEMPLATE (run on the host; use --template)" >&2; exit 1; }
+  [[ -f "$TEMPLATE/presetup.sh" ]] || { echo "error: template not found at $TEMPLATE (use --template, or rebuild the devcontainer so it is mounted)" >&2; exit 1; }
   [[ "$(cd "$TEMPLATE" && pwd)" != "$ROOT" ]] || { echo "error: this IS the template." >&2; exit 1; }
 
   # The identity-render engine comes from the TEMPLATE (always its newest version).
