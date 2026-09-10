@@ -6,7 +6,7 @@ set -euo pipefail
 #   scripts/pr-threads.sh state <pr>                one query: latest verdict per reviewer role + unresolved count
 #   scripts/pr-threads.sh list <pr>                 one query: every thread, resolved or not, as JSON
 #   scripts/pr-threads.sh unresolved <pr>           same, unresolved only
-#   scripts/pr-threads.sh reply <pr> <actions.json> one aliased mutation (chunks of 20):
+#   scripts/pr-threads.sh reply <pr> <actions.json> one aliased mutation per BATCH_SIZE threads:
 #         [{"thread":"<thread id>","body":"what changed","resolve":false}, ...]
 #         reviewers pass "resolve": true after verifying a fix; authors never do.
 #

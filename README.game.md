@@ -30,7 +30,8 @@ Everything runs **inside the devcontainer**; ports come from `PORTS.env`.
   `scripts/issue-status.sh`, `scripts/github-setup.sh`.
 - **[`docs/ENGINEERING.md`](docs/ENGINEERING.md)**, **[`docs/ASSET-GENERATION.md`](docs/ASSET-GENERATION.md)**,
   **[`docs/AUDIO-PIPELINE.md`](docs/AUDIO-PIPELINE.md)** — the quality bar every PR is held to.
-- **[`docs/INIT-GAME.md`](docs/INIT-GAME.md)** → `init-game.md` — how the game gets defined.
+- **[`docs/INIT-GAME.md`](docs/INIT-GAME.md)** — how the game gets defined: the interview produces
+  `docs/GAME-DESIGN.md` and the first build epic with its tickets on GitHub.
 
 ## Layout
 
