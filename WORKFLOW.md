@@ -121,6 +121,7 @@ Graphics PRs attach before/after screenshots; gameplay PRs list the balance valu
 | `scripts/issue-status.sh`       | host/cont | `issue-status.sh <N> <Status>` — move one ticket without hand-copying ids.                                                                                                                 |
 | `scripts/agent.sh`              | host/cont | `agent.sh <role> [--ticket N] [--branch B] "<task>"` — run one team role headlessly inside the devcontainer (`TEAM.md`).                                                       |
 | `scripts/land-pr.sh`            | host/cont | `land-pr.sh <PR> [--reviewers "roles"]` — reviewer roles review, engineer fixes, re-review, then auto-merge (`TEAM.md`).                                                     |
-| `scripts/sync-from-template.sh` | host      | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
+| `scripts/resume-in-container.sh` | host/cont | Copy a Claude Code transcript under the other side's project key so `claude --resume <id>` continues the same conversation inside the devcontainer (or back on the host). |
+| `scripts/sync-from-template.sh` | host/cont | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
 
 `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).

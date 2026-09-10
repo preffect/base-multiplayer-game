@@ -77,7 +77,10 @@ devcontainer (`scripts/agent.sh`) and the scripted review loop (`scripts/land-pr
 Node 24, pnpm 10, Claude Code, `gh` (authenticated via the mounted host `~/.config/gh`), git
 (pushes over HTTPS with `gh` as credential helper — no SSH key inside; identity from the host's
 gh account unless the container already has one), python3, jq, ripgrep, ImageMagick, ffmpeg, and
-Playwright Chromium for the `playwright` MCP (`.mcp.json`). Improvements to the container or the
+Playwright Chromium for the `playwright` MCP (`.mcp.json`), rsvg-convert + DejaVu fonts for SVG
+rendering; the template checkout is mounted at `/base-multiplayer-game` so template-first fixes and <!-- KEEP_TEMPLATE_NAME -->
+`scripts/sync-from-template.sh` work inside too. A host conversation continues inside with
+`scripts/resume-in-container.sh`. Improvements to the container or the
 process belong upstream in `base-multiplayer-game` so the next game inherits them. <!-- KEEP_TEMPLATE_NAME -->
 
 ## Standards & guidelines
