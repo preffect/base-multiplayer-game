@@ -13,7 +13,7 @@ set -euo pipefail
 # Why: GitHub's secondary limit is ~80 content-creating requests per minute across everything
 # running under one account. Replying to 26 threads one call at a time trips it; one request does not.
 # ---------------------------------------------------------------------------
-BATCH_SIZE=8 # GitHub's GraphQL resource limit rejects larger batches of long reply bodies (partial posts)
+BATCH_SIZE=5 # GitHub's GraphQL resource limit rejects larger batches of long reply bodies (partial posts)
 repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 owner="${repo%/*}" name="${repo#*/}"
 
@@ -46,7 +46,17 @@ reply_threads() { # <pr> <actions.json>
         "r\(.key): addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:\(.value.thread|tojson), body:\(.value.body|tojson)}){ comment { id } }"
         + (if .value.resolve then " s\(.key): resolveReviewThread(input:{threadId:\(.value.thread|tojson)}){ thread { isResolved } }" else "" end)
       ) | "mutation { " + join(" ") + " }"' "$2")"
-    gh api graphql -f query="$mutation" >/dev/null
+    # A batch that GitHub rejects for its size is retried one thread at a time; nothing is lost or
+    # posted twice because a rejected mutation writes nothing.
+    if ! gh api graphql -f query="$mutation" >/dev/null 2>&1; then
+      local single
+      for ((single = start; single < start + BATCH_SIZE && single < total; single++)); do
+        local one; one="$(jq -r --argjson i "$single" '
+          .[$i] | "mutation { r0: addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:\(.thread|tojson), body:\(.body|tojson)}){ comment { id } }"
+          + (if .resolve then " s0: resolveReviewThread(input:{threadId:\(.thread|tojson)}){ thread { isResolved } }" else "" end) + " }"' "$2")"
+        gh api graphql -f query="$one" >/dev/null || { echo "error: reply to thread $single failed" >&2; return 1; }
+      done
+    fi
   done
   echo "$total thread(s) replied"
 }
