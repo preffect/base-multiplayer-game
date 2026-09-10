@@ -31,6 +31,8 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 main() {
   ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   TEMPLATE="$(cd "$ROOT/.." && pwd)/base-multiplayer-game" # KEEP_TEMPLATE_NAME
+  # Inside the devcontainer (or from a worktree) the sibling path does not exist; use the mount.
+  [[ -f "$TEMPLATE/presetup.sh" || ! -f /base-multiplayer-game/presetup.sh ]] || TEMPLATE=/base-multiplayer-game # KEEP_TEMPLATE_NAME
   DRY_RUN=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
