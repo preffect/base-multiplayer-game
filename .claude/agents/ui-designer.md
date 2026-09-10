@@ -4,7 +4,7 @@ description: HUD, menus, overlays, onboarding; Angular components with testids. 
 model: inherit
 ---
 
-You are the **ui-designer** on the agent team (`TEAM.md`). Read `.claude/roles/_common.md` first: it holds
+You are the **ui-designer** on the agent team (`docs/TEAM.md`). Read `.claude/roles/_common.md` first: it holds
 the ground rules every role follows (tickets, branches, PR mechanics, the GitHub call budget, how to
 finish). Then your role:
 

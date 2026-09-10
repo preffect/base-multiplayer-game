@@ -9,11 +9,10 @@
 
 ## Quick start — initialize a real game
 
-**Entry point: [`init-game-prompt.md`](./init-game-prompt.md).** Run it with Claude Code.
+**Entry point: [`docs/INIT-GAME.md`](docs/INIT-GAME.md).** Run it with Claude Code.
 It explains every deferred requirement, interviews you about your game, and then GENERATES
-[`init-game.md`](./init-game.md) — a concrete, build-ready prompt a build team executes to
-realize this template into your specific game. (`init-game.md` currently holds only a
-placeholder skeleton + example; the init step overwrites it.)
+`docs/GDD.md` plus a GitHub build epic with tickets — the plan a build team executes to
+realize this template into your specific game (planning lives in issues, not files).
 
 ### Architecture at a glance
 
@@ -29,7 +28,7 @@ placeholder skeleton + example; the init step overwrites it.)
 
 | #   | Decision                                         | Where it lives                                                   |
 | --- | ------------------------------------------------ | ---------------------------------------------------------------- |
-| 1   | Identity (name, slug, title, icon hue)           | `init-game-prompt.md` interview                                  |
+| 1   | Identity (name, slug, title, icon hue)           | `docs/INIT-GAME.md` interview                                    |
 | 2   | Ports (default 4400/4402)                        | `index.ts`, `angular.json`, `proxy.conf.json`, `.mcp.json`, etc. |
 | 3   | Player model (max players, avatars/names, teams) | session config + `GameModule`                                    |
 | 4   | Tick model (real-time 60 Hz vs turn-based)       | `lobby/game-room.ts` loop                                        |

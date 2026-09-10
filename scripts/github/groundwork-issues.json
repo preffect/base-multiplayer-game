@@ -1,5 +1,5 @@
 {
-  "_comment": "Generic planning/groundwork epics + tickets seeded into a new game's repo by scripts/github-setup.sh. Placeholders: {title} {slug}. Keys prefixed E are epics; 'children' lists ticket keys. Ticket bodies get '**Epic:** #N' prepended and a standards footer appended. Game-specific design tickets (mechanics, traits, etc.) are added by the game designer after the init-game-prompt.md interview — keep this file generic.",
+  "_comment": "Generic planning/groundwork epics + tickets seeded into a new game's repo by scripts/github-setup.sh. Placeholders: {title} {slug}. Keys prefixed E are epics; 'children' lists ticket keys. Ticket bodies get '**Epic:** #N' prepended and a standards footer appended. Game-specific design tickets (mechanics, traits, etc.) are added by the game designer after the docs/INIT-GAME.md interview — keep this file generic.",
   "labels": {
     "epic": ["Tracking issue for a phase or theme", "3E4B9E"],
     "roadmap": ["Future phases — not actionable yet", "EDEDED"],
@@ -37,9 +37,9 @@
   },
   "milestones": {
     "M0 Setup": "Devcontainer verified, tooling/MCP, team definition, quality gates, testing foundations. Nothing game-specific ships until this is green.",
-    "M1 Design": "Design docs, architecture, build plan (init-game.md). Later build phases live in the roadmap issue until approved."
+    "M1 Design": "Design docs, architecture, first build epic (docs/INIT-GAME.md). Later build phases live in the roadmap issue until approved."
   },
-  "footer": "\n\n---\n**Standards:** every PR passes `./validate.sh all`, meets the Definition of Done in `ENGINEERING.md`, and follows `WORKFLOW.md` (PR required, reviewers run, every thread resolved). Work happens INSIDE the devcontainer.",
+  "footer": "\n\n---\n**Standards:** every PR passes `./validate.sh all`, meets the Definition of Done in `docs/ENGINEERING.md`, and follows `docs/WORKFLOW.md` (PR required, reviewers run, every thread resolved). Work happens INSIDE the devcontainer.",
   "issues": [
     {
       "key": "E1",
@@ -64,7 +64,6 @@
       "labels": ["area:devcontainer", "area:qa", "priority:p1", "role:devops"],
       "body": "Add `pixelmatch` + `pngjs` devDeps and `scripts/img-diff.ts` exposed as `pnpm qa:diff a.png b.png --threshold 0.1` (prints mismatch % and writes a diff PNG). Screenshots go to `.qa/screenshots/` (gitignored); reviewed baselines to `qa/baselines/`.\n\n**Acceptance:** `pnpm qa:diff` on two screenshots reports a percentage and produces a diff image."
     },
-
     {
       "key": "E2",
       "epic": true,
@@ -102,7 +101,6 @@
       "labels": ["area:tooling-mcp", "priority:p2", "role:devops"],
       "body": "Agents use the `gh` CLI (host config mounted). Evaluate wiring a GitHub MCP server (`github/github-mcp-server` or `@modelcontextprotocol/server-github`) into `.mcp.json` using `gh auth token`, for structured issue/PR tools. Record the decision in `CLAUDE.md`."
     },
-
     {
       "key": "E3",
       "epic": true,
@@ -110,21 +108,21 @@
       "milestone": "M0 Setup",
       "labels": ["epic", "area:team", "priority:p0", "role:team-lead"],
       "children": ["C1", "C2", "C3"],
-      "body": "Define the agent team for this game, the docs each role reads on spawn, and finish the merge gates that `WORKFLOW.md` describes.\n\n**Exit:** `/team` spawns the roster; a trivial dry-run task flows design review → implementation → code review → QA; required status checks are on the ruleset."
+      "body": "Define the agent team for this game, the docs each role reads on spawn, and finish the merge gates that `docs/WORKFLOW.md` describes.\n\n**Exit:** `/team` spawns the roster; a trivial dry-run task flows design review → implementation → code review → QA; required status checks are on the ruleset."
     },
     {
       "key": "C1",
       "title": "Team: extend .claude/commands/team.md with the full roster, artifacts, tools and handoffs",
       "milestone": "M0 Setup",
       "labels": ["area:team", "priority:p0", "role:team-lead"],
-      "body": "Roles: team-lead, architect, engineer, game-designer, graphics-designer, ui-designer, audio-designer, code-qa, gameplay-qa, graphics-qa, devops, perf-engineer. For each: spawn params, responsibilities, the **artifact** it owns, the **tools** it uses (Playwright MCP, {slug}-debug MCP, `gh`, `pnpm qa:diff`), handoffs, definition of done. Every prompt cites `WORKFLOW.md` and the review process. Keep the architect/engineer 'must agree before coding' rule.\n\n**Acceptance:** dry run on a trivial task completes through all roles."
+      "body": "Roles: team-lead, architect, engineer, game-designer, graphics-designer, ui-designer, audio-designer, code-qa, gameplay-qa, graphics-qa, devops, perf-engineer. For each: spawn params, responsibilities, the **artifact** it owns, the **tools** it uses (Playwright MCP, {slug}-debug MCP, `gh`, `pnpm qa:diff`), handoffs, definition of done. Every prompt cites `docs/WORKFLOW.md` and the review process. Keep the architect/engineer 'must agree before coding' rule.\n\n**Acceptance:** dry run on a trivial task completes through all roles."
     },
     {
       "key": "C2",
       "title": "Team: canonical context docs index (docs/) and CLAUDE.md pointers",
       "milestone": "M0 Setup",
       "labels": ["area:team", "area:docs", "priority:p1", "role:team-lead"],
-      "body": "Establish `docs/GAME-DESIGN.md`, `docs/ARCHITECTURE.md`, `docs/VISUAL-STYLE.md`, `docs/TESTING.md`, `docs/CODE-STANDARDS.md`, `docs/REVIEW.md` as the sources teammates read on spawn; `CLAUDE.md` lists them and drops the template 'START HERE' banner once `init-game.md` exists.\n\n**Acceptance:** each role prompt in `team.md` cites the docs it must read."
+      "body": "Establish `docs/GAME-DESIGN.md`, `docs/ARCHITECTURE.md`, `docs/VISUAL-STYLE.md`, `docs/TESTING.md`, `docs/CODE-STANDARDS.md`, `docs/REVIEW.md` as the sources teammates read on spawn; `CLAUDE.md` lists them and drops the template 'START HERE' banner once the first build epic exists.\n\n**Acceptance:** each role prompt in `team.md` cites the docs it must read."
     },
     {
       "key": "C3",
@@ -133,7 +131,6 @@
       "labels": ["area:team", "area:quality", "priority:p0", "role:devops"],
       "body": "`scripts/github-setup.sh` applied a ruleset (PR required, threads resolved, no force push) but deliberately no required checks. When the CI job (`validate`) and the reviewer's `code-review` commit status exist, add both as required checks with `gh api rulesets/<id> --method PUT`. Any secret for automatic reviewers is set with `gh secret set` from the terminal, never the UI.\n\n**Acceptance:** a test PR cannot merge with a failing/missing check or an unresolved thread."
     },
-
     {
       "key": "E4",
       "epic": true,
@@ -141,14 +138,14 @@
       "milestone": "M0 Setup",
       "labels": ["epic", "area:quality", "priority:p0", "role:architect"],
       "children": ["D1", "D2", "D3", "D4", "D5"],
-      "body": "No magic strings/numbers, no duplicated real logic, SOLID, maintainable, simple, elegant, no huge files or methods, no abbreviated names. Written down, enforced by lint and duplication detection where possible, checked by a two-stage review on every PR (`WORKFLOW.md` §6).\n\n**Exit:** `./validate.sh lint` enforces the rules; `docs/CODE-STANDARDS.md` + `docs/REVIEW.md` merged; the scaffold passes."
+      "body": "No magic strings/numbers, no duplicated real logic, SOLID, maintainable, simple, elegant, no huge files or methods, no abbreviated names. Written down, enforced by lint and duplication detection where possible, checked by a two-stage review on every PR (`docs/WORKFLOW.md` §6).\n\n**Exit:** `./validate.sh lint` enforces the rules; `docs/CODE-STANDARDS.md` + `docs/REVIEW.md` merged; the scaffold passes."
     },
     {
       "key": "D1",
       "title": "Code standards: docs/CODE-STANDARDS.md (no magic values, no duplicated logic, SOLID, small units, full names, determinism)",
       "milestone": "M0 Setup",
       "labels": ["area:quality", "area:docs", "priority:p0", "role:architect"],
-      "body": "Rules: every meaningful literal in a named constant or `data/*.json`; one home per behaviour; single responsibility, composition over `switch` towers, injected clock/random/transport; files ≤ 300 lines, functions ≤ 40, complexity ≤ 10, ≤ 4 params, nesting ≤ 3; no abbreviations (allow `x`, `y`, `id`), predicate booleans, unit-suffixed names; pure functions, no dead code, comments say why; simulation never touches `Math.random` / `Date.now` / `performance.now`.\n\n**Acceptance:** doc merged; `ENGINEERING.md` DoD links to it; D2 enforces every automatable rule."
+      "body": "Rules: every meaningful literal in a named constant or `data/*.json`; one home per behaviour; single responsibility, composition over `switch` towers, injected clock/random/transport; files ≤ 300 lines, functions ≤ 40, complexity ≤ 10, ≤ 4 params, nesting ≤ 3; no abbreviations (allow `x`, `y`, `id`), predicate booleans, unit-suffixed names; pure functions, no dead code, comments say why; simulation never touches `Math.random` / `Date.now` / `performance.now`.\n\n**Acceptance:** doc merged; `docs/ENGINEERING.md` DoD links to it; D2 enforces every automatable rule."
     },
     {
       "key": "D2",
@@ -169,7 +166,7 @@
       "title": "Review tooling: /review command that posts line-anchored PR comments and the code-review commit status; docs/REVIEW.md",
       "milestone": "M0 Setup",
       "labels": ["area:quality", "area:team", "priority:p0", "role:team-lead"],
-      "body": "`.claude/commands/review.md` makes a reviewer agent read a PR diff, walk `.github/PULL_REQUEST_TEMPLATE.md`, post **line-anchored review comments**, and post commit status `code-review` = failure while findings are open / success when every thread is resolved. `docs/REVIEW.md` states the two-stage process from `WORKFLOW.md` §6 in role terms.\n\n**Acceptance:** a dry-run PR is reviewed end-to-end with it."
+      "body": "`.claude/commands/review.md` makes a reviewer agent read a PR diff, walk `.github/PULL_REQUEST_TEMPLATE.md`, post **line-anchored review comments**, and post commit status `code-review` = failure while findings are open / success when every thread is resolved. `docs/REVIEW.md` states the two-stage process from `docs/WORKFLOW.md` §6 in role terms.\n\n**Acceptance:** a dry-run PR is reviewed end-to-end with it."
     },
     {
       "key": "D5",
@@ -178,7 +175,6 @@
       "labels": ["area:quality", "area:architecture", "priority:p1", "role:architect"],
       "body": "`packages/shared/src/constants/` for protocol/limits/physics; `data/*.json` + zod loaders for designer-tunable values (hot-reload on server); `const` unions for ids/kinds; client render constants in `render/constants.ts` only. Refactor the echo module and message router to use them.\n\n**Acceptance:** documented in `docs/CODE-STANDARDS.md#constants`; scaffold refactored."
     },
-
     {
       "key": "E5",
       "epic": true,
@@ -230,7 +226,6 @@
       "labels": ["area:testing", "area:quality", "priority:p1", "role:devops"],
       "body": "Extend `./validate.sh` so `all` runs every gate and prints one summary table; add `.github/workflows/validate.yml` (job name **`validate`**) running it on PRs with a pnpm cache. Then C3 makes it required.\n\n**Acceptance:** the check appears on a PR and fails on a seeded violation."
     },
-
     {
       "key": "E6",
       "epic": true,
@@ -238,21 +233,21 @@
       "milestone": "M1 Design",
       "labels": ["epic", "area:design", "priority:p0", "role:game-designer"],
       "children": ["F1", "F2", "F3", "F4"],
-      "body": "Turn the concept into reviewed design documents before any gameplay code. The game designer adds mechanic-specific tickets under this epic after the `init-game-prompt.md` interview.\n\n**Exit:** `docs/GAME-DESIGN.md` and `docs/VISUAL-STYLE.md` reviewed by the user; all `needs-decision` items resolved."
+      "body": "Turn the concept into reviewed design documents before any gameplay code. The game designer adds mechanic-specific tickets under this epic after the `docs/INIT-GAME.md` interview.\n\n**Exit:** `docs/GAME-DESIGN.md` and `docs/VISUAL-STYLE.md` reviewed by the user; all `needs-decision` items resolved."
     },
     {
       "key": "F1",
       "title": "Game Design Document: core fantasy, loop, session model, controls, camera, win/lose, non-goals",
       "milestone": "M1 Design",
       "labels": ["area:design", "priority:p0", "role:game-designer"],
-      "body": "Write `docs/GAME-DESIGN.md` for {title}: core fantasy, moment-to-moment loop, session length and player count, modes (decide FFA / co-op / both), late join, respawn, round end, controls and camera, difficulty curve, explicit v1 non-goals. Log open questions as `needs-decision` tickets assigned to the user (see `WORKFLOW.md` §2).\n\n**Acceptance:** reviewed with the user."
+      "body": "Write `docs/GAME-DESIGN.md` for {title}: core fantasy, moment-to-moment loop, session length and player count, modes (decide FFA / co-op / both), late join, respawn, round end, controls and camera, difficulty curve, explicit v1 non-goals. Log open questions as `needs-decision` tickets assigned to the user (see `docs/WORKFLOW.md` §2).\n\n**Acceptance:** reviewed with the user."
     },
     {
       "key": "F2",
       "title": "Visual style guide: palette, motion language, asset vocabulary -> docs/VISUAL-STYLE.md",
       "milestone": "M1 Design",
       "labels": ["area:design", "area:graphics", "priority:p0", "role:graphics-designer"],
-      "body": "Define the look before drawing, per `ASSET-GENERATION.md` (code-drawn, layered, palette-disciplined, animated, silhouette-legible): palette incl. six player hues, motion language, UI type, reference sheet as inline SVG/Canvas mock in `docs/visual/`.\n\n**Acceptance:** reviewed by the user; graphics-qa derives its checklist from it."
+      "body": "Define the look before drawing, per `docs/ASSET-GENERATION.md` (code-drawn, layered, palette-disciplined, animated, silhouette-legible): palette incl. six player hues, motion language, UI type, reference sheet as inline SVG/Canvas mock in `docs/visual/`.\n\n**Acceptance:** reviewed by the user; graphics-qa derives its checklist from it."
     },
     {
       "key": "F3",
@@ -266,17 +261,16 @@
       "title": "Audio direction manifest (opt-in pipeline; generation deferred until the game is playable)",
       "milestone": "M1 Design",
       "labels": ["area:audio", "area:design", "priority:p2", "role:audio-designer", "roadmap"],
-      "body": "Per `AUDIO-PIPELINE.md`: write the prompt manifest (ambient, SFX, stings). `./ai-pipeline.sh check` is offline; `sync` costs money and needs `GEMINI_API_KEY` + `GOOGLE_CLOUD_TTS_API_KEY` in `.env` and explicit user approval. Generation is deferred until the game is playable."
+      "body": "Per `docs/AUDIO-PIPELINE.md`: write the prompt manifest (ambient, SFX, stings). `./ai-pipeline.sh check` is offline; `sync` costs money and needs `GEMINI_API_KEY` + `GOOGLE_CLOUD_TTS_API_KEY` in `.env` and explicit user approval. Generation is deferred until the game is playable."
     },
-
     {
       "key": "E7",
       "epic": true,
-      "title": "Epic: Groundwork 7 — Architecture and the build plan (simulation, networking, renderer spike, init-game.md, roadmap)",
+      "title": "Epic: Groundwork 7 — Architecture and the build plan (simulation, networking, renderer spike, first build epic, roadmap)",
       "milestone": "M1 Design",
       "labels": ["epic", "area:architecture", "priority:p0", "role:architect"],
       "children": ["G1", "G2", "G3", "G4", "G5"],
-      "body": "The technical design the build phases will execute, and the template's `init-game.md` build plan generated from the interview. Ends with the roadmap turned into approved epics.\n\n**Exit:** `docs/ARCHITECTURE.md` reviewed (engineer agrees), renderer decided with numbers, `init-game.md` has no placeholders, user approves the roadmap."
+      "body": "The technical design the build phases will execute, and the template's the first build epic build plan generated from the interview. Ends with the roadmap turned into approved epics.\n\n**Exit:** `docs/ARCHITECTURE.md` reviewed (engineer agrees), renderer decided with numbers, the first build epic has no placeholders, user approves the roadmap."
     },
     {
       "key": "G1",
@@ -301,17 +295,17 @@
     },
     {
       "key": "G4",
-      "title": "Run the template interview and generate init-game.md (build plan with no placeholders)",
+      "title": "Run the template interview (docs/INIT-GAME.md): docs/GDD.md + the first build epic and tickets",
       "milestone": "M1 Design",
       "labels": ["area:design", "area:docs", "priority:p0", "role:team-lead"],
-      "body": "`init-game-prompt.md` interviews the user and overwrites `init-game.md` with exact files/edits for the extension points (`GameInput`/`GameSnapshot`/`GameSessionConfig`, `GameModule`, `message-schemas.ts`, `game-setup.ts`, MCP `getRoomGameState`). Do it AFTER the GDD and architecture docs exist.\n\n**Acceptance:** no `<PLACEHOLDER>` remains; build tickets link to its sections."
+      "body": "`docs/INIT-GAME.md` interviews the user and overwrites the first build epic with exact files/edits for the extension points (`GameInput`/`GameSnapshot`/`GameSessionConfig`, `GameModule`, `message-schemas.ts`, `game-setup.ts`, MCP `getRoomGameState`). Do it AFTER the GDD and architecture docs exist.\n\n**Acceptance:** no `<PLACEHOLDER>` remains; build tickets link to its sections."
     },
     {
       "key": "G5",
       "title": "Roadmap: build phases after groundwork — NOT actionable until the user approves",
       "milestone": "M1 Design",
       "labels": ["roadmap", "area:docs", "priority:p2", "role:team-lead"],
-      "body": "Parking lot for the phases that follow planning (core loop, progression, advanced mechanics, QA/perf/polish/release). List candidate work per phase here as design lands. When the user approves, each phase becomes its own epic with tickets derived from `init-game.md`."
+      "body": "Parking lot for the phases that follow planning (core loop, progression, advanced mechanics, QA/perf/polish/release). List candidate work per phase here as design lands. When the user approves, each phase becomes its own epic with tickets derived from the first build epic."
     }
   ]
 }

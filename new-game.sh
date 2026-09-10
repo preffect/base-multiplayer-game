@@ -260,7 +260,7 @@ cat <<EOF
     Local   http://localhost:${CLIENT_PORT}        Public  https://${HOST}
     Next: open the devcontainer and run the init interview (CLAUDE.md "START HERE"):
       cd $TARGET && ./dev-container.sh
-      claude "Read init-game-prompt.md and help me initialize my game"
+      claude "Read docs/INIT-GAME.md and help me initialize my game"
     Process rules for the agent team: $TARGET/WORKFLOW.md
 EOF
 if [[ -t 0 && -t 1 ]]; then

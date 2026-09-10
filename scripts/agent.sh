@@ -21,7 +21,7 @@ set -euo pipefail
 # uses); .claude/roles/_common.md is prepended to every prompt.
 # From the host the script execs into the running <folder>-dev container as its user
 # (scripts/lib/identity.sh); inside the container it runs claude directly.
-# Logs: .qa/agents/<timestamp>-<role>[-pr<N>]-<pid>.prompt.md and .log (see TEAM.md).
+# Logs: .qa/agents/<timestamp>-<role>[-pr<N>]-<pid>.prompt.md and .log (see docs/TEAM.md).
 # ---------------------------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091

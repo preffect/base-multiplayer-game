@@ -1,6 +1,6 @@
 # Base Multiplayer Game
 
-Repo: https://github.com/preffect/base-multiplayer-game — `main` is PR-protected (see `WORKFLOW.md`);
+Repo: https://github.com/preffect/base-multiplayer-game — `main` is PR-protected (see `docs/WORKFLOW.md`);
 template fixes are reviewed like game fixes, then pulled into games with `scripts/sync-from-template.sh`.
 
 A reusable **multiplayer game template**: a working client/server multiplayer skeleton
@@ -34,13 +34,13 @@ branch ruleset) via `scripts/github-setup.sh`. Flags: `--no-start`, `--no-ha-rou
 Then, **inside the devcontainer** (where every agent runs):
 
 ```bash
-claude "Read init-game-prompt.md and help me initialize my game"   # interview → init-game.md
+claude "Read docs/INIT-GAME.md and help me initialize my game"   # interview → init-game.md
 ```
 
 The groundwork epics on GitHub (devcontainer verified, tooling/MCP, team, quality gates, testing
 foundations, design, architecture/build plan) are the first work for the agent team; how work is
-tracked, reviewed and merged is in **[`WORKFLOW.md`](./WORKFLOW.md)**. Building the game then means
-executing `init-game.md` against the three extension points:
+tracked, reviewed and merged is in **[`docs/WORKFLOW.md`](docs/WORKFLOW.md)**. Building the game then means
+executing the build tickets that `docs/INIT-GAME.md` files against the three extension points:
 
 - **shared** — `packages/shared/src/types/messages.ts`: `GameInput` / `GameSnapshot` / `GameSessionConfig`
 - **server** — `packages/server/src/game/game-module.ts`: game logic; wire the factory into `index.ts`; expose state via `DebugContext.getRoomGameState`
@@ -75,17 +75,17 @@ with the game's identity re-applied, and land the diff via a PR.
 - **Dev tooling** — DinD devcontainer with `gh` (host auth mounted), ripgrep, ImageMagick, ffmpeg and Playwright
   Chromium; `run.sh`, `validate.sh`, ESLint + Prettier, Vitest.
 - **Project tooling** — `scripts/github-setup.sh` (repo, board, groundwork epics, ruleset),
-  `scripts/project-sync.sh`, `scripts/issue-status.sh`; process in `WORKFLOW.md`.
+  `scripts/project-sync.sh`, `scripts/issue-status.sh`; process in `docs/WORKFLOW.md`.
 
 ## Standards
 
 This template ships three enforceable standards docs — read them before (and while) building:
 
-- **[`ENGINEERING.md`](./ENGINEERING.md)** — coding, architecture, and testing rules. The single
+- **[`docs/ENGINEERING.md`](docs/ENGINEERING.md)** — coding, architecture, and testing rules. The single
   gate is `./validate.sh all`; includes a Definition of Done checklist.
-- **[`ASSET-GENERATION.md`](./ASSET-GENERATION.md)** — the code-drawn visual asset quality bar
+- **[`docs/ASSET-GENERATION.md`](docs/ASSET-GENERATION.md)** — the code-drawn visual asset quality bar
   (layered, shaded, animated, legible) with a per-asset checklist.
-- **[`AUDIO-PIPELINE.md`](./AUDIO-PIPELINE.md)** — the opt-in music + voice + SFX pipeline with
+- **[`docs/AUDIO-PIPELINE.md`](docs/AUDIO-PIPELINE.md)** — the opt-in music + voice + SFX pipeline with
   Google/Gemini as the default for both music and voice.
 
 ## Tech stack

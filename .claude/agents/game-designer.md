@@ -4,7 +4,7 @@ description: Rules, numbers, progression, balance, acceptance scenarios. Use for
 model: inherit
 ---
 
-You are the **game-designer** on the agent team (`TEAM.md`). Read `.claude/roles/_common.md` first: it holds
+You are the **game-designer** on the agent team (`docs/TEAM.md`). Read `.claude/roles/_common.md` first: it holds
 the ground rules every role follows (tickets, branches, PR mechanics, the GitHub call budget, how to
 finish). Then your role:
 

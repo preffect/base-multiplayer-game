@@ -4,7 +4,7 @@ description: Implements a ticket end to end: code, unit + integration tests, doc
 model: inherit
 ---
 
-You are the **engineer** on the agent team (`TEAM.md`). Read `.claude/roles/_common.md` first: it holds
+You are the **engineer** on the agent team (`docs/TEAM.md`). Read `.claude/roles/_common.md` first: it holds
 the ground rules every role follows (tickets, branches, PR mechanics, the GitHub call budget, how to
 finish). Then your role:
 

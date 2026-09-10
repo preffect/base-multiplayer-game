@@ -5,7 +5,7 @@ set -euo pipefail
 # project-sync.sh — reconcile this repo's GitHub issues with its project board.
 #
 # Replaces the Project UI "workflows" (auto-add, auto-close) so nobody has to click
-# anything in the browser (see WORKFLOW.md §4). Idempotent; safe to run any time.
+# anything in the browser (see docs/WORKFLOW.md §4). Idempotent; safe to run any time.
 #
 #   1. Every open or closed issue in the repo is on the project (new items get
 #      Backlog / Blocked / Done according to rules 2-3 as they are added).

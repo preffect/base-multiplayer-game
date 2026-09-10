@@ -11,7 +11,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #      seeded groundwork epics/tickets as sub-issues  (scripts/github/setup_project.py).
 #   3. Ruleset on the default branch: PR required, review threads resolved, no force
 #      push, and the `pr-links-issue` check (every PR must close a ticket) required.
-#      `validate` / `code-review` checks are added later, once they exist (WORKFLOW.md §5).
+#      `validate` / `code-review` checks are added later, once they exist (docs/WORKFLOW.md §5).
 #   4. scripts/project-sync.sh to put every issue on the board.
 #
 # Usage:  ./scripts/github-setup.sh [--repo owner/name] [--private] [--title "Display Title"] [--no-seed]
@@ -101,7 +101,7 @@ if ! git cat-file -e origin/main:.github/project.env 2>/dev/null \
    || ! git show origin/main:.github/project.env | cmp -s - .github/project.env; then
   # main is PR-protected, so project.env lands via a PR whenever it is missing from main or its
   # ids changed (e.g. the project was recreated). Generated ids, no reviewer role exists at setup
-  # time — merged directly (WORKFLOW.md §6). Idempotent across re-runs.
+  # time — merged directly (docs/WORKFLOW.md §6). Idempotent across re-runs.
   branch="chore/project-env"
   generated="$(mktemp)"; cp .github/project.env "$generated"
   git checkout -q main
@@ -120,7 +120,7 @@ if ! git cat-file -e origin/main:.github/project.env 2>/dev/null \
   git push -q -u origin "$branch"
   # (gh pr view <branch> errors on a deprecated projectCards field; pr list --head is reliable)
   if [[ -z "$(gh pr list -R "$REPO" --head "$branch" --json number --jq '.[0].number')" ]]; then
-    # Every PR closes a ticket (WORKFLOW.md §5) — including this generated one.
+    # Every PR closes a ticket (docs/WORKFLOW.md §5) — including this generated one.
     ticket_title="Record GitHub project ids (.github/project.env)"
     # (`.[0].number // empty` so a missing ticket yields "" rather than the literal string "null")
     ticket="$(gh issue list -R "$REPO" --state all --search "in:title \"$ticket_title\"" --json number --jq '.[0].number // empty')"
@@ -141,5 +141,5 @@ GitHub ready: https://github.com/$REPO
   Issues    https://github.com/$REPO/issues        (labels, milestones, epics with sub-issues)
   Board     $(sed -n 's/^PROJECT_NUMBER=//p' .github/project.env | xargs -I{} echo "https://github.com/users/$GH_USER/projects/{}")
   Your inbox (waiting on you)  https://github.com/issues/assigned
-Rules: WORKFLOW.md — PR required, reviewers run on every PR, all review threads resolved before merge.
+Rules: docs/WORKFLOW.md — PR required, reviewers run on every PR, all review threads resolved before merge.
 EOF
