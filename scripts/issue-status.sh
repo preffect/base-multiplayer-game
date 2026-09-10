@@ -21,12 +21,17 @@ if [[ "${1:-}" =~ ^[0-9]+$ ]]; then status="${2:?status name required}"; issues=
 else status="${1:?status name required}"; shift; issues=("$@"); fi
 [[ ${#issues[@]} -gt 0 ]] || { echo "usage: issue-status.sh <Status> <issue> [issue...]" >&2; exit 1; }
 
+PROJECT_ITEMS_PAGE_SIZE=20 # an issue is on a handful of projects at most
 issue_fields=""
 for n in "${issues[@]}"; do
-  issue_fields+="i$n: issue(number:$n){ id projectItems(first:20){ nodes{ id project{ id } } } } "
+  [[ "$n" =~ ^[0-9]+$ ]] || { echo "error: '$n' is not an issue number" >&2; exit 1; }
+  issue_fields+="i$n: issue(number:$n){ id projectItems(first:$PROJECT_ITEMS_PAGE_SIZE){ nodes{ id project{ id } } } } "
 done
 state="$(gh api graphql -f query="query { node(id:\"$PROJECT_ID\"){ ... on ProjectV2 { field(name:\"Status\"){ ... on ProjectV2SingleSelectField { options { id name } } } } }
   repository(owner:\"$OWNER\", name:\"$NAME\"){ $issue_fields } }")"
+for n in "${issues[@]}"; do
+  jq -e ".data.repository.i$n.id" <<<"$state" >/dev/null 2>&1 || { echo "error: issue #$n not found in $REPO" >&2; exit 1; }
+done
 option_id="$(jq -r --arg s "$status" '.data.node.field.options[] | select(.name==$s) | .id' <<<"$state")"
 [[ -n "$option_id" ]] || { echo "error: unknown status '$status'" >&2; exit 1; }
 

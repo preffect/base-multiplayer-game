@@ -48,8 +48,6 @@ run_in_workdir() { # <workdir-relative> <command...> — inside the container, i
   fi
 }
 
-# Worktrees are created and removed INSIDE the container: git records absolute paths, and the
-# repo lives at /workspace there, at a host path here.
 # Worktrees are created and removed INSIDE the container (git records absolute paths, and the
 # repo lives at /workspace there); scripts/worktree.sh is the one home for that logic.
 worktree_remove() { run_in_workdir . scripts/worktree.sh remove "$1"; }

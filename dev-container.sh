@@ -187,6 +187,7 @@ do_create() {
     -w "$CONTAINER_WORKSPACE" \
     -u "$CONTAINER_USER" \
     -e "HOME=${CONTAINER_HOME}" \
+    -e "HOST_WORKSPACE_DIR=${SCRIPT_DIR}" \
     "$IMAGE_NAME" \
     sleep infinity
 
@@ -206,6 +207,7 @@ do_exec() {
   blue "Attaching to $CONTAINER_NAME..."
   docker exec -it -u "$CONTAINER_USER" -w "$CONTAINER_WORKSPACE" \
     -e "HOME=${CONTAINER_HOME}" \
+    -e "HOST_WORKSPACE_DIR=${SCRIPT_DIR}" \
     -e "TERM=${TERM:-xterm-256color}" \
     "$CONTAINER_NAME" \
     bash -l

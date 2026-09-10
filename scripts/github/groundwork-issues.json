@@ -270,7 +270,7 @@
       "milestone": "M1 Design",
       "labels": ["epic", "area:architecture", "priority:p0", "role:architect"],
       "children": ["G1", "G2", "G3", "G4", "G5"],
-      "body": "The technical design the build phases will execute, and the template's the first build epic build plan generated from the interview. Ends with the roadmap turned into approved epics.\n\n**Exit:** `docs/ARCHITECTURE.md` reviewed (engineer agrees), renderer decided with numbers, the first build epic has no placeholders, user approves the roadmap."
+      "body": "The technical design the build phases will execute, and the first build epic and tickets that `docs/INIT-GAME.md` files from the interview. Ends with the roadmap turned into approved epics.\n\n**Exit:** `docs/ARCHITECTURE.md` reviewed (engineer agrees), renderer decided with numbers, the first build epic has no placeholders, user approves the roadmap."
     },
     {
       "key": "G1",
@@ -295,10 +295,10 @@
     },
     {
       "key": "G4",
-      "title": "Run the template interview (docs/INIT-GAME.md): docs/GDD.md + the first build epic and tickets",
+      "title": "Run the template interview (docs/INIT-GAME.md): docs/GAME-DESIGN.md + the first build epic and tickets",
       "milestone": "M1 Design",
       "labels": ["area:design", "area:docs", "priority:p0", "role:team-lead"],
-      "body": "`docs/INIT-GAME.md` interviews the user and overwrites the first build epic with exact files/edits for the extension points (`GameInput`/`GameSnapshot`/`GameSessionConfig`, `GameModule`, `message-schemas.ts`, `game-setup.ts`, MCP `getRoomGameState`). Do it AFTER the GDD and architecture docs exist.\n\n**Acceptance:** no `<PLACEHOLDER>` remains; build tickets link to its sections."
+      "body": "`docs/INIT-GAME.md` interviews the user, writes `docs/GAME-DESIGN.md`, and files the first build epic whose tickets carry exact files/edits for the extension points (`GameInput`/`GameSnapshot`/`GameSessionConfig`, `GameModule`, `message-schemas.ts`, `game-setup.ts`, MCP `getRoomGameState`). Do it AFTER the GDD and architecture docs exist.\n\n**Acceptance:** no `<PLACEHOLDER>` remains; build tickets link to its sections."
     },
     {
       "key": "G5",

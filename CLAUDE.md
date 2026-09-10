@@ -3,12 +3,12 @@
 > # 🟢 START HERE — is this game defined yet?
 >
 > **If this game has NOT been defined yet** — it was just scaffolded with `new-game.sh`,
-> gameplay is still the placeholder **echo** game, and **`docs/GDD.md` does not exist** —
+> gameplay is still the placeholder **echo** game, and **`docs/GAME-DESIGN.md` does not exist** —
 > then your **FIRST action in this session, before anything else**, is:
 >
 > 👉 **Read [`docs/INIT-GAME.md`](./docs/INIT-GAME.md) and follow it.**
 >
-> It interviews the user about the game, then produces `docs/GDD.md` and the game's first
+> It interviews the user about the game, then produces `docs/GAME-DESIGN.md` and the game's first
 > build epic + tickets on GitHub (planning lives in issues, not in files). **Do NOT start
 > editing game source files yet.** When it is done it removes itself and this banner.
 
@@ -117,7 +117,7 @@ pnpm monorepo with three packages:
 - **Shared:** `packages/shared/src/types/messages.ts` — `GameInput`, `GameSnapshot`, `GameSessionConfig`.
 - **Server:** `packages/server/src/game/game-module.ts` — `GameModule` impl (`submitInput` / `reduceGameState` / `serializeRoomState` / `add`/`removePlayer`); wire the factory into `src/index.ts`. MCP game-state visibility via `DebugContext.getRoomGameState(gameId)`.
 - **Client:** `packages/client/src/app/game/game-setup.ts` — the game loop + renderer.
-- **Init:** see `docs/INIT-GAME.md` to interview the user and produce `docs/GDD.md` + the first build epic.
+- **Init:** see `docs/INIT-GAME.md` to interview the user and produce `docs/GAME-DESIGN.md` + the first build epic.
 
 ### Trust model
 
