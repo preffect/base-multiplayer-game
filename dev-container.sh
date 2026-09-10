@@ -16,10 +16,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Container/image/volume names are DERIVED from the workspace folder name (matches
 # devcontainer.json's ${localWorkspaceFolderBasename}-dind). Copy this project to any
 # folder and the names follow it — no per-project edits, no cross-project clashes.
+# The container user / workspace path / name suffix live in scripts/lib/identity.sh
+# (shared with scripts/agent.sh so the two never drift).
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/scripts/lib/identity.sh"
 PROJECT_SLUG="$(project_slug_from_dir "$SCRIPT_DIR")"
-CONTAINER_NAME="${PROJECT_SLUG}-dev"
+CONTAINER_NAME="$(container_name_from_dir "$SCRIPT_DIR")"
 TEMPLATE_MOUNT=/base-multiplayer-game # where the template checkout appears inside the container # KEEP_TEMPLATE_NAME
 IMAGE_NAME="${PROJECT_SLUG}-dev-image"
 CHECKSUM_FILE="$SCRIPT_DIR/.devcontainer/.build-checksum"
@@ -138,7 +140,7 @@ do_create() {
   local host_mounts=""
   local claude_dir="${HOME}/.claude"
   if [[ -d "$claude_dir" ]]; then
-    host_mounts+=" -v ${claude_dir}:/home/vscode/.claude:cached"
+    host_mounts+=" -v ${claude_dir}:${CONTAINER_HOME}/.claude:cached"
   else
     yellow "Warning: ~/.claude not found, skipping mount"
   fi
@@ -149,7 +151,7 @@ do_create() {
     host_mounts+=" -v $(cd "$template_dir" && pwd):$TEMPLATE_MOUNT:cached"
   fi
   if [[ -d "${HOME}/.config/gh" ]]; then
-    host_mounts+=" -v ${HOME}/.config/gh:/home/vscode/.config/gh:cached"
+    host_mounts+=" -v ${HOME}/.config/gh:${CONTAINER_HOME}/.config/gh:cached"
   else
     red "~/.config/gh not found — run 'gh auth login' on the host first (agents need it to push and open PRs)."
     exit 1
@@ -177,20 +179,20 @@ do_create() {
     --init \
     --name "$CONTAINER_NAME" \
     --privileged \
-    -v "$SCRIPT_DIR:/workspace:cached" \
+    -v "$SCRIPT_DIR:${CONTAINER_WORKSPACE}:cached" \
     -v "$DIND_VOLUME:/var/lib/docker" \
     $host_mounts \
     -p "${SERVER_PORT}:${SERVER_PORT}" \
     -p "${CLIENT_PORT}:${CLIENT_PORT}" \
-    -w /workspace \
-    -u vscode \
-    -e "HOME=/home/vscode" \
+    -w "$CONTAINER_WORKSPACE" \
+    -u "$CONTAINER_USER" \
+    -e "HOME=${CONTAINER_HOME}" \
     "$IMAGE_NAME" \
     sleep infinity
 
   # git trust/push setup + pnpm install + prettier — the same script devcontainer.json runs.
   blue "Running post-create (git setup, pnpm install, prettier)..."
-  docker exec -u vscode -w /workspace "$CONTAINER_NAME" bash .devcontainer/post-create.sh \
+  docker exec -u "$CONTAINER_USER" -w "$CONTAINER_WORKSPACE" "$CONTAINER_NAME" bash .devcontainer/post-create.sh \
     || yellow "post-create had issues — run 'bash .devcontainer/post-create.sh' inside the container"
 
   green "Container created and ready."
@@ -202,8 +204,8 @@ do_exec() {
     return 0
   fi
   blue "Attaching to $CONTAINER_NAME..."
-  docker exec -it -u vscode -w /workspace \
-    -e "HOME=/home/vscode" \
+  docker exec -it -u "$CONTAINER_USER" -w "$CONTAINER_WORKSPACE" \
+    -e "HOME=${CONTAINER_HOME}" \
     -e "TERM=${TERM:-xterm-256color}" \
     "$CONTAINER_NAME" \
     bash -l

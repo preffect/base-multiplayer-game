@@ -12,5 +12,6 @@ Procedure:
    line-anchored `comments: [{path, line, body}]`. The body's first line is the verdict that
    `scripts/land-pr.sh` reads: `code-qa verdict: APPROVE` or `code-qa verdict: REQUEST_CHANGES`.
    Each comment states the problem and the expected fix. Nits are prefixed `nit:`.
-5. On re-review: verify each of your threads is actually fixed, resolve the fixed ones
-   (`resolveReviewThread`), leave the rest open with a reply. Approve only when all are resolved.
+5. On re-review: `scripts/pr-threads.sh unresolved <N>` once, verify each thread against the
+   code, then ONE `scripts/pr-threads.sh reply <N> verdicts.json` call — `resolve: true` for the
+   fixed ones, a reply on the rest — and then your verdict review. Approve only when all are resolved.

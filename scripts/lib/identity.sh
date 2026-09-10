@@ -5,11 +5,12 @@
 # Sourced by presetup.sh (first instantiation) and scripts/sync-from-template.sh (later
 # syncs). Rewrites the template identity tokens in the given files:
 #   Base Multiplayer Game  -> <Title>          base-multiplayer-game -> <project> # KEEP_TEMPLATE_NAME
-#   game-debug             -> <slug>-debug     base-mp               -> <slug>  # KEEP_TEMPLATE_NAME
+#   game-debug             -> <slug>-debug     base-mp               -> <slug> # KEEP_TEMPLATE_NAME
 #   4400 / 4402            -> <server-port> / <client-port>   (whole-word, only if changed) # KEEP_TEMPLATE_NAME
 # Lines carrying the keep tag keep the literal template values (guidance such as "upstream
 # this to base-multiplayer-game"); the tag itself is stripped afterwards. # KEEP_TEMPLATE_NAME
 # The tag is always spelled via $IDENTITY_KEEP_TAG here so this file cannot mangle itself.
+# Also sourced by dev-container.sh and scripts/agent.sh for the container identity (bottom).
 # ---------------------------------------------------------------------------
 
 IDENTITY_KEEP_TAG="KEEP_TEMPLATE_NAME"
@@ -51,8 +52,18 @@ render_identity() {
   sed -i -e "s| *<!-- ${IDENTITY_KEEP_TAG} -->||" -e "s| *# ${IDENTITY_KEEP_TAG}||" "$@"
 }
 
+# ---- container identity: the ONE home for what dev-container.sh and scripts/agent.sh assume ----
+# The devcontainer runs as this user with the checkout mounted at this path (devcontainer.json
+# "remoteUser" / "workspaceFolder"; .devcontainer/Dockerfile ends with `USER root`, so every
+# `docker exec` MUST pass `-u "$CONTAINER_USER"` or it runs as root with no gh/claude credentials).
+CONTAINER_USER=vscode
+CONTAINER_HOME="/home/$CONTAINER_USER"
+CONTAINER_WORKSPACE=/workspace
+CONTAINER_NAME_SUFFIX=-dev
+
 # Container/image names are derived from the checkout's folder name so a copied project never
-# clashes with another one (dev-container.sh, scripts/agent.sh).
+# clashes with another one.
 project_slug_from_dir() { # <dir>
   basename "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//'
 }
+container_name_from_dir() { echo "$(project_slug_from_dir "$1")$CONTAINER_NAME_SUFFIX"; } # <dir>

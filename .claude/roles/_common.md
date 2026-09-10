@@ -20,13 +20,18 @@ document. Read before acting: `CLAUDE.md`, `ENGINEERING.md`, `WORKFLOW.md`, `TEA
    reviewers verify and resolve. Authors never resolve their own threads and never merge.
 6. **Small, complete work.** Finish the task fully or say exactly what is left in the PR body.
    Do not widen scope; file a new ticket (`gh issue create`) for anything you discover instead.
-7. **GitHub calls are cheap but not free:** batch with `--json`, never poll in a loop, never
-   `sleep`-and-retry more than three times.
+7. **GitHub budget.** One account serves every agent, and GitHub blocks it after ~80
+   content-creating calls in a minute. So: one request per logical action, never one per item.
+   Use the helpers — `scripts/pr-threads.sh` (list/reply/resolve review threads in one request),
+   `scripts/issue-status.sh <Status> <N> [N...]` (all tickets in two calls), one review request
+   carrying all its comments — and never call `gh` inside a loop, never poll, never retry more
+   than three times. If a call fails with a rate-limit error, stop and report it.
 
 ## Git and PR mechanics
 
 ```bash
-git fetch origin && git rebase origin/main            # before opening / updating a PR
+git fetch origin && git rebase origin/main            # before OPENING a PR
+git fetch origin && git merge origin/main             # on review rounds (a rebase outdates every thread)
 git push -u origin <branch>
 gh pr create -B main -H <branch> -t "<type>: <summary>" -F <body-file>   # body has "Closes #N"
 gh pr view <N> --json number,url,reviewDecision,statusCheckRollup

@@ -29,32 +29,44 @@ ITEM_LIMIT=1000
 DRY_RUN=false
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
 
-fields_json="$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json)"
-option_id() { jq -r --arg n "$1" '.fields[] | select(.name=="Status") | .options[] | select(.name==$n) | .id' <<<"$fields_json"; }
+# GraphQL is budgeted in points (5,000/hour), and `gh project item-list` fetches every field of
+# every item (hundreds of points per call). This query asks only for what the rules need: the
+# Status options, and per item its id, issue number/repository and current Status (~4 points).
+PAGE_SIZE=100
+fetch_page() { # <cursor-or-empty> -> JSON
+  gh api graphql -F id="$PROJECT_ID" -F first="$PAGE_SIZE" -F after="${1:-null}" -f query='
+    query($id:ID!,$first:Int!,$after:String){ node(id:$id){ ... on ProjectV2 {
+      field(name:"Status"){ ... on ProjectV2SingleSelectField { options { id name } } }
+      items(first:$first, after:$after){ totalCount pageInfo{ hasNextPage endCursor } nodes{ id
+        status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name } }
+        content{ ... on Issue { number repository{ nameWithOwner } } } } } } } }'
+}
+first_page="$(fetch_page)"
+option_id() { jq -r --arg n "$1" '.data.node.field.options[] | select(.name==$n) | .id' <<<"$first_page"; }
 OPT_DONE="$(option_id Done)"
 OPT_BLOCKED="$(option_id Blocked)"
 OPT_BACKLOG="$(option_id Backlog)"
-
-items_json="$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json --limit "$ITEM_LIMIT")"
-issues_json="$(gh issue list -R "$REPO" --state all --limit "$ITEM_LIMIT" --json number,url,state,labels)"
-
-# Refuse to run against a truncated listing: a missed lookup would re-add an existing item
-# and overwrite its status.
-item_count="$(jq '.items | length' <<<"$items_json")"
+item_count="$(jq '.data.node.items.totalCount' <<<"$first_page")"
 if ((item_count >= ITEM_LIMIT)); then
   echo "error: project has >= $ITEM_LIMIT items; raise ITEM_LIMIT before running." >&2
   exit 1
 fi
 
-# One jq pass builds number->item-id and number->status maps for THIS repo's issues only
-# (the project is owner-level and may hold items from other repositories).
+# number->item-id and number->status maps for THIS repo's issues only (the project is
+# owner-level and may hold items from other repositories), paging until the end.
 declare -A item_id_by_number status_by_number
-while IFS=$'\t' read -r number item_id status; do
-  item_id_by_number["$number"]="$item_id"
-  status_by_number["$number"]="$status"
-done < <(jq -r --arg repo "$REPO" \
-  '.items[] | select(.content.type=="Issue" and .content.repository==$repo)
-   | [.content.number, .id, (.status // "")] | @tsv' <<<"$items_json")
+page="$first_page"
+while :; do
+  while IFS=$'\t' read -r number item_id status; do
+    item_id_by_number["$number"]="$item_id"
+    status_by_number["$number"]="$status"
+  done < <(jq -r --arg repo "$REPO" \
+    '.data.node.items.nodes[] | select(.content.repository.nameWithOwner==$repo)
+     | [.content.number, .id, (.status.name // "")] | @tsv' <<<"$page")
+  jq -e '.data.node.items.pageInfo.hasNextPage' <<<"$page" >/dev/null || break
+  page="$(fetch_page "$(jq -r '.data.node.items.pageInfo.endCursor' <<<"$page")")"
+done
+issues_json="$(gh issue list -R "$REPO" --state all --limit "$ITEM_LIMIT" --json number,url,state,labels)"
 
 # Status changes are queued and sent as ONE GraphQL request per batch (aliased mutations):
 # GitHub's secondary rate limit counts requests, and a board of 50 tickets used to be 50 calls.
