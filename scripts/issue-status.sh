@@ -40,7 +40,8 @@ add_fields="" item_ids=()
 for n in "${issues[@]}"; do
   item="$(jq -r --arg p "$PROJECT_ID" ".data.repository.i$n.projectItems.nodes[] | select(.project.id==\$p) | .id" <<<"$state" | head -1)"
   if [[ -z "$item" ]]; then
-    content="$(jq -r ".data.repository.i$n.id" <<<"$state")"
+    content="$(jq -r ".data.repository.i$n.id // empty" <<<"$state")"
+    [[ -n "$content" ]] || { echo "error: issue #$n does not exist in $REPO" >&2; exit 1; }
     add_fields+="a$n: addProjectV2ItemById(input:{projectId:\"$PROJECT_ID\", contentId:\"$content\"}){ item { id } } "
   else item_ids+=("$n=$item"); fi
 done

@@ -6,17 +6,17 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # sync-from-template.sh — pull template-owned files from base-multiplayer-game into this game. # KEEP_TEMPLATE_NAME
 #
 # Keeps a game in step with the template WITHOUT touching game-owned code (docs/WORKFLOW.md "docs
-# stay in sync"; fixes are made in the template first, then copied here). Runs on the HOST
-# (the template repo is not mounted in the devcontainer). Review the diff, then land it via
-# a PR like any other change.
+# stay in sync"; fixes are made in the template first, then copied here). Runs on the host or
+# inside the devcontainer (dev-container.sh mounts the template checkout at /base-multiplayer-game). # KEEP_TEMPLATE_NAME
+# Review the diff, then land it via a PR like any other change.
 #
 #   * Template-owned files (always synced): scripts, devcontainer, run/validate helpers,
 #     process + standards docs, .mcp.json, PR template, .gitignore.
 #   * Synced only while still template-default: README.md (until its "Status: not yet
 #     defined" banner is replaced).
 #   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md.
-#   * Never synced: packages/**, docs/* except the template docs listed below, docs/INIT-GAME.md (one-shot), PORTS.env,
-#     .github/project.env, data/, docs/.
+#   * Never synced: packages/**, game-owned docs/* (only the template docs listed below are),
+#     docs/INIT-GAME.md (one-shot), PORTS.env, .github/project.env, data/.
 #   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
 #     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh).
 #
