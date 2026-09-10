@@ -3,6 +3,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # pr-threads.sh — review threads on a PR with the fewest possible API calls.
 #
+#   scripts/pr-threads.sh state <pr>                one query: latest verdict per reviewer role + unresolved count
 #   scripts/pr-threads.sh list <pr>                 one query: every thread, resolved or not, as JSON
 #   scripts/pr-threads.sh unresolved <pr>           same, unresolved only
 #   scripts/pr-threads.sh reply <pr> <actions.json> one aliased mutation (chunks of 20):
@@ -42,7 +43,27 @@ reply_threads() { # <pr> <actions.json>
   echo "$total thread(s) replied"
 }
 
+# Latest verdict per reviewer role (first line of each review body: "<role> verdict: APPROVE|REQUEST_CHANGES")
+# and the number of unresolved threads — the whole merge decision in one 1-point query.
+REVIEWS_PAGE_SIZE=50
+THREADS_PAGE_SIZE=100
+pr_state() { # <pr>
+  gh api graphql -F owner="$owner" -F name="$name" -F pr="$1" \
+    -F reviewsPage="$REVIEWS_PAGE_SIZE" -F threadsPage="$THREADS_PAGE_SIZE" -f query='
+    query($owner:String!,$name:String!,$pr:Int!,$reviewsPage:Int!,$threadsPage:Int!){
+      repository(owner:$owner,name:$name){ pullRequest(number:$pr){
+        reviews(last:$reviewsPage){ totalCount nodes{ body } }
+        reviewThreads(first:$threadsPage){ totalCount nodes{ isResolved } } } } }' \
+    | jq --argjson reviewsPage "$REVIEWS_PAGE_SIZE" --argjson threadsPage "$THREADS_PAGE_SIZE" '
+      .data.repository.pullRequest
+      | if .reviews.totalCount > $reviewsPage or .reviewThreads.totalCount > $threadsPage
+        then error("PR exceeds one page of reviews/threads; raise REVIEWS_PAGE_SIZE/THREADS_PAGE_SIZE") else . end
+      | {verdicts: ([.reviews.nodes[].body // "" | capture("^(?<key>[a-z-]+) verdict: (?<value>[A-Z_]+)")] | from_entries),
+         unresolved: ([.reviewThreads.nodes[] | select(.isResolved | not)] | length)}'
+}
+
 case "${1:-}" in
+  state) pr_state "${2:?pr}" ;;
   list) list_threads "${2:?pr}" false ;;
   unresolved) list_threads "${2:?pr}" true ;;
   reply) reply_threads "${2:?pr}" "${3:?actions.json}" ;;

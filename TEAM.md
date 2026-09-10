@@ -6,49 +6,64 @@ quality bar: `ENGINEERING.md`). The human's only job is answering the tickets as
 
 ## Roles
 
-| Role              | Owns                                                                  | Prompt                               |
-| ----------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| team-lead         | Planning, tickets, epics, sequencing, running the scripts below       | the interactive session              |
-| architect         | Structure, contracts, where constants live, design + code review      | `.claude/roles/architect.md`         |
-| engineer          | Implementation with unit + integration tests, review fixes            | `.claude/roles/engineer.md`          |
-| game-designer     | Game design document, rules, numbers, progression, balance, scenarios | `.claude/roles/game-designer.md`     |
-| graphics-designer | Style guide, palette, motion, code-drawn visuals                      | `.claude/roles/graphics-designer.md` |
-| ui-designer       | HUD, overlays, onboarding, information design                         | `.claude/roles/ui-designer.md`       |
-| audio-designer    | Sound event catalogue, asset manifest, audio hooks                    | `.claude/roles/audio-designer.md`    |
-| perf-engineer     | Simulation and render budgets, measurements                           | `.claude/roles/perf-engineer.md`     |
-| devops            | Devcontainer, scripts, CI, GitHub plumbing (template first)           | `.claude/roles/devops.md`            |
-| code-qa           | PR review against the engineering standards                           | `.claude/roles/code-qa.md`           |
-| gameplay-qa       | Rules/balance verification, scenarios, bots, play sessions            | `.claude/roles/gameplay-qa.md`       |
-| graphics-qa       | Visual verification with screenshots, baselines, frame-time checks    | `.claude/roles/graphics-qa.md`       |
+| Role              | Owns                                                                  | Prompt                                |
+| ----------------- | --------------------------------------------------------------------- | ------------------------------------- |
+| team-lead         | Planning, tickets, epics, sequencing, running the scripts below       | the interactive session               |
+| architect         | Structure, contracts, where constants live, design + code review      | `.claude/agents/architect.md`         |
+| engineer          | Implementation with unit + integration tests, review fixes            | `.claude/agents/engineer.md`          |
+| game-designer     | Game design document, rules, numbers, progression, balance, scenarios | `.claude/agents/game-designer.md`     |
+| graphics-designer | Style guide, palette, motion, code-drawn visuals                      | `.claude/agents/graphics-designer.md` |
+| ui-designer       | HUD, overlays, onboarding, information design                         | `.claude/agents/ui-designer.md`       |
+| audio-designer    | Sound event catalogue, asset manifest, audio hooks                    | `.claude/agents/audio-designer.md`    |
+| perf-engineer     | Simulation and render budgets, measurements                           | `.claude/agents/perf-engineer.md`     |
+| devops            | Devcontainer, scripts, CI, GitHub plumbing (template first)           | `.claude/agents/devops.md`            |
+| code-qa           | PR review against the engineering standards                           | `.claude/agents/code-qa.md`           |
+| gameplay-qa       | Rules/balance verification, scenarios, bots, play sessions            | `.claude/agents/gameplay-qa.md`       |
+| graphics-qa       | Visual verification with screenshots, baselines, frame-time checks    | `.claude/agents/graphics-qa.md`       |
 
-`.claude/roles/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to
+`.claude/agents/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to
 finish. `.claude/commands/team.md` is the interactive variant (`/team`) for a session opened
 inside the container: it spawns the same role files as teammates of one session (messages instead
 of GitHub threads) and uses no role vocabulary of its own.
 
 ## Running an agent
 
+The roles are Claude Code agent definitions in `.claude/agents/<role>.md`, so **inside the
+devcontainer the team lead spawns them with the Agent tool** (`subagent_type: "<role>"`), where
+they show up in the interface with live progress and can be messaged while running. Give each one
+its assignment (ticket, branch, working directory) in the prompt; the definition already tells it
+to read `.claude/roles/_common.md` (the shared ground rules) first.
+
+```bash
+scripts/worktree.sh add feat/42-food-ecology      # a branch of its own for a parallel agent
+scripts/worktree.sh remove feat/42-food-ecology
+```
+
+Outside the container (a host session, cron, CI) the same definitions run headlessly:
+
 ```bash
 scripts/agent.sh engineer --ticket 42 --branch feat/42-food-ecology "Implement #42 per docs/GAME-DESIGN.md"
 scripts/agent.sh code-qa --pr 57 --branch feat/42-food-ecology "Review PR #57"
-scripts/agent.sh worktree-remove feat/42-food-ecology
 ```
 
-- Works from the host (execs into the `<folder>-dev` container as its user; both facts live in
-  `scripts/lib/identity.sh`) or from inside it.
-- `--branch` gives the agent its own git worktree under `.worktrees/<branch>`, so several agents
-  run in parallel without touching each other's files; the main checkout stays free for running
-  the game (`./run.sh`) during QA. An existing local branch is reused untouched; an existing
-  worktree is fast-forwarded to `origin/<branch>` so reviewers see what the author pushed (a dirty
-  or diverged worktree stops the run instead of reviewing the wrong tree).
-- Every run writes `.qa/agents/<timestamp>-<role>[-pr<N>]-<pid>.prompt.md` and `.log`
-  (git-ignored; the pid keeps parallel runs apart).
+- `scripts/agent.sh` execs into the `<folder>-dev` container as its user (`scripts/lib/identity.sh`)
+  and logs to `.qa/agents/<timestamp>-<role>[-pr<N>]-<pid>.prompt.md` / `.log` (git-ignored).
+- A worktree per branch (`.worktrees/<branch>`, `scripts/worktree.sh`) lets several agents run in
+  parallel without touching each other's files; the main checkout stays free for running the game
+  (`./run.sh`) during QA. An existing local branch is reused untouched; an existing worktree is
+  fast-forwarded to `origin/<branch>` so reviewers see what the author pushed (dirty or diverged
+  stops the run).
 - **At most three agents at once.** They share one GitHub account and one 4-core container.
   GitHub's GraphQL budget is 5,000 points an hour (a query's cost grows with the nested lists it
   asks for) plus ~80 content-creating calls a minute, so every helper fetches only what it needs
   and writes in one request (`scripts/pr-threads.sh`, `scripts/issue-status.sh`, `scripts/project-sync.sh`).
 
 ## Landing a PR: the review loop
+
+In session (Agent tool): spawn each reviewer role with the PR in its prompt, read
+`scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved
+threads), spawn an engineer for the fixes, re-spawn the objecting reviewers, then
+`gh pr merge --squash --auto`. Headless, the same loop is scripted:
 
 ```bash
 scripts/land-pr.sh 57 --reviewers "architect gameplay-qa"    # code-qa is always added

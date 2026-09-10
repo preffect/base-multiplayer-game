@@ -20,10 +20,6 @@ cd "$ROOT"
 ALWAYS_REVIEWER="code-qa"
 DEFAULT_REVIEWERS="architect"
 DEFAULT_ROUNDS=3
-# One GraphQL page decides the verdicts and the unresolved count. A --rounds-bounded PR stays far
-# under these; pr_state fails loudly (no pager) if a PR ever exceeds them.
-REVIEWS_PAGE_SIZE=50
-THREADS_PAGE_SIZE=100
 VERDICT_APPROVE="APPROVE"
 VERDICT_REQUEST_CHANGES="REQUEST_CHANGES"
 
@@ -42,21 +38,7 @@ repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 owner="${repo%/*}" name="${repo#*/}"
 head_branch="$(gh pr view "$pr" --json headRefName --jq .headRefName)"
 
-# Latest verdict per role (from review bodies) and the count of unresolved threads, one call.
-pr_state() {
-  gh api graphql -F owner="$owner" -F name="$name" -F pr="$pr" \
-    -F reviewsPage="$REVIEWS_PAGE_SIZE" -F threadsPage="$THREADS_PAGE_SIZE" -f query='
-    query($owner:String!,$name:String!,$pr:Int!,$reviewsPage:Int!,$threadsPage:Int!){
-      repository(owner:$owner,name:$name){ pullRequest(number:$pr){
-        reviews(last:$reviewsPage){ totalCount nodes{ body } }
-        reviewThreads(first:$threadsPage){ totalCount nodes{ isResolved } } } } }' \
-    | jq --argjson reviewsPage "$REVIEWS_PAGE_SIZE" --argjson threadsPage "$THREADS_PAGE_SIZE" '
-      .data.repository.pullRequest
-      | if .reviews.totalCount > $reviewsPage or .reviewThreads.totalCount > $threadsPage
-        then error("PR exceeds one page of reviews/threads; raise REVIEWS_PAGE_SIZE/THREADS_PAGE_SIZE") else . end
-      | {verdicts: ([.reviews.nodes[].body // "" | capture("^(?<key>[a-z-]+) verdict: (?<value>[A-Z_]+)")] | from_entries),
-         unresolved: ([.reviewThreads.nodes[] | select(.isResolved | not)] | length)}'
-}
+pr_state() { "$ROOT/scripts/pr-threads.sh" state "$pr"; }
 
 review_task() { # <role> <round>
   cat <<EOF

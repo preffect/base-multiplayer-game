@@ -55,7 +55,7 @@ main() {
 
   ALWAYS=(
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
-    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/resume-in-container.sh scripts/pr-threads.sh
+    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/worktree.sh scripts/resume-in-container.sh scripts/pr-threads.sh
     .claude/.gitignore
     scripts/github/setup_project.py scripts/github/groundwork-issues.json
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
@@ -66,6 +66,7 @@ main() {
   )
   # Every team role the template defines (a role added there is synced without editing this list).
   for f in "$TEMPLATE"/.claude/roles/*.md; do ALWAYS+=(".claude/roles/$(basename "$f")"); done
+  for f in "$TEMPLATE"/.claude/agents/*.md; do ALWAYS+=(".claude/agents/$(basename "$f")"); done
   CONDITIONAL=() # "src|dest|grep-marker-that-must-still-be-present-in-dest"
   CONDITIONAL+=("README.game.md|README.md|Status: not yet defined")
   # Files agents are told to edit in place (CLAUDE.md sections, team roles): never overwritten —

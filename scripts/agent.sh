@@ -17,7 +17,8 @@ set -euo pipefail
 #   --model <model>    override the Claude model
 #   --timeout <secs>   hard stop for the run (default 7200)
 #
-# Roles are the files in .claude/roles/ minus _common.md (prepended to every prompt).
+# Roles are the agent definitions in .claude/agents/ (the same files the in-session Agent tool
+# uses); .claude/roles/_common.md is prepended to every prompt.
 # From the host the script execs into the running <folder>-dev container as its user
 # (scripts/lib/identity.sh); inside the container it runs claude directly.
 # Logs: .qa/agents/<timestamp>-<role>[-pr<N>]-<pid>.prompt.md and .log (see TEAM.md).
@@ -25,8 +26,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/lib/identity.sh" # CONTAINER_USER / CONTAINER_HOME / CONTAINER_WORKSPACE / container_name_from_dir
-WORKTREES_DIR=.worktrees
-ROLES_DIR=.claude/roles
+ROLES_DIR=.claude/roles   # _common.md (shared ground rules)
+AGENTS_DIR=.claude/agents # one definition per role; also what the in-session Agent tool uses
 LOG_DIR=.qa/agents
 COMMON_ROLE=_common
 DEFAULT_TIMEOUT_SECONDS=7200
@@ -49,51 +50,18 @@ run_in_workdir() { # <workdir-relative> <command...> — inside the container, i
 
 # Worktrees are created and removed INSIDE the container: git records absolute paths, and the
 # repo lives at /workspace there, at a host path here.
-worktree_remove() {
-  local branch="$1"
-  run_in_workdir . git worktree remove --force "$WORKTREES_DIR/$branch" 2>/dev/null || true
-  run_in_workdir . git worktree prune
-  echo "removed worktree for $branch"
-}
-
-branch_exists() { run_in_workdir . git show-ref -q --verify "refs/$1"; } # heads/<b> | remotes/origin/<b>
-
-worktree_create() { # <branch> <path> — reuse a local branch untouched; else track origin/<branch>; else start from origin/main
-  local branch="$1" path="$2"
-  if branch_exists "heads/$branch"; then run_in_workdir . git worktree add -q "$path" "$branch"
-  elif branch_exists "remotes/origin/$branch"; then run_in_workdir . git worktree add -q --track -b "$branch" "$path" "origin/$branch"
-  else run_in_workdir . git worktree add -q -b "$branch" "$path" origin/main
-  fi
-}
-
-worktree_fast_forward() { # <path> <branch> — bring an existing worktree up to origin/<branch>; refuse dirty or diverged
-  local path="$1" branch="$2"
-  branch_exists "remotes/origin/$branch" || return 0
-  [[ "$(run_in_workdir "$path" git rev-parse HEAD)" != "$(run_in_workdir . git rev-parse "origin/$branch")" ]] || return 0
-  if [[ -n "$(run_in_workdir "$path" git status --porcelain)" ]]; then
-    echo "error: $path has uncommitted changes; commit or discard them before it can follow origin/$branch" >&2; exit 1
-  fi
-  run_in_workdir "$path" git merge -q --ff-only "origin/$branch" \
-    || { echo "error: $path has diverged from origin/$branch; reconcile it by hand" >&2; exit 1; }
-}
-
-ensure_worktree() { # <branch> -> prints the worktree path relative to ROOT
-  local branch="$1" path="$WORKTREES_DIR/$1"
-  # A branch checked out in the main tree cannot also be a worktree: work there instead.
-  if [[ "$(run_in_workdir . git branch --show-current)" == "$branch" ]]; then echo "."; return 0; fi
-  run_in_workdir . git fetch -q origin
-  [[ -d "$ROOT/$path" ]] || worktree_create "$branch" "$path"
-  worktree_fast_forward "$path" "$branch"
-  echo "$path"
-}
+# Worktrees are created and removed INSIDE the container (git records absolute paths, and the
+# repo lives at /workspace there); scripts/worktree.sh is the one home for that logic.
+worktree_remove() { run_in_workdir . scripts/worktree.sh remove "$1"; }
+ensure_worktree() { run_in_workdir . scripts/worktree.sh add "$1"; } # -> path relative to ROOT
 
 [[ $# -ge 1 ]] || usage
 if [[ "$1" == "worktree-remove" ]]; then worktree_remove "${2:?branch}"; exit 0; fi
 
 role="$1"; shift
-role_file="$ROOT/$ROLES_DIR/$role.md"
+role_file="$ROOT/$AGENTS_DIR/$role.md"
 if [[ "$role" == "$COMMON_ROLE" || ! -f "$role_file" ]]; then
-  echo "error: unknown role '$role' (see $ROLES_DIR/)" >&2; exit 1
+  echo "error: unknown role '$role' (see $AGENTS_DIR/)" >&2; exit 1
 fi
 
 branch="" tickets=() pr="" model="" timeout_seconds="$DEFAULT_TIMEOUT_SECONDS" task=""
@@ -124,7 +92,8 @@ run_id="$(date +%Y%m%d-%H%M%S)-$role${pr:+-pr$pr}-$$"
 prompt_file="$ROOT/$LOG_DIR/$run_id.prompt.md"
 log_file="$ROOT/$LOG_DIR/$run_id.log"
 {
-  cat "$ROOT/$ROLES_DIR/$COMMON_ROLE.md" "$role_file"
+  cat "$ROOT/$ROLES_DIR/$COMMON_ROLE.md"
+  awk 'BEGIN{fm=0} /^---$/ && fm<2 {fm++; next} fm==2' "$role_file" # definition minus its frontmatter
   echo; echo "# Your assignment"; echo
   echo "- Working directory: $CONTAINER_WORKSPACE/$workdir${branch:+ (branch \`$branch\`)}"
   [[ ${#tickets[@]} -eq 0 ]] || echo "- Ticket(s): $(printf '#%s ' "${tickets[@]}")"
