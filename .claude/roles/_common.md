@@ -32,14 +32,17 @@ the current level is stated in `CLAUDE.md`). Read before acting: `CLAUDE.md`, `d
 ## Decision tickets (the human dial)
 
 When the dial says a question is the human's, open ONE issue (`gh issue create`) labelled
-`needs-decision` + `pending`, assigned to the human, with:
+`needs-decision` + `pending`, assigned to the human. **Short first, detail after**, in this shape:
 
-- the question in one sentence and why it matters to the player;
-- **two or three options**, each with a mockup where the question is visual or spatial
-  (a code-drawn SVG rendered to PNG under `qa/decisions/<ticket>/`, or a wireframe, or a
-  before/after table for numbers), the trade-off in two lines, and your recommendation;
-- what you will do while waiting (work that does not depend on the answer), and the ticket the
-  answer unblocks.
+1. **The question in one line**, then the options as one line each (`A` / `B` / `C`: name, one
+   clause, and the mockup image right under it), then `Recommend: B` with one reason. That is
+   the whole top of the ticket: readable in ten seconds, answerable with one letter.
+2. A `<details><summary>More</summary>` block with the rest: why it matters to the player, the
+   trade-offs, the constants each option sets, what continues meanwhile, the ticket it unblocks.
+
+**Always include a picture when it helps understanding**: a mockup (code-drawn SVG rendered to
+PNG under `qa/decisions/<ticket>/`), a wireframe, a timeline, a before/after strip, or a diagram
+of the flow. Numbers alone go in a small table.
 
 Then `scripts/issue-status.sh Blocked <N>`, mention the ticket in your PR body or report, and
 continue with the independent work. Never implement an option before the answer. When the answer
