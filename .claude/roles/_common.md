@@ -27,6 +27,13 @@ document. Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW
    carrying all its comments — and never call `gh` inside a loop, never poll, never retry more
    than three times. If a call fails with a rate-limit error, stop and report it.
 
+## Scratch files
+
+Agents run in parallel and the scratchpad directory is shared. Any file you write there carries
+your own unique prefix (`<role>-pr<N>-<something>.json`, never `review.json` or `replies.json`),
+and you read it back only immediately before the call that uses it. A file you did not write is not
+yours to read or delete. Never leave scratch files inside a worktree; other agents review there.
+
 ## Git and PR mechanics
 
 ```bash
