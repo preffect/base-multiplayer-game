@@ -72,6 +72,12 @@ scripts/agent.sh code-qa --pr 57 --branch feat/42-food-ecology "Review PR #57"
   fast-forwarded to `origin/<branch>` so reviewers see what the author pushed (dirty or diverged
   stops the run).
 - **At most three agents at once.** They share one GitHub account and one 4-core container.
+- **Context checkpoints.** Builders report to the lead after each green-gate commit. At that report the
+  lead runs `scripts/agent-context.sh <agent-name>` (exact live context from the transcript's usage
+  fields; no argument reports the calling session): under 200k tokens continue; 200k–700k continue
+  only if little remains, otherwise ask the agent to summarise its state and stop, and start a fresh
+  agent from the summary; over 700k always refresh unless there is a stated reason. Agents cannot
+  judge their own size, and transcript file size is wrong once anything has compacted.
   GitHub's GraphQL budget is 5,000 points an hour (a query's cost grows with the nested lists it
   asks for) plus ~80 content-creating calls a minute, so every helper fetches only what it needs
   and writes in one request (`scripts/pr-threads.sh`, `scripts/issue-status.sh`, `scripts/project-sync.sh`).
