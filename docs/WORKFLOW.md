@@ -49,6 +49,13 @@ decision is applied; close the ticket when it is done; never leave a closed tick
   become their own epics. **Epics scope one phase of groundwork, never the whole game.**
 - Epics carry the `epic` label and own their tickets as sub-issues. Every ticket body starts
   with `**Epic:** #N`.
+- **One subsystem per ticket.** A ticket names one subsystem, and its PR is readable in one
+  sitting: about 40 files at most, tests included. A title that lists several subsystems
+  ("world, ecology, movement, growth, …") is an epic, not a ticket: give it the `epic` label and
+  split it into sub-issues before anyone starts. The lead checks size before spawning and splits
+  first; a build agent that finds its ticket bigger than this stops and reports instead of
+  building. Why: one 175-file ticket cost three review rounds, two agents lost at the usage limit
+  and several usage windows; five 40-file tickets would have landed one at a time.
 
 ## 4. Keeping the board in sync (no UI workflows)
 
