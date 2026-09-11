@@ -34,7 +34,8 @@
 ./validate.sh test -t20               # show last 20 lines
 ./validate.sh typecheck -h50          # show first 50 lines
 ./validate.sh lint -G 'error'         # grep output for pattern
-./validate.sh test -- --filter shared # pass extra args to underlying command
+./validate.sh test -- --filter shared # pass extra args to underlying command (never cached)
+./validate.sh all --fresh             # ignore the content-addressed result cache (docs/ENGINEERING.md §1)
 ```
 
 ### Running the dev servers

@@ -139,6 +139,7 @@ Then open two browser tabs at the client to exercise the lobby → create → jo
 ./validate.sh typecheck   # type check only
 ./validate.sh lint        # eslint + prettier --check + eslint-disable / TODO / docs index audits
 ./validate.sh duplication # jscpd
+./validate.sh all --fresh # ignore the result cache: a green run on an unchanged tree is otherwise a cached stamp
 ```
 
 ### Dev container

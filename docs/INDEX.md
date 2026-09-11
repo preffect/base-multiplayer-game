@@ -30,23 +30,23 @@ and read only that line range (`sed -n 'start,endp' docs/FILE.md`). Regenerate a
 - **7. `.env.example` keys to add** (L203–228): Add these to the template's `.env.example` (copy to `.env`, which is gitignored).
 - **8. Pipeline invariants (enforce)** (L229–237): and ask before `sync`.
 
-## ENGINEERING.md (272 lines)
+## ENGINEERING.md (287 lines)
 
-- **Engineering Standards** (L1–272): These are enforceable rules, not suggestions.
-- **1. The Validation Gate (`./validate.sh`)** (L12–48): `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`, or `pnpm --filter ...
-- **2. Testing Standards** (L49–131)
-  - **2.1 Every change is tested** (L51–64): (functions, classes, reducers, state machines, message handlers, math, generation), extract it into pure, testable functions and write tests covering the happy path, edge cases, and error cases.
-  - **2.2 Unit vs integration split** (L65–92): isolation — no cross-subsystem orchestration, runs in <100ms.
-  - **2.3 What must be covered (template-specific)** (L93–112): state + snapshot; invalid input is rejected/ignored.
-  - **2.4 Determinism** (L113–121): simulation is reproducible and tests can assert exact outputs.
-  - **2.5 Coverage floors** (L122–131): Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in `packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and `./validate.sh test` fails when a run drops below it.
-- **3. TypeScript & Lint Strictness** (L132–183)
-  - **3.1 Required tsconfig flags (already set in `tsconfig.base.json`)** (L134–149): Do not weaken these.
-  - **3.2 Lint / format rules** (L150–165): means "intentionally unused" — it is not a license to leave a stub instead of real code.
-  - **3.3 Forbidden escape hatches** (L166–183): without a justification.
-- **4. Architecture Conventions (enforce on every change)** (L184–220): imports from `server` or `client`.
-- **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L221–251): instead of `./validate.sh`.
-- **6. Definition of Done (checklist — ALL must hold)** (L252–272): path, edge cases, and error cases.
+- **Engineering Standards** (L1–287): These are enforceable rules, not suggestions.
+- **1. The Validation Gate (`./validate.sh`)** (L12–63): `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`, or `pnpm --filter ...
+- **2. Testing Standards** (L64–146)
+  - **2.1 Every change is tested** (L66–79): (functions, classes, reducers, state machines, message handlers, math, generation), extract it into pure, testable functions and write tests covering the happy path, edge cases, and error cases.
+  - **2.2 Unit vs integration split** (L80–107): isolation — no cross-subsystem orchestration, runs in <100ms.
+  - **2.3 What must be covered (template-specific)** (L108–127): state + snapshot; invalid input is rejected/ignored.
+  - **2.4 Determinism** (L128–136): simulation is reproducible and tests can assert exact outputs.
+  - **2.5 Coverage floors** (L137–146): Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in `packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and `./validate.sh test` fails when a run drops below it.
+- **3. TypeScript & Lint Strictness** (L147–198)
+  - **3.1 Required tsconfig flags (already set in `tsconfig.base.json`)** (L149–164): Do not weaken these.
+  - **3.2 Lint / format rules** (L165–180): means "intentionally unused" — it is not a license to leave a stub instead of real code.
+  - **3.3 Forbidden escape hatches** (L181–198): without a justification.
+- **4. Architecture Conventions (enforce on every change)** (L199–235): imports from `server` or `client`.
+- **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L236–266): instead of `./validate.sh`.
+- **6. Definition of Done (checklist — ALL must hold)** (L267–287): path, edge cases, and error cases.
 
 ## INIT-GAME.md (263 lines)
 
@@ -65,23 +65,23 @@ and read only that line range (`sed -n 'start,endp' docs/FILE.md`). Regenerate a
   - **7. Verification** (L224–248): Run everything INSIDE the devcontainer (open it from the host with `./dev-container.sh`): `pnpm install`; `./validate.sh all`; `./run.sh`; open two browser tabs on the client port; confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
   - **8. Cleanup — the game is now defined** (L249–263): As the last action of this session, remove the scaffolding that only made sense before the game existed, in the same PR as `docs/GAME-DESIGN.md`:
 
-## TEAM.md (144 lines)
+## TEAM.md (148 lines)
 
-- **The agent team** (L1–144): How work on this game is done by a team of AI agents, each running inside the devcontainer as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`; quality bar: `docs/ENGINEERING.md`).
+- **The agent team** (L1–148): How work on this game is done by a team of AI agents, each running inside the devcontainer as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`; quality bar: `docs/ENGINEERING.md`).
 - **Roles** (L7–28): `.claude/roles/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to finish.
 - **Human dial** (L29–46): How much the human steers, set per game in `CLAUDE.md` ("Human dial: N") and changeable per phase.
 - **Running an agent** (L47–88): The roles are Claude Code agent definitions in `.claude/agents/<role>.md`, so inside the devcontainer the team lead spawns them with the Agent tool (`subagent_type: "<role>"`), where they show up in the interface with live progress and can be messaged while running.
-- **Landing a PR: the review loop** (L89–125): In session (Agent tool): spawn each reviewer role with the PR in its prompt, read `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved threads), spawn an engineer for the fixes, re-spawn the objecting reviewers, then `gh pr merge --squash --auto`.
-- **Handoffs and artifacts** (L126–139): These names supersede the ones in ticket #18: balance lives with the other constants (`data/` is git-ignored runtime state, so `data/balance.json` cannot be a reviewed artifact), and the design document is `docs/GAME-DESIGN.md` as the design tickets name it.
-- **Definition of Done (per ticket)** (L140–144): `docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or playable) the PR carries evidence from graphics-qa or gameplay-qa.
+- **Landing a PR: the review loop** (L89–129): In session (Agent tool): spawn each reviewer role with the PR in its prompt, read `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved threads), spawn an engineer for the fixes, re-spawn the objecting reviewers, then `gh pr merge --squash --auto`.
+- **Handoffs and artifacts** (L130–143): These names supersede the ones in ticket #18: balance lives with the other constants (`data/` is git-ignored runtime state, so `data/balance.json` cannot be a reviewed artifact), and the design document is `docs/GAME-DESIGN.md` as the design tickets name it.
+- **Definition of Done (per ticket)** (L144–148): `docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or playable) the PR carries evidence from graphics-qa or gameplay-qa.
 
-## WORKFLOW.md (128 lines)
+## WORKFLOW.md (135 lines)
 
-- **Workflow — GitHub issues, project board, reviews** (L1–128): The single source of truth for how work is tracked and merged in a game built from this template.
+- **Workflow — GitHub issues, project board, reviews** (L1–135): The single source of truth for how work is tracked and merged in a game built from this template.
 - **1. Where things live** (L8–23): GitHub stores Projects under the user/org, not inside the repo; the project is _linked_ to the repo so it appears in the repo's Projects tab and only holds this repo's issues.
 - **2. Labels (category), Status (stage), assignee (ball in court)** (L24–43): design, architecture, gameplay, graphics, networking, ui, audio, qa, docs), `role:*` (the agent role that owns it), `priority:p0|p1|p2`, `epic`, `roadmap`, `needs-decision`, `pending`.
-- **3. Milestones and epics** (L44–52): gates, testing foundations) and `M1 Design` (design docs, architecture, build plan).
-- **4. Keeping the board in sync (no UI workflows)** (L53–64): The Project's UI-only automations (auto-add, auto-close) are replaced by `scripts/project-sync.sh`, which is idempotent and safe to run any time:
-- **5. Branch and PR rules** (L65–88): Every piece of work starts as a ticket — no exceptions, including template and tooling work.
-- **6. Review process (every PR)** (L89–113): and config live, test plan.
-- **7. Scripts** (L114–128): `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).
+- **3. Milestones and epics** (L44–59): gates, testing foundations) and `M1 Design` (design docs, architecture, build plan).
+- **4. Keeping the board in sync (no UI workflows)** (L60–71): The Project's UI-only automations (auto-add, auto-close) are replaced by `scripts/project-sync.sh`, which is idempotent and safe to run any time:
+- **5. Branch and PR rules** (L72–95): Every piece of work starts as a ticket — no exceptions, including template and tooling work.
+- **6. Review process (every PR)** (L96–120): and config live, test plan.
+- **7. Scripts** (L121–135): `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).

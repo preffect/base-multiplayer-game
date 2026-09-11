@@ -64,7 +64,7 @@ main() {
 
   ALWAYS=(
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
-    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/worktree.sh scripts/resume-in-container.sh scripts/pr-threads.sh scripts/docs-index.sh
+    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/worktree.sh scripts/resume-in-container.sh scripts/pr-threads.sh scripts/docs-index.sh scripts/validate-cache.test.sh
     .claude/.gitignore
     scripts/github/setup_project.py scripts/github/groundwork-issues.json scripts/github/main-ruleset.json
     .github/workflows/pr-links-issue.yml

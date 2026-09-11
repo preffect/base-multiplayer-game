@@ -25,6 +25,19 @@ each is checkable. An AI building a game from this template MUST follow every ru
      (§3.3); import blocks are ignored; the offending file pairs are printed with line ranges;
    - runs the unit tier **with coverage thresholds** (§2.5), so a drop below a package's floor
      fails `test`;
+   - **caches green results by content** (#75): a green run is stamped under
+     `$HOME/.cache/<slug>-validate/<tree>.<command>` (fields: `exit`, ISO `time`, `log` path,
+     `node` major, `command`, `tree`; the raw log under `logs/`), keyed by `git write-tree` of the
+     whole working tree — tracked and untracked, via a temporary index — plus the Node major
+     version. **"Same tree" includes untracked files**: a worktree at the author's commit misses
+     the author's stamp when either side has any untracked, non-ignored file. A repeat call on the
+     same tree prints `cached green from <time> at tree <hash>` and the stored log path and exits
+     0 in well under a second; the filters apply to the stored log. Red is never cached, `all`
+     stamps each phase and itself, `--fresh` bypasses the stamp, and `-- extra-args` calls are
+     never cached. The stamp names the tree a reviewer cites (`docs/TEAM.md` review loop). Nothing
+     prunes the stamps: `rm -rf ~/.cache/<slug>-validate` clears them, and so does a container
+     rebuild (`~/.cache` is not a mount). A CI run, where a game adds one, passes `--fresh` (or
+     sets `VALIDATE_CACHE_DIR` to a scratch directory) so it never trusts a stamp;
    - is pre-authorized in `.claude/settings.json`, so it never trips a permission prompt.
 2. **After ANY task that modifies code, run `./validate.sh all` and make it green before
    considering the work done.** Do not skip this step. Fix every failure before moving on.
@@ -34,6 +47,7 @@ each is checkable. An AI building a game from this template MUST follow every ru
    tool invocation.
 4. Use the output filters instead of dumping full logs: `-tN` (tail), `-hN` (head),
    `-G PATTERN` (grep), `-- extra-args` (passthrough). Example: `./validate.sh test -G 'fail'`.
+   `--fresh` re-runs regardless of the result cache.
 
 ```text
 ./validate.sh test         # unit tier with coverage thresholds
@@ -42,6 +56,7 @@ each is checkable. An AI building a game from this template MUST follow every ru
 ./validate.sh lint         # eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness
 ./validate.sh duplication  # jscpd (.jscpd.json)
 ./validate.sh all          # lint -> duplication -> typecheck -> test; prints ALL PASSED / FAILED: <phases>
+./validate.sh all --fresh  # same, ignoring the result cache (a green run is still stamped)
 ```
 
 ---
