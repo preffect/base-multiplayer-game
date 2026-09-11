@@ -113,6 +113,13 @@ TREE_HASH=""
 NODE_MAJOR=""
 RUN_ONE_OUTPUT=""
 ALL_RAW_FILE="" # set by `all`: every phase appends its raw output here for the `all` stamp's log
+TEMP_INDEX=""   # the temporary index while cache_tree_hash runs
+CACHE_HIT_TIME=""
+CACHE_HIT_LOG=""
+
+cleanup_temp_files() { rm -f "${TEMP_INDEX:+$TEMP_INDEX}" "${TEMP_INDEX:+$TEMP_INDEX.lock}" "${ALL_RAW_FILE:+$ALL_RAW_FILE}"; }
+trap cleanup_temp_files EXIT
+trap 'cleanup_temp_files; exit 130' INT TERM
 
 # The cache name: SLUG from PORTS.env, else the main checkout's directory name (the same for
 # every worktree of the repo), else this directory's name.
@@ -130,16 +137,19 @@ cache_slug() {
 
 # One hash for the exact working tree, tracked and untracked (ignored files excluded), without
 # touching the real index: copy it (so unchanged files are not re-hashed), `git add -A` into the
-# copy, `git write-tree`. Empty when this is not a git checkout.
+# copy, `git write-tree`. Empty when this is not a git checkout. The add writes real loose objects
+# (a blob per changed file plus the tree) into .git/objects; they are unreachable and harmless,
+# and `git gc` prunes them after its default two weeks.
 cache_tree_hash() {
-  local real_index temp_index hash
+  local real_index hash
   real_index="$(git -C "$SCRIPT_DIR" rev-parse --path-format=absolute --git-path index 2>/dev/null || true)"
   [[ -n "$real_index" ]] || return 0
-  temp_index="$(mktemp)"
-  [[ -f "$real_index" ]] && cp "$real_index" "$temp_index"
-  hash="$(cd "$SCRIPT_DIR" && GIT_INDEX_FILE="$temp_index" git add -A . 2>/dev/null \
-    && GIT_INDEX_FILE="$temp_index" git write-tree 2>/dev/null || true)"
-  rm -f "$temp_index"
+  TEMP_INDEX="$(mktemp)"
+  [[ -f "$real_index" ]] && cp "$real_index" "$TEMP_INDEX"
+  hash="$(cd "$SCRIPT_DIR" && GIT_INDEX_FILE="$TEMP_INDEX" git add -A . 2>/dev/null \
+    && GIT_INDEX_FILE="$TEMP_INDEX" git write-tree 2>/dev/null || true)"
+  rm -f "$TEMP_INDEX" "$TEMP_INDEX.lock"
+  TEMP_INDEX=""
   echo "$hash"
 }
 
@@ -150,7 +160,10 @@ cache_init() {
   [[ -n "$TREE_HASH" ]] || return 0
   NODE_MAJOR="$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/')"
   CACHE_DIR="${VALIDATE_CACHE_DIR:-$HOME/.cache/$(cache_slug)-validate}"
-  mkdir -p "$CACHE_DIR/logs"
+  if ! mkdir -p "$CACHE_DIR/logs" 2>/dev/null || [[ ! -w "$CACHE_DIR/logs" ]]; then
+    echo "validate.sh: result cache disabled: cannot write $CACHE_DIR" >&2
+    CACHE_DIR=""
+  fi
 }
 
 cache_stamp_path() { echo "$CACHE_DIR/$TREE_HASH.$1"; }
@@ -158,21 +171,35 @@ cache_log_path() { echo "$CACHE_DIR/logs/$TREE_HASH.$1.log"; }
 stamp_field() { sed -n "s/^$2=//p" "$1" | head -n 1; }
 have_filters() { [[ -n "$GREP_PAT" || -n "$HEAD_N" || -n "$TAIL_N" ]]; }
 
-# Prints the cached-green lines (and the filtered stored log when a filter is set) and returns 0
-# when a green stamp exists for this tree, command and Node major; returns 1 otherwise.
+# Returns 0, with CACHE_HIT_TIME / CACHE_HIT_LOG set, when a green stamp with its log exists for
+# this tree, command and Node major; returns 1 otherwise (a stamp whose log is gone is a miss).
 cache_hit() {
   local cmd="$1" stamp
   [[ -n "$CACHE_DIR" && $FRESH -eq 0 ]] || return 1
   stamp="$(cache_stamp_path "$cmd")"
   [[ -f "$stamp" ]] || return 1
   [[ "$(stamp_field "$stamp" exit)" == "0" && "$(stamp_field "$stamp" node)" == "$NODE_MAJOR" ]] || return 1
-  local log
-  log="$(stamp_field "$stamp" log)"
-  echo "cached green from $(stamp_field "$stamp" time) at tree $TREE_HASH"
-  echo "log: $log"
-  if have_filters && [[ -f "$log" ]]; then
-    apply_filters < "$log"
+  CACHE_HIT_TIME="$(stamp_field "$stamp" time)"
+  CACHE_HIT_LOG="$(stamp_field "$stamp" log)"
+  if [[ ! -f "$CACHE_HIT_LOG" ]]; then
+    echo "validate.sh: stamp $stamp has no log ($CACHE_HIT_LOG); re-running" >&2
+    return 1
   fi
+}
+
+# Prints the cached-green lines and, when a filter is set, the filtered stored log.
+print_cache_hit() {
+  echo "cached green from $CACHE_HIT_TIME at tree $TREE_HASH"
+  echo "log: $CACHE_HIT_LOG"
+  if have_filters; then
+    apply_filters < "$CACHE_HIT_LOG"
+  fi
+}
+
+# Writes <content> to <path> atomically (per-process temp name + mv), so concurrent runs on one
+# tree never expose a half-written file and never race on one temp name.
+write_atomically() { # <path> <content>
+  printf '%s\n' "$2" > "$1.tmp.$$" && mv "$1.tmp.$$" "$1"
 }
 
 # Stamps a green run of <cmd> whose raw output is <output>, unless the run changed the tree.
@@ -183,25 +210,26 @@ cache_store() {
     echo "not cached: the run changed the working tree"
     return 0
   fi
-  local stamp log
+  local stamp log stamp_body
   stamp="$(cache_stamp_path "$cmd")"
   log="$(cache_log_path "$cmd")"
-  printf '%s\n' "$output" > "$log"
-  printf 'exit=0\ntime=%s\nlog=%s\nnode=%s\ncommand=%s\ntree=%s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$log" "$NODE_MAJOR" "$cmd" "$TREE_HASH" > "$stamp.tmp"
-  mv "$stamp.tmp" "$stamp"
+  stamp_body="$(printf 'exit=0\ntime=%s\nlog=%s\nnode=%s\ncommand=%s\ntree=%s' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$log" "$NODE_MAJOR" "$cmd" "$TREE_HASH")"
+  if ! { write_atomically "$log" "$output" && write_atomically "$stamp" "$stamp_body"; } 2>/dev/null; then
+    echo "not cached: cannot write $CACHE_DIR"
+  fi
 }
 
 append_all_raw() { [[ -z "$ALL_RAW_FILE" ]] || printf '%s\n' "$1" >> "$ALL_RAW_FILE"; }
 
-# Runs <cmd> through the cache: a hit prints the stamp; a green run is stamped; red never is.
+# Runs <cmd> through the cache: a hit prints the stamp (and feeds the stored phase log to the
+# `all` log, so filters on an `all` hit see every phase); a green run is stamped; red never is.
 run_cached() {
   local cmd="$1"
   shift
-  local hit_text
-  if hit_text="$(cache_hit "$cmd")"; then
-    echo "$hit_text"
-    append_all_raw "$hit_text"
+  if cache_hit "$cmd"; then
+    print_cache_hit
+    append_all_raw "$(cat "$CACHE_HIT_LOG")"
     return 0
   fi
   local rc=0
@@ -323,6 +351,8 @@ cache_init
 
 if [[ "$COMMAND" == "all" ]]; then
   if cache_hit all; then
+    print_cache_hit
+    echo "ALL PASSED"
     exit 0
   fi
   failed=()
@@ -337,14 +367,12 @@ if [[ "$COMMAND" == "all" ]]; then
     append_all_raw ""
   done
   if [[ ${#failed[@]} -gt 0 ]]; then
-    rm -f "$ALL_RAW_FILE"
     echo "FAILED: ${failed[*]}"
     exit 1
   else
     echo "ALL PASSED"
     append_all_raw "ALL PASSED"
     cache_store all "$(cat "$ALL_RAW_FILE")"
-    rm -f "$ALL_RAW_FILE"
   fi
 else
   run_cached "$COMMAND" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
