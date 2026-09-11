@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { DebugContext } from '../debug-context.js';
+import { withActiveRoom } from '../active-room.js';
+import { jsonResult } from '../tool-result.js';
 
 /** Generic, game-agnostic room/lobby visibility tools. */
 export function registerRoomTools(mcp: McpServer, ctx: DebugContext): void {
@@ -23,28 +25,25 @@ export function registerRoomTools(mcp: McpServer, ctx: DebugContext): void {
       maxPlayers: room.sessionConfig.maxPlayers,
     }));
 
-    return { content: [{ type: 'text', text: JSON.stringify([...pending, ...active], null, 2) }] };
+    return jsonResult([...pending, ...active]);
   });
 
   mcp.tool(
     'debug_get_room',
     'Get room membership metadata for an active game (connected, disconnected, and all player ids)',
     { gameId: z.string().describe('The game ID to inspect') },
-    (args) => {
-      const room = ctx.lobbyManager.getActiveRoom(args.gameId);
-      if (!room) {
-        return { content: [{ type: 'text', text: `Game "${args.gameId}" not found or not active` }], isError: true };
-      }
-      const state = {
-        gameId: args.gameId,
-        gameName: room.gameName,
-        creatorId: room.creatorId,
-        maxPlayers: room.sessionConfig.maxPlayers,
-        connected: Array.from(room.playerConnections.keys()),
-        disconnected: Array.from(room.disconnectedPlayers),
-        allPlayerIds: room.allPlayerIds,
-      };
-      return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
-    },
+    (args) =>
+      withActiveRoom(ctx, args.gameId, (room) => {
+        const state = {
+          gameId: args.gameId,
+          gameName: room.gameName,
+          creatorId: room.creatorId,
+          maxPlayers: room.sessionConfig.maxPlayers,
+          connected: Array.from(room.playerConnections.keys()),
+          disconnected: Array.from(room.disconnectedPlayers),
+          allPlayerIds: room.allPlayerIds,
+        };
+        return jsonResult(state);
+      }),
   );
 }

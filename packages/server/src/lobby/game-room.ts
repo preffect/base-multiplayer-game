@@ -113,8 +113,8 @@ export class GameRoom {
 
   private tickStep(): void {
     const t0 = performance.now();
-    this.game.reduceGameState(); // TODO hook: advance one tick
-    const snapshot = this.game.serializeRoomState(); // TODO hook: build broadcast payload
+    this.game.reduceGameState(); // TODO(game) hook: advance one tick
+    const snapshot = this.game.serializeRoomState(); // TODO(game) hook: build broadcast payload
     const bytes = broadcastMessage(this.playerConnections.values(), {
       type: 'game_snapshot',
       snapshot,

@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { DebugContext } from '../debug-context.js';
+import { jsonResult } from '../tool-result.js';
 
 /** Generic, game-agnostic connection/player visibility tools. */
 export function registerConnectionTools(mcp: McpServer, ctx: DebugContext): void {
@@ -10,6 +11,6 @@ export function registerConnectionTools(mcp: McpServer, ctx: DebugContext): void
       avatarIndex: c.avatarIndex,
       readyState: c.socket.readyState,
     }));
-    return { content: [{ type: 'text', text: JSON.stringify(conns, null, 2) }] };
+    return jsonResult(conns);
   });
 }

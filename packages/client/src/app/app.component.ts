@@ -7,7 +7,7 @@ import { MultiplayerService } from './services/multiplayer.service';
  *
  * It exercises the full multiplayer plumbing — connect, join lobby, create /
  * join / start a game, and view the live room state + latest snapshot JSON —
- * without implementing any specific game. The marked TODO area is where the
+ * without implementing any specific game. The marked `TODO(game)` area is where the
  * real game canvas/board mounts (see `game/game-setup.ts`).
  */
 @Component({

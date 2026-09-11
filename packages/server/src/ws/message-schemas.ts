@@ -7,17 +7,15 @@ import { z } from 'zod';
  * payload schema with the real game input shape.
  */
 
-const joinLobbySchema = z.object({
-  type: z.literal('join_lobby'),
+/** The profile a player sends when joining the lobby and when updating it. */
+const playerProfileFields = {
   playerName: z.string().min(1).max(20),
   avatarIndex: z.number().int().min(0).max(5),
-});
+};
 
-const updatePlayerInfoSchema = z.object({
-  type: z.literal('update_player_info'),
-  playerName: z.string().min(1).max(20),
-  avatarIndex: z.number().int().min(0).max(5),
-});
+const joinLobbySchema = z.object({ type: z.literal('join_lobby'), ...playerProfileFields });
+
+const updatePlayerInfoSchema = z.object({ type: z.literal('update_player_info'), ...playerProfileFields });
 
 const createGameSchema = z.object({
   type: z.literal('create_game'),

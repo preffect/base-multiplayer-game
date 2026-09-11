@@ -15,7 +15,7 @@ Everything runs **inside the devcontainer**; ports come from `PORTS.env`.
 
 ```bash
 ./dev-container.sh          # host: build/start + attach (DEVCONTAINER_YES=1 for non-interactive)
-./validate.sh all           # container: lint + typecheck + test — builds packages/shared first
+./validate.sh all           # container: lint + duplication + typecheck + test — builds packages/shared first
 ./run.sh                    # container: server + client (see PORTS.env for the ports)
 ```
 

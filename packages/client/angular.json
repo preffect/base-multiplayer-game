@@ -53,7 +53,24 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "tsconfig.spec.json"
+            "tsConfig": "tsconfig.spec.json",
+            "exclude": ["**/*.integration.spec.ts"],
+            "coverage": true,
+            "coverageExclude": ["**/*.spec.ts", "**/testing/**", "src/main.ts", "src/app/app.config.ts"],
+            "coverageReporters": ["text-summary"],
+            "coverageThresholds": {
+              "lines": 79,
+              "branches": 73,
+              "functions": 77,
+              "statements": 79
+            }
+          }
+        },
+        "test-integration": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "include": ["**/*.integration.spec.ts"]
           }
         }
       }

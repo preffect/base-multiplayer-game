@@ -133,7 +133,7 @@ Then open two browser tabs at the client to exercise the lobby → create → jo
 ### Validation
 
 ```bash
-./validate.sh all       # lint + typecheck + test across all packages
+./validate.sh all       # lint + duplication + typecheck + test across all packages
 ./validate.sh test      # tests only
 ./validate.sh typecheck # type check only
 ./validate.sh lint      # eslint + prettier --check

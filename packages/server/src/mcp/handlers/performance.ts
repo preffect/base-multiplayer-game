@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { DebugContext } from '../debug-context.js';
+import { errorResult, jsonResult, textResult } from '../tool-result.js';
 
 /** Generic server + per-room performance/heartbeat tools. */
 export function registerPerformanceTools(mcp: McpServer, ctx: DebugContext): void {
@@ -14,28 +15,17 @@ export function registerPerformanceTools(mcp: McpServer, ctx: DebugContext): voi
       const pendingGames = ctx.lobbyManager.listPendingGames().size;
       const totalConnections = ctx.connections.size;
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                uptimeSeconds: Math.round(uptime),
-                memoryMB: {
-                  rss: Math.round(mem.rss / 1024 / 1024),
-                  heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
-                  heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
-                },
-                activeRooms,
-                pendingGames,
-                totalConnections,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResult({
+        uptimeSeconds: Math.round(uptime),
+        memoryMB: {
+          rss: Math.round(mem.rss / 1024 / 1024),
+          heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+          heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+        },
+        activeRooms,
+        pendingGames,
+        totalConnections,
+      });
     },
   );
 
@@ -52,10 +42,7 @@ export function registerPerformanceTools(mcp: McpServer, ctx: DebugContext): voi
         : Array.from(ctx.lobbyManager.listActiveRooms().entries());
 
       if (rooms.length === 0) {
-        return {
-          content: [{ type: 'text', text: args.gameId ? `Room "${args.gameId}" not found` : 'No active rooms' }],
-          isError: !!args.gameId,
-        };
+        return args.gameId ? errorResult(`Room "${args.gameId}" not found`) : textResult('No active rooms');
       }
 
       const result = rooms.map(([gameId, room]) => ({
@@ -64,7 +51,7 @@ export function registerPerformanceTools(mcp: McpServer, ctx: DebugContext): voi
         ...room.perfTracker.getStats(),
       }));
 
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      return jsonResult(result);
     },
   );
 }

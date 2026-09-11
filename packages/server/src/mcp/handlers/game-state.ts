@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { DebugContext } from '../debug-context.js';
+import { withActiveRoom } from '../active-room.js';
+import { jsonResult } from '../tool-result.js';
 
 /**
  * Generic per-room game-state dump.
@@ -18,18 +20,14 @@ export function registerGameStateTools(mcp: McpServer, ctx: DebugContext): void 
     'debug_get_game_state',
     'Get the full game-state blob for an active room (game-specific once wired; otherwise the opaque broadcast snapshot)',
     { gameId: z.string().describe('The game ID') },
-    (args) => {
-      const room = ctx.lobbyManager.getActiveRoom(args.gameId);
-      if (!room) {
-        return { content: [{ type: 'text', text: `Game "${args.gameId}" not found or not active` }], isError: true };
-      }
+    (args) =>
+      withActiveRoom(ctx, args.gameId, (room) => {
+        const blob = ctx.getRoomGameState?.(args.gameId) ?? {
+          note: 'No game-specific state inspector wired yet — implement getRoomGameState in the init step. Falling back to the opaque broadcast snapshot.',
+          snapshot: room.getSnapshot(),
+        };
 
-      const blob = ctx.getRoomGameState?.(args.gameId) ?? {
-        note: 'No game-specific state inspector wired yet — implement getRoomGameState in the init step. Falling back to the opaque broadcast snapshot.',
-        snapshot: room.getSnapshot(),
-      };
-
-      return { content: [{ type: 'text', text: JSON.stringify(blob, null, 2) }] };
-    },
+        return jsonResult(blob);
+      }),
   );
 }

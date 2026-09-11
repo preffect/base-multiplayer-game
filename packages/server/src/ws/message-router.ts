@@ -7,7 +7,7 @@ type M<T extends string> = Extract<ValidatedClientMessage, { type: T }>;
 /**
  * The set of handlers the lobby provides. This is the generic seam between the
  * transport (router) and the application (lobby). Game-specific verbs are added
- * by extending the schema + this interface + the switch below (see TODO).
+ * by extending the schema + this interface + the switch below (see the TODO(game) markers).
  */
 export interface MessageHandlers {
   onJoinLobby: (c: Connection, m: M<'join_lobby'>) => void;

@@ -29,6 +29,9 @@ data/
 # Angular cache
 .angular/
 
+# Coverage output (the gate prints a summary; reports are never committed)
+coverage/
+
 # Devcontainer build artifact
 .devcontainer/.build-checksum
 

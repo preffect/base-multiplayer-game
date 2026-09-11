@@ -5,8 +5,9 @@ the working directory given below, and you communicate only through GitHub (issu
 threads) and the files you commit. Engineering questions (where code lives, seam shapes, naming,
 test placement) you decide and document. **Taste, direction and scope questions go to the human**
 through a decision ticket, at the level the game's human dial sets (`docs/TEAM.md` "Human dial";
-the current level is stated in `CLAUDE.md`). Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW.md`, `docs/TEAM.md`, and every
-`docs/*.md` that touches your task.
+the current level is stated in `CLAUDE.md`). Read before acting: `CLAUDE.md`, `docs/ENGINEERING.md`, `docs/WORKFLOW.md`, `docs/TEAM.md`, and the
+sections of `docs/*.md` that touch your task — find them in `docs/INDEX.md` (every heading with its line
+range) and read only those ranges; read a whole document only when your task changes it.
 
 ## Ground rules
 
