@@ -98,7 +98,11 @@ scripts/land-pr.sh 57 --reviewers "architect gameplay-qa"    # code-qa is always
 ```
 
 1. Each reviewer role reviews in turn and posts one review whose first line is its verdict
-   (`<role> verdict: APPROVE` or `REQUEST_CHANGES`) with line-anchored comments.
+   (`<role> verdict: APPROVE` or `REQUEST_CHANGES`) with line-anchored comments. **Reviewers
+   cite the gate stamp for the head they review instead of re-running it**: `./validate.sh all`
+   on the checked-out head prints `cached green from <time> at tree <hash>` when that exact tree
+   was already gated green (`docs/ENGINEERING.md` §1; the stamp is shared across worktrees), and
+   the verdict quotes that line. A reviewer re-runs only when the head moved or it changed files.
 2. If anyone objects, or any thread (including Copilot's) is unresolved, an engineer run fixes,
    replies on every thread and merges `origin/main` into the branch (no rebase: it would mark every
    thread outdated); the objecting roles (and code-qa while any thread is open) re-review and

@@ -14,8 +14,16 @@
 #   -tN        Tail N lines of output (e.g. -t20)
 #   -hN        Head N lines of output (e.g. -h50)
 #   -G PATTERN Grep output for PATTERN
+#   --fresh    Ignore the result cache and re-run (a green result is still stamped)
 #
-# Extra args after -- are passed to the underlying command.
+# Extra args after -- are passed to the underlying command (and disable the result cache).
+#
+# Result cache (docs/ENGINEERING.md §1): a green run is stamped under
+# $HOME/.cache/<slug>-validate/<tree>.<command> (override the directory with VALIDATE_CACHE_DIR),
+# keyed by `git write-tree` of the whole working tree, tracked and untracked, plus the Node major
+# version. A repeat call on the same tree prints `cached green from <time> at tree <hash>` and the
+# stored log path, applies -t/-h/-G to the stored log, and exits 0. Red is never cached. `all`
+# stamps each phase and itself. Shared across worktrees at the same content.
 #
 # Examples:
 #   ./validate.sh test                    # run all tests
@@ -29,6 +37,7 @@ HEAD_N=""
 GREP_PAT=""
 COMMAND=""
 EXTRA_ARGS=()
+FRESH=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -53,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       GREP_PAT="${1#-G}"
       shift
       ;;
+    --fresh)
+      FRESH=1
+      shift
+      ;;
     --)
       shift
       EXTRA_ARGS=("$@")
@@ -66,7 +79,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$COMMAND" ]]; then
-  echo "Usage: ./validate.sh <test|integration|typecheck|lint|duplication|all> [-tN] [-hN] [-G pattern] [-- extra-args...]" >&2
+  echo "Usage: ./validate.sh <test|integration|typecheck|lint|duplication|all> [-tN] [-hN] [-G pattern] [--fresh] [-- extra-args...]" >&2
   exit 1
 fi
 
@@ -87,6 +100,117 @@ apply_filters() {
   fi
 
   echo "$input"
+}
+
+# ---------------------------------------------------------------------------
+# Result cache (see the header). Only green runs are stamped; a stamp is
+# key=value lines: exit, time, log, node, command, tree.
+# ---------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ALL_PHASES=(lint duplication typecheck test)
+CACHE_DIR=""
+TREE_HASH=""
+NODE_MAJOR=""
+RUN_ONE_OUTPUT=""
+ALL_RAW_FILE="" # set by `all`: every phase appends its raw output here for the `all` stamp's log
+
+# The cache name: SLUG from PORTS.env, else the main checkout's directory name (the same for
+# every worktree of the repo), else this directory's name.
+cache_slug() {
+  local slug
+  slug="$(sed -n 's/^SLUG=//p' "$SCRIPT_DIR/PORTS.env" 2>/dev/null | head -n 1)"
+  if [[ -z "$slug" ]]; then
+    local common_dir
+    common_dir="$(git -C "$SCRIPT_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    [[ -n "$common_dir" ]] && slug="$(basename "$(dirname "$common_dir")")"
+  fi
+  [[ -n "$slug" ]] || slug="$(basename "$SCRIPT_DIR")"
+  echo "$slug"
+}
+
+# One hash for the exact working tree, tracked and untracked (ignored files excluded), without
+# touching the real index: copy it (so unchanged files are not re-hashed), `git add -A` into the
+# copy, `git write-tree`. Empty when this is not a git checkout.
+cache_tree_hash() {
+  local real_index temp_index hash
+  real_index="$(git -C "$SCRIPT_DIR" rev-parse --path-format=absolute --git-path index 2>/dev/null || true)"
+  [[ -n "$real_index" ]] || return 0
+  temp_index="$(mktemp)"
+  [[ -f "$real_index" ]] && cp "$real_index" "$temp_index"
+  hash="$(cd "$SCRIPT_DIR" && GIT_INDEX_FILE="$temp_index" git add -A . 2>/dev/null \
+    && GIT_INDEX_FILE="$temp_index" git write-tree 2>/dev/null || true)"
+  rm -f "$temp_index"
+  echo "$hash"
+}
+
+cache_init() {
+  # Extra args change what runs, so the result is not comparable: no cache for those calls.
+  [[ ${#EXTRA_ARGS[@]} -eq 0 ]] || return 0
+  TREE_HASH="$(cache_tree_hash)"
+  [[ -n "$TREE_HASH" ]] || return 0
+  NODE_MAJOR="$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/')"
+  CACHE_DIR="${VALIDATE_CACHE_DIR:-$HOME/.cache/$(cache_slug)-validate}"
+  mkdir -p "$CACHE_DIR/logs"
+}
+
+cache_stamp_path() { echo "$CACHE_DIR/$TREE_HASH.$1"; }
+cache_log_path() { echo "$CACHE_DIR/logs/$TREE_HASH.$1.log"; }
+stamp_field() { sed -n "s/^$2=//p" "$1" | head -n 1; }
+have_filters() { [[ -n "$GREP_PAT" || -n "$HEAD_N" || -n "$TAIL_N" ]]; }
+
+# Prints the cached-green lines (and the filtered stored log when a filter is set) and returns 0
+# when a green stamp exists for this tree, command and Node major; returns 1 otherwise.
+cache_hit() {
+  local cmd="$1" stamp
+  [[ -n "$CACHE_DIR" && $FRESH -eq 0 ]] || return 1
+  stamp="$(cache_stamp_path "$cmd")"
+  [[ -f "$stamp" ]] || return 1
+  [[ "$(stamp_field "$stamp" exit)" == "0" && "$(stamp_field "$stamp" node)" == "$NODE_MAJOR" ]] || return 1
+  local log
+  log="$(stamp_field "$stamp" log)"
+  echo "cached green from $(stamp_field "$stamp" time) at tree $TREE_HASH"
+  echo "log: $log"
+  if have_filters && [[ -f "$log" ]]; then
+    apply_filters < "$log"
+  fi
+}
+
+# Stamps a green run of <cmd> whose raw output is <output>, unless the run changed the tree.
+cache_store() {
+  local cmd="$1" output="$2"
+  [[ -n "$CACHE_DIR" ]] || return 0
+  if [[ "$(cache_tree_hash)" != "$TREE_HASH" ]]; then
+    echo "not cached: the run changed the working tree"
+    return 0
+  fi
+  local stamp log
+  stamp="$(cache_stamp_path "$cmd")"
+  log="$(cache_log_path "$cmd")"
+  printf '%s\n' "$output" > "$log"
+  printf 'exit=0\ntime=%s\nlog=%s\nnode=%s\ncommand=%s\ntree=%s\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$log" "$NODE_MAJOR" "$cmd" "$TREE_HASH" > "$stamp.tmp"
+  mv "$stamp.tmp" "$stamp"
+}
+
+append_all_raw() { [[ -z "$ALL_RAW_FILE" ]] || printf '%s\n' "$1" >> "$ALL_RAW_FILE"; }
+
+# Runs <cmd> through the cache: a hit prints the stamp; a green run is stamped; red never is.
+run_cached() {
+  local cmd="$1"
+  shift
+  local hit_text
+  if hit_text="$(cache_hit "$cmd")"; then
+    echo "$hit_text"
+    append_all_raw "$hit_text"
+    return 0
+  fi
+  local rc=0
+  run_one "$cmd" "$@" || rc=$?
+  append_all_raw "$RUN_ONE_OUTPUT"
+  if [[ $rc -eq 0 ]]; then
+    cache_store "$cmd" "$RUN_ONE_OUTPUT"
+  fi
+  return $rc
 }
 
 build_shared() {
@@ -190,25 +314,38 @@ ${extra}"
       ;;
   esac
 
+  RUN_ONE_OUTPUT="$output"
   echo "$output" | apply_filters
   return $rc
 }
 
+cache_init
+
 if [[ "$COMMAND" == "all" ]]; then
+  if cache_hit all; then
+    exit 0
+  fi
   failed=()
-  for cmd in lint duplication typecheck test; do
+  ALL_RAW_FILE="$(mktemp)"
+  for cmd in "${ALL_PHASES[@]}"; do
     echo "=== $cmd ==="
-    if ! run_one "$cmd" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"; then
+    append_all_raw "=== $cmd ==="
+    if ! run_cached "$cmd" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"; then
       failed+=("$cmd")
     fi
     echo ""
+    append_all_raw ""
   done
   if [[ ${#failed[@]} -gt 0 ]]; then
+    rm -f "$ALL_RAW_FILE"
     echo "FAILED: ${failed[*]}"
     exit 1
   else
     echo "ALL PASSED"
+    append_all_raw "ALL PASSED"
+    cache_store all "$(cat "$ALL_RAW_FILE")"
+    rm -f "$ALL_RAW_FILE"
   fi
 else
-  run_one "$COMMAND" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+  run_cached "$COMMAND" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 fi

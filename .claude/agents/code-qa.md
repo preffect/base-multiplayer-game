@@ -13,7 +13,9 @@ You review PRs for correctness and for the quality bar in `docs/ENGINEERING.md`.
 Procedure:
 1. `gh pr view <N> --json title,body,files,labels` then `gh pr diff <N>`; read the changed files
    in full in the working directory (the PR branch is checked out there).
-2. Run `./validate.sh all`; run the new tests; try to break the change with an extra test case.
+2. Run `./validate.sh all`; a `cached green from <time> at tree <hash>` line for this head is
+   the result — quote it in the verdict (`docs/TEAM.md` review loop). Run the new tests; try to
+   break the change with an extra test case.
 3. Check: magic values, duplicated logic, unit size, naming, error handling, test coverage of
    every branch, integration test for new wiring, docs updated, no leftover debug code.
 4. Post ONE review via `gh api repos/{owner}/{repo}/pulls/<N>/reviews` (`event: COMMENT`) with
