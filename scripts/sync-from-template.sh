@@ -18,7 +18,8 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   * Never synced: packages/**, game-owned docs/* (only the template docs listed below are),
 #     docs/INIT-GAME.md (one-shot), PORTS.env, .github/project.env, data/.
 #   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
-#     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh).
+#     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh), and the
+#     per-role .claude/roles/<role>.md files that predate the .claude/agents/ definitions.
 #
 # After copying, the template identity is re-applied exactly as presetup.sh does
 # (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME.
@@ -104,9 +105,12 @@ main() {
     IFS='|' read -r src dest marker <<<"$entry"
     if [[ ! -f "$ROOT/$dest" ]] || grep -q "$marker" "$ROOT/$dest"; then copy_file "$src" "$dest"; fi
   done
-  # Template-only files (scripts/lib/identity.sh TEMPLATE_ONLY_PATHS) are removed if they crept in.
+  # Template-only files (scripts/lib/identity.sh TEMPLATE_ONLY_PATHS) are removed if they crept in,
+  # as are the per-role .claude/roles/<role>.md copies a game synced before roles became agent definitions.
   removed=()
-  for f in "${TEMPLATE_ONLY_PATHS[@]}"; do
+  stale=("${TEMPLATE_ONLY_PATHS[@]}")
+  for f in "$TEMPLATE"/.claude/agents/*.md; do stale+=(".claude/roles/$(basename "$f")"); done
+  for f in "${stale[@]}"; do
     [[ -e "$ROOT/$f" ]] || continue
     removed+=("$f"); $DRY_RUN || rm -rf "${ROOT:?}/$f"
   done
