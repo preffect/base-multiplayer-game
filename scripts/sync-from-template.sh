@@ -11,7 +11,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # Review the diff, then land it via a PR like any other change.
 #
 #   * Template-owned files (always synced): scripts, devcontainer, run/validate helpers,
-#     process + standards docs, .mcp.json, .jscpd.json, PR template.
+#     process + standards docs, .mcp.json, .jscpd.json, vitest.tiers.ts, PR template.
 #   * Synced only while still template-default: README.md (until its "Status: not yet
 #     defined" banner is replaced).
 #   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md,
@@ -68,7 +68,7 @@ main() {
     .github/workflows/pr-links-issue.yml
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
     dev-container.sh run.sh validate.sh ai-pipeline.sh
-    .mcp.json .jscpd.json .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
+    .mcp.json .jscpd.json vitest.tiers.ts .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
     docs/WORKFLOW.md docs/TEAM.md docs/ENGINEERING.md docs/ASSET-GENERATION.md docs/AUDIO-PIPELINE.md
   )
   # Every team role the template defines (a role added there is synced without editing this list).

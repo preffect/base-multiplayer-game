@@ -7,7 +7,7 @@
 #   integration  Run the *.integration.test.ts / *.integration.spec.ts tier plus the *.gameplay.test.ts scenarios (pnpm -r test:integration)
 #   typecheck    Run type checking (pnpm -r typecheck)
 #   lint         Run linting (eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness)
-#   duplication  Run jscpd against .jscpd.json (docs/CODE-STANDARDS.md §3)
+#   duplication  Run jscpd against .jscpd.json (docs/ENGINEERING.md §3.3)
 #   all          Run lint, duplication, typecheck, test in sequence
 #
 # Options:
@@ -94,7 +94,7 @@ build_shared() {
   pnpm --filter @base-multiplayer-game/shared build > /dev/null 2>&1 || true
 }
 
-# Source files the standards apply to (docs/CODE-STANDARDS.md); tests included.
+# Source files the standards apply to (docs/ENGINEERING.md); tests included.
 PACKAGE_SOURCES=(packages/shared/src packages/server/src packages/client/src)
 # The paths jscpd scans; its thresholds and ignore list live in .jscpd.json.
 DUPLICATION_PATHS=("${PACKAGE_SOURCES[@]}")
@@ -113,7 +113,7 @@ audit_disable_directives() {
   fi
 }
 
-# docs/CODE-STANDARDS.md §7: a TODO carries a ticket number; TODO(game)/TODO(init) are the
+# docs/ENGINEERING.md §3.3: a TODO carries a ticket number; TODO(game)/TODO(init) are the
 # template's extension-point markers and are exempt.
 audit_todo_markers() {
   local untracked
@@ -141,7 +141,7 @@ run_one() {
       fi
       ;;
     integration)
-      # Each package's test:integration script selects the *.integration.* tier (docs/TESTING.md §2).
+      # Each package's test:integration script selects the *.integration.* tier (docs/ENGINEERING.md §2.2).
       build_shared
       output="$(pnpm -r --if-present test:integration "$@" 2>&1)" || rc=$?
       ;;
@@ -176,6 +176,7 @@ run_one() {
       docs_index_out="$(scripts/docs-index.sh --check 2>&1)" || audit_rc=1
 
       output="${lint_out}"
+      local extra
       for extra in "$prettier_out" "$directive_out" "$todo_out" "$docs_index_out"; do
         if [[ -n "$extra" ]]; then
           output="${output}

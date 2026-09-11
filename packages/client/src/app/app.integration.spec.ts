@@ -52,7 +52,11 @@ describe('lobby shell + multiplayer services', () => {
     const snapshot = { tick: SNAPSHOT_TICK };
     socket.receive(JSON.stringify({ type: 'game_snapshot', snapshot }));
     await fixture.whenStable();
+    fixture.detectChanges();
 
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain(GAME_ID);
+    expect(text).toContain('(host)');
     expect(component.mp.inGame()).toBe(true);
     expect(component.mp.gameId()).toBe(GAME_ID);
     expect(component.mp.isHost()).toBe(true);

@@ -17,7 +17,7 @@ Closes #<!-- required: the ticket this PR completes; the pr-links-issue check bl
 - [ ] **SOLID / single responsibility**; composition over `switch` towers; clock/random/transport injected
 - [ ] **Size limits** — files ≤ 300 lines, functions ≤ 40, complexity ≤ 10, ≤ 4 params
 - [ ] **Full descriptive names** — no abbreviations (allow `x`, `y`, `id`); predicate booleans; units in names
-- [ ] **Unit tests** for all new logic; **integration test** if crossing a subsystem; **gameplay scenario** if rules/balance changed; coverage floors held (`docs/TESTING.md`)
+- [ ] **Unit tests** for all new logic; **integration test** if crossing a subsystem; **gameplay scenario** if rules/balance changed; coverage floors held (`docs/ENGINEERING.md` §2.5)
 - [ ] **Determinism preserved** — no `Math.random` / `Date.now` / `performance.now` in simulation code
 - [ ] **Docs in sync** — `README.md` / `CLAUDE.md` / `docs/WORKFLOW.md` (and any doc describing what changed) updated in this PR and consistent with each other; template-level fixes upstreamed to `base-multiplayer-game` <!-- KEEP_TEMPLATE_NAME -->
 - [ ] Constants / `data/*.json` updated

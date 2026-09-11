@@ -15,6 +15,7 @@ const AVATAR_INDEX = 2;
 const FIRST_TICK = 1;
 const SECOND_TICK = 2;
 const REJOIN_TICK = 7;
+const BINARY_FRAME = new ArrayBuffer(8);
 const SESSION_CONFIG = { maxPlayers: MAX_PLAYERS };
 
 function openService(): { service: MultiplayerService; socket: FakeWebSocket } {
@@ -143,9 +144,12 @@ describe('MultiplayerService', () => {
   it('ignores malformed frames and reconnects after an unexpected close', () => {
     vi.useFakeTimers();
     const { service, socket } = openService();
+    receive(socket, { type: 'game_snapshot', snapshot: { tick: FIRST_TICK } });
     socket.receive('not json');
-    socket.receive(FIRST_TICK);
+    socket.receive(BINARY_FRAME);
+    socket.receive('{"type":"game_snapshot" broken');
     expect(service.lastError()).toBeNull();
+    expect(service.latestSnapshot()).toEqual({ tick: FIRST_TICK });
 
     socket.close();
     expect(service.connected()).toBe(false);
