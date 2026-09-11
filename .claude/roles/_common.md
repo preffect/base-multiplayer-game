@@ -21,6 +21,14 @@ range) and read only those ranges; read a whole document only when your task cha
 4. **Docs stay in sync** in the same PR (`docs/WORKFLOW.md` section 6).
 5. **Reviews are conversations.** Authors reply on every review thread describing the change;
    reviewers verify and resolve. Authors never resolve their own threads and never merge.
+   Reviewers: round one runs in parallel with the other reviewers on the same head and the author
+   answers all of you in one fix round; a round-two review re-reads only the diff since your
+   previous verdict (`git diff <r1-head>..<head>`) and the replies on your own threads — not the
+   whole PR, not the docs — and its verdict comment says `round 2 (diff-only)`; a green
+   `./validate.sh all` already posted for the head you review (the author's gate line in the PR
+   body, or the `cached green ... at tree <hash>` stamp) is cited, not re-run, unless you changed
+   files or the head moved. The lead resolves purely mechanical round-two threads itself
+   (`docs/WORKFLOW.md` section 6).
 6. **Small, complete work.** Finish the task fully or say exactly what is left in the PR body.
    Do not widen scope; file a new ticket (`gh issue create`) for anything you discover instead.
 7. **GitHub budget.** One account serves every agent, and GitHub blocks it after ~80

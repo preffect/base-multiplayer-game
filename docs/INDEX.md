@@ -65,23 +65,23 @@ and read only that line range (`sed -n 'start,endp' docs/FILE.md`). Regenerate a
   - **7. Verification** (L224–248): Run everything INSIDE the devcontainer (open it from the host with `./dev-container.sh`): `pnpm install`; `./validate.sh all`; `./run.sh`; open two browser tabs on the client port; confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
   - **8. Cleanup — the game is now defined** (L249–263): As the last action of this session, remove the scaffolding that only made sense before the game existed, in the same PR as `docs/GAME-DESIGN.md`:
 
-## TEAM.md (148 lines)
+## TEAM.md (159 lines)
 
-- **The agent team** (L1–148): How work on this game is done by a team of AI agents, each running inside the devcontainer as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`; quality bar: `docs/ENGINEERING.md`).
+- **The agent team** (L1–159): How work on this game is done by a team of AI agents, each running inside the devcontainer as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`; quality bar: `docs/ENGINEERING.md`).
 - **Roles** (L7–28): `.claude/roles/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to finish.
 - **Human dial** (L29–46): How much the human steers, set per game in `CLAUDE.md` ("Human dial: N") and changeable per phase.
 - **Running an agent** (L47–88): The roles are Claude Code agent definitions in `.claude/agents/<role>.md`, so inside the devcontainer the team lead spawns them with the Agent tool (`subagent_type: "<role>"`), where they show up in the interface with live progress and can be messaged while running.
-- **Landing a PR: the review loop** (L89–129): In session (Agent tool): spawn each reviewer role with the PR in its prompt, read `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved threads), spawn an engineer for the fixes, re-spawn the objecting reviewers, then `gh pr merge --squash --auto`.
-- **Handoffs and artifacts** (L130–143): These names supersede the ones in ticket #18: balance lives with the other constants (`data/` is git-ignored runtime state, so `data/balance.json` cannot be a reviewed artifact), and the design document is `docs/GAME-DESIGN.md` as the design tickets name it.
-- **Definition of Done (per ticket)** (L144–148): `docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or playable) the PR carries evidence from graphics-qa or gameplay-qa.
+- **Landing a PR: the review loop** (L89–140): In session (Agent tool): spawn all round-one reviewers together — every reviewer role the table below names, each with the PR in its prompt, in one message (within the agent cap; when a builder holds a slot they still start together as soon as it frees) — read `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved threads), spawn ONE engineer for the consolidated fixes across every reviewer's threads, re-spawn only the objecting reviewers for a diff-only round two, resolve the purely mechanical round-two threads yourself, then `gh pr merge --squash --auto`.
+- **Handoffs and artifacts** (L141–154): These names supersede the ones in ticket #18: balance lives with the other constants (`data/` is git-ignored runtime state, so `data/balance.json` cannot be a reviewed artifact), and the design document is `docs/GAME-DESIGN.md` as the design tickets name it.
+- **Definition of Done (per ticket)** (L155–159): `docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or playable) the PR carries evidence from graphics-qa or gameplay-qa.
 
-## WORKFLOW.md (135 lines)
+## WORKFLOW.md (149 lines)
 
-- **Workflow — GitHub issues, project board, reviews** (L1–135): The single source of truth for how work is tracked and merged in a game built from this template.
+- **Workflow — GitHub issues, project board, reviews** (L1–149): The single source of truth for how work is tracked and merged in a game built from this template.
 - **1. Where things live** (L8–23): GitHub stores Projects under the user/org, not inside the repo; the project is _linked_ to the repo so it appears in the repo's Projects tab and only holds this repo's issues.
 - **2. Labels (category), Status (stage), assignee (ball in court)** (L24–43): design, architecture, gameplay, graphics, networking, ui, audio, qa, docs), `role:*` (the agent role that owns it), `priority:p0|p1|p2`, `epic`, `roadmap`, `needs-decision`, `pending`.
 - **3. Milestones and epics** (L44–59): gates, testing foundations) and `M1 Design` (design docs, architecture, build plan).
 - **4. Keeping the board in sync (no UI workflows)** (L60–71): The Project's UI-only automations (auto-add, auto-close) are replaced by `scripts/project-sync.sh`, which is idempotent and safe to run any time:
 - **5. Branch and PR rules** (L72–95): Every piece of work starts as a ticket — no exceptions, including template and tooling work.
-- **6. Review process (every PR)** (L96–120): and config live, test plan.
-- **7. Scripts** (L121–135): `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).
+- **6. Review process (every PR)** (L96–134): and config live, test plan.
+- **7. Scripts** (L135–149): `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).

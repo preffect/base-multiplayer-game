@@ -106,6 +106,20 @@ status.
 5. Merge only with `./validate.sh all` output in the PR, all threads resolved, all checks green.
    The author never merges their own PR when a reviewer role exists.
 
+**Review rounds** (#76). Round one runs **in parallel**: every reviewer named on the PR is spawned
+at once (within the account's agent cap; if the cap is two and a builder is running, the reviewers
+still start together as soon as a slot frees), each posts one verdict review, and the author gets
+**one consolidated fix round** covering all reviewers' threads. **Later rounds are light**: a
+round-two reviewer re-reads only the diff since its previous verdict (`git diff <r1-head>..<head>`)
+and the replies on its own threads — it does not re-review the whole PR and does not re-read the
+docs — resolves or re-opens its threads on that basis, and its verdict comment says
+`round 2 (diff-only)`. **Trust a posted green gate for the same head**: a reviewer whose PR head
+already carries a green `./validate.sh all` result — the author's gate line in the PR body, or the
+`cached green ... at tree <hash>` stamp from the result cache (`docs/ENGINEERING.md` §1) — cites it
+instead of re-running, and re-runs only when it changed files or the head moved. The **lead
+resolves purely mechanical round-two threads** (a rename, a moved constant, deleted dead code,
+verified by diff) itself instead of a further reviewer pass.
+
 **Docs stay in sync.** Any PR that changes behaviour, scripts, tooling, or process updates the
 docs that describe it in the same PR — `README.md`, `CLAUDE.md`, `docs/WORKFLOW.md`, `docs/ENGINEERING.md`,
 `.devcontainer/*` comments — and keeps them consistent with each other
