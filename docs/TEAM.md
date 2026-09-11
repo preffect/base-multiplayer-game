@@ -88,26 +88,37 @@ scripts/agent.sh code-qa --pr 57 --branch feat/42-food-ecology "Review PR #57"
 
 ## Landing a PR: the review loop
 
-In session (Agent tool): spawn each reviewer role with the PR in its prompt, read
+In session (Agent tool): **spawn all round-one reviewers together** — every reviewer role the
+table below names, each with the PR in its prompt, in one message (within the agent cap; when a
+builder holds a slot they still start together as soon as it frees) — read
 `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved
-threads), spawn an engineer for the fixes, re-spawn the objecting reviewers, then
-`gh pr merge --squash --auto`. Headless, the same loop is scripted:
+threads), spawn ONE engineer for the consolidated fixes across every reviewer's threads, re-spawn
+only the objecting reviewers for a diff-only round two, resolve the purely mechanical round-two
+threads yourself, then `gh pr merge --squash --auto`. Headless, `land-pr.sh` runs the same rounds
+(its reviewers run one after another on the one container, with the same round semantics):
 
 ```bash
 scripts/land-pr.sh 57 --reviewers "architect gameplay-qa"    # code-qa is always added
 ```
 
-1. Each reviewer role reviews in turn and posts one review whose first line is its verdict
-   (`<role> verdict: APPROVE` or `REQUEST_CHANGES`) with line-anchored comments. **Reviewers
-   cite the gate stamp for the head they review instead of re-running it**: `./validate.sh all`
-   on the checked-out head prints `cached green from <time> at tree <hash>` when that exact tree
-   was already gated green (`docs/ENGINEERING.md` §1; the stamp is shared across worktrees), and
-   the verdict quotes that line. A reviewer re-runs only when the head moved or it changed files.
-2. If anyone objects, or any thread (including Copilot's) is unresolved, an engineer run fixes,
-   replies on every thread and merges `origin/main` into the branch (no rebase: it would mark every
-   thread outdated); the objecting roles (and code-qa while any thread is open) re-review and
-   resolve what is fixed. Authors never resolve their own threads.
-3. When every reviewer's latest verdict is APPROVE and no thread is open, auto-merge is armed
+1. **Round one, in parallel:** every reviewer reviews the same head at once and posts one review
+   whose first line is its verdict (`<role> verdict: APPROVE` or `REQUEST_CHANGES`) with
+   line-anchored comments. **Trust a posted green gate for the same head:** a reviewer whose PR
+   head already carries a green `./validate.sh all` result — the author's gate line in the PR body,
+   or the `cached green from <time> at tree <hash>` stamp `./validate.sh all` prints on the
+   checked-out head when that exact tree was already gated (`docs/ENGINEERING.md` §1; shared across
+   worktrees) — cites it in the verdict instead of re-running, and re-runs only when it changed
+   files or the head moved.
+2. If anyone objects, or any thread (including Copilot's) is unresolved, ONE engineer run fixes
+   every reviewer's threads together, replies on every thread and merges `origin/main` into the
+   branch (no rebase: it would mark every thread outdated). Authors never resolve their own threads.
+3. **Later rounds are light (diff-only):** only the objecting roles (and code-qa while any thread
+   is open) re-review, and each re-reads only the diff since its previous verdict
+   (`git diff <r1-head>..<head>`) and the replies on its own threads — not the whole PR, not the
+   docs — resolves or re-opens its threads on that basis, and starts its verdict comment with
+   `round 2 (diff-only)`. The lead resolves purely mechanical round-two threads (a rename, a moved
+   constant, deleted dead code, verified by diff) itself instead of a further reviewer pass.
+4. When every reviewer's latest verdict is APPROVE and no thread is open, auto-merge is armed
    (squash; the `pr-links-issue` check still has to pass). At most three rounds; a reviewer or
    engineer run that fails is reported and counts as a round; otherwise the script exits non-zero
    with the PR state and the team lead decides.
