@@ -21,6 +21,8 @@
     "@vitest/coverage-v8": "^3.0.0",
     "angular-eslint": "^21.0.0",
     "eslint": "^9.0.0",
+    "eslint-plugin-sonarjs": "^4.2.0",
+    "eslint-plugin-unicorn": "^74.0.0",
     "jscpd": "^4.0.0",
     "pixelmatch": "^7.0.0",
     "pngjs": "^7.0.0",

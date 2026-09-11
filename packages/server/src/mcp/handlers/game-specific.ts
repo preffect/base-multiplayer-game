@@ -11,18 +11,15 @@ import type { DebugContext } from '../debug-context.js';
  *     'debug_get_entities',
  *     'List all entities in a room',
  *     { gameId: z.string().describe('The game ID') },
- *     (args) => {
- *       const room = ctx.lobbyManager.getActiveRoom(args.gameId);
- *       if (!room) {
- *         return { content: [{ type: 'text', text: `Game "${args.gameId}" not found` }], isError: true };
- *       }
- *       // TODO(game): read structured game state off the room / GameModule.
- *       const entities = []; // e.g. room.getEntities()
- *       return { content: [{ type: 'text', text: JSON.stringify(entities, null, 2) }] };
- *     },
+ *     (args) =>
+ *       withActiveRoom(ctx, args.gameId, (room) => {
+ *         // TODO(game): read structured game state off the room / GameModule.
+ *         const entities = []; // e.g. room.getEntities()
+ *         return jsonResult(entities); // ../tool-result.js, ../active-room.js
+ *       }),
  *   );
  *
- * Mirror morris's mcp/handlers/{entities,tiles}.ts for richer examples.
+ * The generic handlers in this directory show the shape.
  * Registered by mcp-server.ts after the generic tools, so it is a no-op until
  * you fill it in.
  */

@@ -11,11 +11,14 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # Review the diff, then land it via a PR like any other change.
 #
 #   * Template-owned files (always synced): scripts, devcontainer, run/validate helpers,
-#     process + standards docs, .mcp.json, PR template, .gitignore.
+#     process + standards docs, .mcp.json, .jscpd.json, vitest.tiers.ts, PR template.
 #   * Synced only while still template-default: README.md (until its "Status: not yet
 #     defined" banner is replaced).
-#   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md.
-#   * Never synced: packages/**, game-owned docs/* (only the template docs listed below are),
+#   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md,
+#     .gitignore (games add their own ignores under the template's).
+#   * Never synced: package.json (its devDependencies — jscpd, @vitest/coverage-v8, the eslint
+#     plugins — are game-owned and must stay present for validate.sh), packages/**, game-owned
+#     docs/* (only the template docs listed below are),
 #     docs/INIT-GAME.md (one-shot), PORTS.env, .github/project.env, data/.
 #   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
 #     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh), and the
@@ -61,13 +64,13 @@ main() {
 
   ALWAYS=(
     scripts/project-sync.sh scripts/issue-status.sh scripts/github-setup.sh scripts/sync-from-template.sh
-    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/worktree.sh scripts/resume-in-container.sh scripts/pr-threads.sh
+    scripts/lib/identity.sh scripts/agent.sh scripts/land-pr.sh scripts/worktree.sh scripts/resume-in-container.sh scripts/pr-threads.sh scripts/docs-index.sh
     .claude/.gitignore
     scripts/github/setup_project.py scripts/github/groundwork-issues.json scripts/github/main-ruleset.json
     .github/workflows/pr-links-issue.yml
     .devcontainer/Dockerfile .devcontainer/devcontainer.json .devcontainer/.tmux.conf .devcontainer/post-create.sh
     dev-container.sh run.sh validate.sh ai-pipeline.sh
-    .mcp.json .gitignore .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
+    .mcp.json .jscpd.json vitest.tiers.ts .prettierrc .prettierignore .github/PULL_REQUEST_TEMPLATE.md
     docs/WORKFLOW.md docs/TEAM.md docs/ENGINEERING.md docs/ASSET-GENERATION.md docs/AUDIO-PIPELINE.md
   )
   # Every team role the template defines (a role added there is synced without editing this list).
@@ -77,7 +80,7 @@ main() {
   CONDITIONAL+=("README.game.md|README.md|Status: not yet defined")
   # Files agents are told to edit in place (CLAUDE.md sections, team roles): never overwritten —
   # drift against the template is reported for a manual merge instead.
-  MANUAL=(CLAUDE.md .claude/commands/team.md)
+  MANUAL=(CLAUDE.md .claude/commands/team.md .gitignore) # .gitignore: games add their own ignores
 
   # ---- render a template file with THIS game's identity (scripts/lib/identity.sh) -------
   render() { # template-file -> rendered temp file (path echoed)
@@ -134,6 +137,8 @@ main() {
   if ((${#copied[@]})) && ! $DRY_RUN && [[ -x "$ROOT/node_modules/.bin/prettier" ]]; then
     (cd "$ROOT" && node_modules/.bin/prettier --write --ignore-unknown "${copied[@]}" >/dev/null 2>&1 || true)
   fi
+  # The docs index quotes headings and first sentences of docs this run may have replaced.
+  if ((${#copied[@]} + ${#removed[@]})) && ! $DRY_RUN; then "$ROOT/scripts/docs-index.sh" >/dev/null; fi
   if ((${#copied[@]} + ${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
   elif ((${#copied[@]})); then

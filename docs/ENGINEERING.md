@@ -4,8 +4,8 @@ These are **enforceable rules**, not suggestions. They are written in the impera
 each is checkable. An AI building a game from this template MUST follow every rule here.
 "It compiles" and "it renders" are never sufficient — the gate below is.
 
-> **THE GATE:** `./validate.sh all` (lint + typecheck + test) is the single source of truth
-> for whether work is done. No task is complete until it is green. Never commit red.
+> **THE GATE:** `./validate.sh all` (lint + duplication + typecheck + test) is the single source
+> of truth for whether work is done. No task is complete until it is green. Never commit red.
 
 ---
 
@@ -17,22 +17,31 @@ each is checkable. An AI building a game from this template MUST follow every ru
    - pre-builds `@base-multiplayer-game/shared` before typecheck (`build_shared`) so downstream
      `.d.ts` project references are fresh — running `tsc` directly gives stale/false results;
    - runs **eslint AND prettier `--check` as a pair** — running only eslint silently misses
-     formatting failures;
+     formatting failures — then audits the source for `eslint-disable` directives without a
+     `-- reason` and for `TODO`s without a ticket (§3.3), printing the directive count, and
+     checks that `docs/INDEX.md` is fresh (`scripts/docs-index.sh --check`);
+   - runs **`jscpd`** (`duplication`) against `.jscpd.json`: ≥ 5 duplicated lines / 50 tokens
+     anywhere in `packages/*/src` outside tests, test builders, fakes and scenario tables fails
+     (§3.3); import blocks are ignored; the offending file pairs are printed with line ranges;
+   - runs the unit tier **with coverage thresholds** (§2.5), so a drop below a package's floor
+     fails `test`;
    - is pre-authorized in `.claude/settings.json`, so it never trips a permission prompt.
 2. **After ANY task that modifies code, run `./validate.sh all` and make it green before
    considering the work done.** Do not skip this step. Fix every failure before moving on.
    This applies to direct work AND delegated work (teams, agents).
-3. **If `./validate.sh` does not support what you need** (a flag, a scope, an output mode, an
-   `integration` subcommand), **STOP and extend the script (or prompt the user to)** — never
-   route around it with a raw tool invocation.
+3. **If `./validate.sh` does not support what you need** (a flag, a scope, an output mode),
+   **STOP and extend the script (or prompt the user to)** — never route around it with a raw
+   tool invocation.
 4. Use the output filters instead of dumping full logs: `-tN` (tail), `-hN` (head),
    `-G PATTERN` (grep), `-- extra-args` (passthrough). Example: `./validate.sh test -G 'fail'`.
 
 ```text
-./validate.sh test        # all unit tests
-./validate.sh typecheck   # type check all packages (rebuilds shared first)
-./validate.sh lint        # eslint + prettier --check
-./validate.sh all         # lint -> typecheck -> test; prints ALL PASSED / FAILED: <phases>
+./validate.sh test         # unit tier with coverage thresholds
+./validate.sh integration  # *.integration.test.ts / *.integration.spec.ts tier (opt-in)
+./validate.sh typecheck    # type check all packages (rebuilds shared first)
+./validate.sh lint         # eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness
+./validate.sh duplication  # jscpd (.jscpd.json)
+./validate.sh all          # lint -> duplication -> typecheck -> test; prints ALL PASSED / FAILED: <phases>
 ```
 
 ---
@@ -55,10 +64,11 @@ each is checkable. An AI building a game from this template MUST follow every ru
 
 ### 2.2 Unit vs integration split
 
-| Tier        | Filename suffix                                   | Run via                     | In `all`?      |
-| ----------- | ------------------------------------------------- | --------------------------- | -------------- |
-| Unit        | `*.test.ts` (client `*.spec.ts`)                  | `./validate.sh test`        | yes            |
-| Integration | `*.integration.test.ts` / `*.integration.spec.ts` | `./validate.sh integration` | **no, opt-in** |
+| Tier        | Filename suffix                                                                    | Run via                     | In `all`?      |
+| ----------- | ---------------------------------------------------------------------------------- | --------------------------- | -------------- |
+| Unit        | `*.test.ts` (client `*.spec.ts`)                                                   | `./validate.sh test`        | yes            |
+| Integration | `*.integration.test.ts` / `*.integration.spec.ts`                                  | `./validate.sh integration` | **no, opt-in** |
+| Gameplay    | `*.gameplay.test.ts` (scenario tables that step a real game module for many ticks) | `./validate.sh integration` | **no, opt-in** |
 
 1. **Write a unit test when** the change is a single pure function, class, or module in
    isolation — no cross-subsystem orchestration, runs in <100ms. This is almost everything.
@@ -68,24 +78,34 @@ each is checkable. An AI building a game from this template MUST follow every ru
 3. **Keep `./validate.sh all` fast (target under ~20s)** so it can run on every save. Do NOT
    dump slow or cross-subsystem setup into a `*.test.ts` to dodge writing an integration
    test — **rename the file to `*.integration.test.ts` instead.**
-4. Integration tests are gated by a `RUN_INTEGRATION` env var in each package's
-   `vitest.config.ts` (default `include` excludes `*.integration.test.ts`; `RUN_INTEGRATION=1`
-   flips to include them with `passWithNoTests: true`). Run them only at the **end of a task
-   that may have caused a cross-subsystem regression** — never on every save or pre-commit.
-5. **When the game first introduces integration tests, add an `integration` subcommand to
-   `./validate.sh`** (set `RUN_INTEGRATION=1`, run `pnpm -r test`) rather than running vitest
-   directly. This is the one expected extension of the gate.
+4. Integration tests are selected by each package's `test:integration` script
+   (`RUN_INTEGRATION=1` for vitest via the shared `vitest.tiers.ts`; the client's
+   `test-integration` target behind `test-integration.sh`, which skips the run when no
+   `*.integration.spec.ts` exists because the Angular builder fails on an empty include): the
+   default `include` excludes `*.integration.*`, the integration run includes only them, with
+   `passWithNoTests` so a package without any still passes. Run them only at the **end of a task that may have caused a cross-subsystem
+   regression** — never on every save or pre-commit.
+5. `./validate.sh integration` is that run (`pnpm -r --if-present test:integration`); never
+   invoke vitest or `ng test` directly. The same run executes the gameplay scenarios
+   (`*.gameplay.test.ts`): they step a real module for thousands of ticks, which is
+   integration-tier cost even though nothing crosses a socket.
 
 ### 2.3 What must be covered (template-specific)
 
 - **Shared logic / math / data:** any pure helper, id/branding utilities, config.
-- **The reducer (`reduceGameState`) and `submitInput`:** valid input produces a new state +
-  expected snapshot; invalid input is rejected/ignored; assert **immutability**
-  (`expect(result).not.toBe(prevState)` when state changes).
+- **The reducer (`reduceGameState`) and `submitInput`:** valid input produces the expected
+  state + snapshot; invalid input is rejected/ignored. For reducers that return new state (lobby
+  and room descriptors, the client store) assert **immutability**
+  (`expect(result).not.toBe(prevState)` when state changes). A game simulation that mutates its
+  world state in place by design (say so in the game's architecture doc) asserts values and
+  state hashes in its tests, never object identity.
 - **Message handling / envelope validation (`message-schemas.ts`, `message-router.ts`):**
   each verb routes to the right handler; **invalid JSON, invalid schema, and removed/unknown
   message types produce error responses** — the validation itself is under test.
 - **Lobby / room / session lifecycle:** create/join/start/delete, late-join, disconnect grace.
+- **The debug MCP tools:** the shared result builders (`mcp/tool-result.ts`, `mcp/active-room.ts`)
+  are unit-tested; a game's own tools are invoked directly in a unit test and their JSON
+  asserted; the `/debug-mcp` mount itself is an integration test.
 - **Architecture invariants as executable tests** (optional but encouraged): a test that
   scans `src` for banned patterns and fails the build if they reappear. Guard the guard
   (`expect(files.length).toBeGreaterThan(N)`) so it can't silently scan nothing.
@@ -96,6 +116,16 @@ each is checkable. An AI building a game from this template MUST follow every ru
    simulation is reproducible and tests can assert exact outputs.
 2. Keep the reducer a pure function of `(state, inputs, defs)`; content/config (`GameDefs`,
    `GameSessionConfig`) is a **parameter, never a hidden singleton**.
+
+---
+
+### 2.5 Coverage floors
+
+Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in
+`packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and
+`./validate.sh test` fails when a run drops below it. Floors only move up: raise them when a
+PR lifts coverage, never lower them to land one. Coverage excludes tests, barrels and the test
+doubles under `src/testing/` (`vitest.tiers.ts`).
 
 ---
 
@@ -123,6 +153,12 @@ project references.
   means "intentionally unused" — it is **not** a license to leave a stub instead of real code.
 - `@typescript-eslint/no-explicit-any` is a warning; treat it as a rule. **No `any`** — use
   `unknown` plus a type guard / Zod parse at the boundary, then a narrow type inward.
+- The §3.3 and §4 rules belong in lint (`eslint.config.js`; `eslint-plugin-sonarjs` and
+  `eslint-plugin-unicorn` ship as devDependencies for it): `no-magic-numbers`, the size
+  limits, `id-length` + `unicorn/name-replacements` with the game's allow-list,
+  `@typescript-eslint/naming-convention` (predicate booleans need type information, so
+  `packages/*/src` is linted with `projectService`), `sonarjs` complexity / duplication, the
+  determinism bans, `no-console`, `unicorn/filename-case`.
 - angular-eslint component rules apply in `packages/client` (selector prefix, etc.).
 - Prettier (already configured): 2-space indent, single quotes, trailing commas, semicolons,
   **120-char width**. Lint ignores `dist/`, `node_modules/`, build caches, and prose dirs.
@@ -130,12 +166,18 @@ project references.
 ### 3.3 Forbidden escape hatches
 
 - **No `as any`, no `// @ts-ignore`, no `// @ts-expect-error`, no inline `eslint-disable`**
-  without a comment on the same or preceding line justifying exactly why and what makes it safe.
+  without a justification. For `eslint-disable` the justification goes on the directive itself
+  (`// eslint-disable-next-line rule -- why this is safe`); `./validate.sh lint` counts the
+  directives and fails on one without a `-- reason`.
 - **No magic strings or magic numbers.** Use named constants, `as const` id objects, or
   string-literal union types for any repeated or non-obvious literal — message verbs, ids, and
   modes, AND numeric tunables (tick rates, sizes, thresholds, costs, timeouts, durations). A
   bare `0.92` or `300` sitting in logic is a magic number; give it a named constant.
 - **No `console.log` in committed code.** Remove debug logging before validating.
+- **No duplicated logic.** Five or more identical lines (50 tokens) in two places is a clone;
+  extract the helper. `./validate.sh duplication` enforces it outside tests and test doubles.
+- **A `TODO` carries a ticket:** `TODO(#N)`. `TODO(game)` / `TODO(init)` mark the template's
+  extension points and are the only exceptions; `./validate.sh lint` fails on any other `TODO`.
 
 ---
 
@@ -161,13 +203,14 @@ project references.
    render container, entity instances). The rule is that _decision logic_ (how state changes)
    lives in pure, testable functions/methods, not buried in IO or the render loop. Prefer
    composition over deep inheritance, but inheritance is fine for a real "is-a" relationship.
-6. **Module size & shape.** Keep modules focused — one responsibility each. **~400 lines is a
-   review smell, not a hard limit:** crossing it is a signal to check whether the file has taken
-   on a second responsibility and should be split along that seam. It is **not** a number to
-   game — never delete, inline, or compress working code just to push a line count down. A
-   cohesive 450-line module beats five artificially-split fragments. Orchestrators (the room
-   loop, the game loop) stay thin — a sequence of calls to focused subsystems, not a place for
-   business logic.
+6. **Module size & shape.** Keep modules focused — one responsibility each. Sizes: 300 lines
+   per file, 40 per function, complexity 10, 4 parameters, nesting 3 (design target ≈ 250
+   lines per file), lint-enforced where
+   `eslint.config.js` enables the caps and reviewed by hand otherwise; a template-owned file
+   over a cap carries a documented exemption. Split
+   along a responsibility seam — never delete, inline, or compress working code just to push a
+   line count down. Orchestrators (the room loop, the game loop) stay thin — a sequence of calls
+   to focused subsystems, not a place for business logic.
 7. **No circular dependencies.** Imports form a DAG; shared types go in a common module both
    sides import.
 8. **Diagrams are ASCII only**, inside a plain code block, ≤~70 columns, one concept each. No
@@ -211,16 +254,18 @@ project references.
 - [ ] New/changed logic is extracted into pure functions and has unit tests covering happy
       path, edge cases, and error cases.
 - [ ] Cross-subsystem wiring (if any) has a `*.integration.test.ts` and it passes via
-      `./validate.sh integration`.
-- [ ] `./validate.sh all` is green (lint + typecheck + unit tests). No test was skipped,
+      `./validate.sh integration`; coverage floors (§2.5) did not go down.
+- [ ] `./validate.sh all` is green (lint + duplication + typecheck + unit tests). No test was skipped,
       `.only`-ed, deleted, or weakened to achieve it.
 - [ ] No `any` / `@ts-ignore` / `@ts-expect-error` / inline `eslint-disable` without a
       justifying comment. No new magic strings or magic numbers. No `console.log` left behind.
 - [ ] Inbound messages are validated at the boundary; server-owned values are computed in the
       reducer and merged into the snapshot.
-- [ ] No module took on a second responsibility (≈400 lines is a smell to check, not a hard cap
-      — never compress working code just to hit it); orchestrators stayed thin; no circular
-      imports introduced.
+- [ ] No module took on a second responsibility; sizes within §4.6 (split along a seam, never
+      compress working code); orchestrators stayed thin; no circular imports introduced.
+- [ ] §3.3 holds: no magic values, no duplicated logic, full descriptive names, every `TODO`
+      ticketed; the game's own standards docs (code standards, determinism, architecture), where
+      it has them, hold too.
 - [ ] No `Math.random()` in shared/simulation code.
 - [ ] Any visual asset added meets `docs/ASSET-GENERATION.md`'s acceptance criteria.
 - [ ] Any audio asset added went through `docs/AUDIO-PIPELINE.md` (`./ai-pipeline.sh check` clean).

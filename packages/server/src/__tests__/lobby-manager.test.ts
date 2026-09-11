@@ -107,6 +107,23 @@ describe('lobby-manager', () => {
     expect(lobby.listGames()).toHaveLength(0);
   });
 
+  it('join_game and start_game on an unknown id answer "Game not found"', () => {
+    const connections = new Map<string, Connection>();
+    const sent: Record<string, unknown[]> = {};
+    const lobby = new LobbyManager(stubFactory);
+    const h = lobby.createHandlers(connections);
+    const a = makeConn('a', 'Alice', sent);
+    connections.set('a', a);
+
+    h.onJoinGame(a, { type: 'join_game', gameId: 'missing' });
+    h.onStartGame(a, { type: 'start_game', gameId: 'missing' });
+    expect(sent['a']).toEqual([
+      { type: 'error', message: 'Game not found' },
+      { type: 'error', message: 'Game not found' },
+    ]);
+    expect(lobby.listGames()).toHaveLength(0);
+  });
+
   it('player_input on an active room delegates to the room', () => {
     const connections = new Map<string, Connection>();
     const sent: Record<string, unknown[]> = {};

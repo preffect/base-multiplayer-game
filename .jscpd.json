@@ -1,0 +1,25 @@
+{
+  "$comment": "Duplicate-code gate (docs/ENGINEERING.md §3.3): ≥ 5 lines / 50 tokens duplicated anywhere in package source fails `./validate.sh duplication`. Tests, builders and scenario tables may repeat setup (the gameplay framework under testing/gameplay is measured); generated and third-party output is not ours.",
+  "minLines": 5,
+  "minTokens": 50,
+  "threshold": 0,
+  "mode": "strict",
+  "ignorePattern": ["^\\s*import .*", "^\\s*export \\* from .*"],
+  "format": ["typescript", "javascript"],
+  "reporters": ["consoleFull"],
+  "absolute": false,
+  "gitignore": true,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.angular/**",
+    "**/.worktrees/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/testing/*builders.ts",
+    "**/testing/fake-*.ts",
+    "**/testing/scenarios/**",
+    "**/*.generated.*",
+    "**/*.d.ts"
+  ]
+}

@@ -33,7 +33,7 @@ export interface RoomInitArgs {
 export type GameModuleFactory = (args: RoomInitArgs) => GameModule;
 
 /**
- * DEFAULT TODO IMPL: trust-client echo. Stores the latest input per player and
+ * DEFAULT TODO(game) IMPL: trust-client echo. Stores the latest input per player and
  * echoes `{ players: { [pid]: lastInput } }` as the snapshot. Replace in the
  * init step with the real game logic.
  */

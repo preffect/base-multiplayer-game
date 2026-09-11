@@ -103,6 +103,13 @@ export class LobbyManager {
     this.broadcastLobbyUpdate();
   }
 
+  /** The pending game with this id, or undefined after telling the connection it does not exist. */
+  private requirePendingGame(conn: Connection, gameId: string): PendingGame | undefined {
+    const pending = this.pendingGames.get(gameId);
+    if (!pending) sendMessage(conn, { type: 'error', message: 'Game not found' });
+    return pending;
+  }
+
   private onJoinGame(conn: Connection, gameId: string): void {
     // Joining an in-progress game = late join.
     const active = this.activeRooms.get(gameId);
@@ -113,11 +120,8 @@ export class LobbyManager {
       return;
     }
 
-    const pending = this.pendingGames.get(gameId);
-    if (!pending) {
-      sendMessage(conn, { type: 'error', message: 'Game not found' });
-      return;
-    }
+    const pending = this.requirePendingGame(conn, gameId);
+    if (!pending) return;
     if (pending.players.size >= pending.config.maxPlayers) {
       sendMessage(conn, { type: 'error', message: 'Game is full' });
       return;
@@ -132,11 +136,8 @@ export class LobbyManager {
   }
 
   private onStartGame(conn: Connection, gameId: string): void {
-    const pending = this.pendingGames.get(gameId);
-    if (!pending) {
-      sendMessage(conn, { type: 'error', message: 'Game not found' });
-      return;
-    }
+    const pending = this.requirePendingGame(conn, gameId);
+    if (!pending) return;
     if (pending.creatorId !== conn.playerId) {
       sendMessage(conn, { type: 'error', message: 'Only the creator can start the game' });
       return;

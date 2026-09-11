@@ -23,10 +23,12 @@
 ### Validation (always use `./validate.sh` instead of running tools directly)
 
 ```bash
-./validate.sh test                    # run all tests (vitest for shared/server, ng test for client)
+./validate.sh test                    # unit tests with coverage floors (vitest for shared/server, ng test for client)
+./validate.sh integration             # *.integration.* tier + *.gameplay.test.ts scenarios (opt-in)
 ./validate.sh typecheck               # type check all packages
-./validate.sh lint                    # eslint + prettier --check
-./validate.sh all                     # run lint, typecheck, test in sequence
+./validate.sh lint                    # eslint + prettier --check + eslint-disable / TODO audit + docs/INDEX.md freshness
+./validate.sh duplication             # jscpd against .jscpd.json
+./validate.sh all                     # run lint, duplication, typecheck, test in sequence
 
 # Output filters (work with any command):
 ./validate.sh test -t20               # show last 20 lines
@@ -88,7 +90,7 @@ process belong upstream in `base-multiplayer-game` so the next game inherits the
 These docs are the enforceable quality bar for any work in this repo. Read and follow them.
 
 - **[`docs/ENGINEERING.md`](docs/ENGINEERING.md)** — coding, architecture, and testing rules. The single
-  gate is **`./validate.sh all`** (lint + typecheck + test): no task is done until it is green;
+  gate is **`./validate.sh all`** (lint + duplication + typecheck + test): no task is done until it is green;
   never run the underlying tools directly; never commit red. All new logic needs unit tests;
   cross-subsystem wiring needs `*.integration.test.ts`. See its **Definition of Done** checklist.
 - **[`docs/ASSET-GENERATION.md`](docs/ASSET-GENERATION.md)** — visual asset quality bar. All visual assets
