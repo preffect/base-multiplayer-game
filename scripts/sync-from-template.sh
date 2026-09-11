@@ -16,7 +16,9 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #     defined" banner is replaced).
 #   * Never overwritten, drift reported for manual merge: CLAUDE.md, .claude/commands/team.md,
 #     .gitignore (games add their own ignores under the template's).
-#   * Never synced: packages/**, game-owned docs/* (only the template docs listed below are),
+#   * Never synced: package.json (its devDependencies — jscpd, @vitest/coverage-v8, the eslint
+#     plugins — are game-owned and must stay present for validate.sh), packages/**, game-owned
+#     docs/* (only the template docs listed below are),
 #     docs/INIT-GAME.md (one-shot), PORTS.env, .github/project.env, data/.
 #   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
 #     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh), and the
@@ -135,6 +137,8 @@ main() {
   if ((${#copied[@]})) && ! $DRY_RUN && [[ -x "$ROOT/node_modules/.bin/prettier" ]]; then
     (cd "$ROOT" && node_modules/.bin/prettier --write --ignore-unknown "${copied[@]}" >/dev/null 2>&1 || true)
   fi
+  # The docs index quotes headings and first sentences of docs this run may have replaced.
+  if ((${#copied[@]} + ${#removed[@]})) && ! $DRY_RUN; then "$ROOT/scripts/docs-index.sh" >/dev/null; fi
   if ((${#copied[@]} + ${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
   elif ((${#copied[@]})); then

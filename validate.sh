@@ -103,7 +103,7 @@ DUPLICATION_PATHS=("${PACKAGE_SOURCES[@]}")
 # (`// eslint-disable-next-line rule -- why`). Prints the count; fails on an unjustified one.
 audit_disable_directives() {
   local all unjustified
-  all="$(grep -rn --include='*.ts' 'eslint-disable' "${PACKAGE_SOURCES[@]}" 2>/dev/null || true)"
+  all="$(grep -rn --include='*.ts' -E '(//|/\*) *eslint-disable' "${PACKAGE_SOURCES[@]}" 2>/dev/null || true)"
   unjustified="$(echo "$all" | grep -v '^$' | grep -v -- ' -- ' || true)"
   echo "eslint-disable directives: $(echo "$all" | grep -c 'eslint-disable' || true)"
   if [[ -n "$unjustified" ]]; then

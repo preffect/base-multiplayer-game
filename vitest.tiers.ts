@@ -1,4 +1,4 @@
-// Shared vitest wiring for the unit / integration tiers and coverage (docs/TESTING.md).
+// Shared vitest wiring for the unit / integration tiers and coverage (docs/ENGINEERING.md §2).
 // Each package's vitest.config.ts spreads these so the tier rules are defined once.
 import { configDefaults, type ViteUserConfig } from 'vitest/config';
 
@@ -11,7 +11,7 @@ export const IS_INTEGRATION_RUN = process.env.RUN_INTEGRATION === '1';
 export const UNIT_TEST_GLOBS = ['src/**/*.test.ts', 'src/**/*.spec.ts'];
 export const INTEGRATION_TEST_GLOBS = ['src/**/*.integration.test.ts', 'src/**/*.integration.spec.ts'];
 /**
- * Gameplay scenarios (docs/TESTING.md) step a real game module for thousands of ticks, so they run
+ * Gameplay scenarios (docs/ENGINEERING.md §2.2) step a real game module for thousands of ticks, so they run
  * with the integration tier rather than on every save; the suffix keeps them selectable on their own.
  */
 export const GAMEPLAY_TEST_GLOBS = ['src/**/*.gameplay.test.ts'];
@@ -20,7 +20,7 @@ export const OPT_IN_TEST_GLOBS = [...INTEGRATION_TEST_GLOBS, ...GAMEPLAY_TEST_GL
 
 /**
  * The test doubles under `src/testing/` that hold no logic: builders, fakes and scenario tables
- * (docs/TESTING.md). A test framework with real logic under `src/testing/` is measured like any
+ * (docs/ENGINEERING.md §2.5). A test framework with real logic under `src/testing/` is measured like any
  * other source — add its doubles here, not the framework.
  */
 export const TEST_DOUBLE_GLOBS = ['src/testing/*builders.ts', 'src/testing/fake-*.ts', 'src/testing/scenarios/**'];

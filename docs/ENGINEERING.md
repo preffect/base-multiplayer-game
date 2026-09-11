@@ -80,9 +80,10 @@ each is checkable. An AI building a game from this template MUST follow every ru
    test — **rename the file to `*.integration.test.ts` instead.**
 4. Integration tests are selected by each package's `test:integration` script
    (`RUN_INTEGRATION=1` for vitest via the shared `vitest.tiers.ts`; the client's
-   `test-integration` target): the default `include` excludes `*.integration.*`, the
-   integration run includes only them, with `passWithNoTests` so a package without any still
-   passes. Run them only at the **end of a task that may have caused a cross-subsystem
+   `test-integration` target behind `test-integration.sh`, which skips the run when no
+   `*.integration.spec.ts` exists because the Angular builder fails on an empty include): the
+   default `include` excludes `*.integration.*`, the integration run includes only them, with
+   `passWithNoTests` so a package without any still passes. Run them only at the **end of a task that may have caused a cross-subsystem
    regression** — never on every save or pre-commit.
 5. `./validate.sh integration` is that run (`pnpm -r --if-present test:integration`); never
    invoke vitest or `ng test` directly. The same run executes the gameplay scenarios

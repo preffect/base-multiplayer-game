@@ -133,10 +133,12 @@ Then open two browser tabs at the client to exercise the lobby → create → jo
 ### Validation
 
 ```bash
-./validate.sh all       # lint + duplication + typecheck + test across all packages
-./validate.sh test      # tests only
-./validate.sh typecheck # type check only
-./validate.sh lint      # eslint + prettier --check
+./validate.sh all         # lint + duplication + typecheck + test across all packages
+./validate.sh test        # unit tests with coverage floors
+./validate.sh integration # *.integration.* tier (opt-in)
+./validate.sh typecheck   # type check only
+./validate.sh lint        # eslint + prettier --check + eslint-disable / TODO / docs index audits
+./validate.sh duplication # jscpd
 ```
 
 ### Dev container

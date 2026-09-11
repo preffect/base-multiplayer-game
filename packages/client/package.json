@@ -9,7 +9,7 @@
     "test": "ng test",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "clean": "rm -rf dist .angular",
-    "test:integration": "ng run client:test-integration"
+    "test:integration": "bash test-integration.sh"
   },
   "dependencies": {
     "@base-multiplayer-game/shared": "workspace:*",

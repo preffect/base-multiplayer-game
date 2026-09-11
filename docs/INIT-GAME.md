@@ -251,7 +251,8 @@ file the epic and tickets, and clean up.
 As the last action of this session, remove the scaffolding that only made sense before the
 game existed, in the same PR as `docs/GAME-DESIGN.md`:
 
-- delete `docs/INIT-GAME.md` (this file);
+- delete `docs/INIT-GAME.md` (this file), then run `scripts/docs-index.sh` so `docs/INDEX.md`
+  drops it and picks up `docs/GAME-DESIGN.md` (`./validate.sh lint` checks the index);
 - delete the "START HERE — is this game defined yet?" banner at the top of `CLAUDE.md` and
   replace the Architecture paragraph's "extension points to be filled in" wording with a
   sentence about this game;

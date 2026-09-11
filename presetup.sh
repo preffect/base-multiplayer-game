@@ -89,6 +89,8 @@ mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-di
   "${IDENTITY_TEMPLATE_TITLE}|${IDENTITY_TEMPLATE_PROJECT}|${IDENTITY_TEMPLATE_MCP}|${IDENTITY_TEMPLATE_SLUG}|\\b${IDENTITY_TEMPLATE_SERVER_PORT}\\b|\\b${IDENTITY_TEMPLATE_CLIENT_PORT}\\b|${IDENTITY_KEEP_TAG}" \
   "$ROOT" 2>/dev/null || true)
 render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${identity_files[@]}"
+# docs/INDEX.md quotes the docs' first sentences, which the identity pass just changed.
+"$ROOT/scripts/docs-index.sh" >/dev/null
 
 # The root package description is the game's (set after the identity pass so the template name survives).
 sed -i "s|^  \"description\": \".*\",$|  \"description\": \"$TITLE — multiplayer game built from the base-multiplayer-game template\",|" "$ROOT/package.json" # KEEP_TEMPLATE_NAME
