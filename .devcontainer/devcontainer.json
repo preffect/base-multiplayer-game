@@ -16,6 +16,8 @@
     "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached"
   ],
+  "hostRequirements": { "gpu": "optional" },
+  "containerEnv": { "NVIDIA_DRIVER_CAPABILITIES": "all" },
   "forwardPorts": [4400, 4402],
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {

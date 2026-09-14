@@ -1,0 +1,9 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "launchOptions": {
+      "headless": true,
+      "args": ["--use-angle=vulkan", "--enable-features=Vulkan", "--ignore-gpu-blocklist"]
+    }
+  }
+}
