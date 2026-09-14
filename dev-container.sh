@@ -174,11 +174,24 @@ do_create() {
   # Create DinD volume if it doesn't exist (overlayfs can't stack on overlayfs)
   docker volume create "$DIND_VOLUME" &>/dev/null || true
 
+  # GPU passthrough (#305): with the NVIDIA container runtime on the host, hand the container the GPU and
+  # its user-space driver libraries (GL / EGL / Vulkan, via NVIDIA_DRIVER_CAPABILITIES) so headless Chromium
+  # renders WebGL on the card instead of SwiftShader. --privileged alone exposes /dev/nvidia* but no
+  # libraries. DEVCONTAINER_GPU=0 opts out. Check inside with `node scripts/gpu-check.mjs`.
+  local gpu_args=""
+  if [[ "${DEVCONTAINER_GPU:-1}" != "0" ]] && docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q '"nvidia"'; then
+    gpu_args="--gpus all -e NVIDIA_DRIVER_CAPABILITIES=all"
+    green "GPU: NVIDIA container runtime found; passing the GPU through."
+  else
+    yellow "GPU: no NVIDIA container runtime (or DEVCONTAINER_GPU=0); the browser will render in software."
+  fi
+
   # shellcheck disable=SC2086
   docker run -d \
     --init \
     --name "$CONTAINER_NAME" \
     --privileged \
+    $gpu_args \
     -v "$SCRIPT_DIR:${CONTAINER_WORKSPACE}:cached" \
     -v "$DIND_VOLUME:/var/lib/docker" \
     $host_mounts \

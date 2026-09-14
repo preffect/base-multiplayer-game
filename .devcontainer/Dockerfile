@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
-# System dependencies + locale
+# System dependencies + locale. libegl1 / libgl1 / libgles2 / libvulkan1 are the glvnd GL, EGL and Vulkan
+# loaders: with --gpus all the NVIDIA runtime injects only the vendor libraries behind them (#305).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3 \
@@ -13,8 +14,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librsvg2-bin \
     fonts-dejavu-core \
     ffmpeg \
+    libegl1 \
+    libgl1 \
+    libgles2 \
+    libvulkan1 \
+    vulkan-tools \
     && rm -rf /var/lib/apt/lists/* \
     && locale-gen en_US.UTF-8
+
+# NVIDIA EGL vendor + Vulkan ICD manifests (#305). `--gpus all` (the prestart hook) injects libEGL_nvidia /
+# libGLX_nvidia but not these JSON files, so without them glvnd and the Vulkan loader find only SwiftShader.
+# Same paths the nvidia runtime itself mounts; without a GPU the libraries are absent and the loaders skip them.
+RUN mkdir -p /usr/share/glvnd/egl_vendor.d /etc/vulkan/icd.d && \
+    printf '%s\n' '{"file_format_version":"1.0.0","ICD":{"library_path":"libEGL_nvidia.so.0"}}' \
+      > /usr/share/glvnd/egl_vendor.d/10_nvidia.json && \
+    printf '%s\n' '{"file_format_version":"1.0.1","ICD":{"library_path":"libGLX_nvidia.so.0","api_version":"1.3"}}' \
+      > /etc/vulkan/icd.d/nvidia_icd.json
 
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8

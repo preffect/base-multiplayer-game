@@ -6,11 +6,24 @@
     },
     "angular": {
       "command": "npx",
-      "args": ["-y", "@anthropic-ai/angular-mcp"]
+      "args": [
+        "-y",
+        "@anthropic-ai/angular-mcp"
+      ]
     },
     "playwright": {
       "command": "playwright-mcp",
-      "args": ["--headless", "--browser", "chromium", "--viewport-size", "1280,800", "--output-dir", ".qa/screenshots"]
+      "args": [
+        "--config",
+        ".devcontainer/playwright-mcp.json",
+        "--headless",
+        "--browser",
+        "chromium",
+        "--viewport-size",
+        "1280,800",
+        "--output-dir",
+        ".qa/screenshots"
+      ]
     }
   }
 }
