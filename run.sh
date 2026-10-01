@@ -71,6 +71,9 @@ Options:
   --install       Run pnpm install before starting
   --server-only   Start only the game server
   --client-only   Start only the client dev server
+  --live-reload   Serve the client with live reload and HMR. Off by default: a dropped dev-server
+                  socket (an idle timeout or a blip through a proxy) then reloads the page and the
+                  player loses the game
   --stop          Stop running processes
   --status        Check if services are running
   --logs          Tail the server and client logs
@@ -181,6 +184,7 @@ do_logs() {
 DO_INSTALL=false
 RUN_SERVER=true
 RUN_CLIENT=true
+LIVE_RELOAD=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -191,6 +195,7 @@ for arg in "$@"; do
     --install)     DO_INSTALL=true ;;
     --server-only) RUN_CLIENT=false ;;
     --client-only) RUN_SERVER=false ;;
+    --live-reload) LIVE_RELOAD=true ;;
     *)
       echo "Unknown option: $arg"
       echo "Run ./run.sh --help for usage."
@@ -231,7 +236,8 @@ fi
 
 if $RUN_CLIENT; then
   echo "==> Starting Angular client on port ${CLIENT_PORT}..."
-  pnpm dev:client > "$LOG_DIR/client.log" 2>&1 &
+  # Live reload and HMR both off unless asked for: either one keeps the socket whose drop reloads the page
+  pnpm dev:client --live-reload="$LIVE_RELOAD" --hmr="$LIVE_RELOAD" > "$LOG_DIR/client.log" 2>&1 &
   echo $! >> "$PID_FILE"
 fi
 

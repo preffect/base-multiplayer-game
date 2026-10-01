@@ -125,6 +125,7 @@ pnpm install            # install workspace dependencies (inside the devcontaine
 ./run.sh --stop         # stop all running processes
 ./run.sh --status       # check what's running
 ./run.sh --logs         # tail server and client logs
+./run.sh --live-reload  # serve the client with live reload + HMR (off by default)
 ```
 
 Then open two browser tabs at the client to exercise the lobby → create → join → start →

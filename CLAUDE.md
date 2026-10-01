@@ -48,7 +48,12 @@
 ./run.sh --status       # check what's running
 ./run.sh --logs         # tail server and client logs
 ./run.sh --install      # run pnpm install before starting
+./run.sh --live-reload  # serve the client with live reload + HMR (off by default)
 ```
+
+The client is served without live reload and HMR unless `./run.sh --live-reload` asks for them: with
+either on, a dropped dev-server socket (an idle timeout or a blip through a proxy) reloads the page
+and the player loses the game. Source edits still rebuild; refresh the browser to see them.
 
 ### Dev container
 
