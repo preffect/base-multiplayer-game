@@ -20,9 +20,11 @@ each is checkable. An AI building a game from this template MUST follow every ru
      formatting failures — then audits the source for `eslint-disable` directives without a
      `-- reason` and for `TODO`s without a ticket (§3.3), printing the directive count, and
      checks that `docs/INDEX.md` is fresh (`scripts/docs-index.sh --check`);
-   - runs **`jscpd`** (`duplication`) against `.jscpd.json`: ≥ 5 duplicated lines / 50 tokens
-     anywhere in `packages/*/src` outside tests, test builders, fakes and scenario tables fails
-     (§3.3); import blocks are ignored; the offending file pairs are printed with line ranges;
+   - runs **`jscpd`** (`duplication`) against `.jscpd.json`: any clone of ≥ 5 duplicated lines / 50
+     tokens anywhere in `packages/*/src` outside tests, test builders, fakes and scenario tables fails
+     (§3.3) through jscpd's `exitCode`, since its percentage `threshold` rounds a small clone to 0.00%
+     and passes it (#98, pinned by `scripts/duplication-gate.test.sh`); import blocks are ignored; the
+     offending file pairs are printed with line ranges;
    - runs the unit tier **with coverage thresholds** (§2.5), so a drop below a package's floor
      fails `test`;
    - **caches green results by content** (#75): a green run is stamped under
@@ -190,7 +192,8 @@ project references.
   bare `0.92` or `300` sitting in logic is a magic number; give it a named constant.
 - **No `console.log` in committed code.** Remove debug logging before validating.
 - **No duplicated logic.** Five or more identical lines (50 tokens) in two places is a clone;
-  extract the helper. `./validate.sh duplication` enforces it outside tests and test doubles.
+  extract the helper. `./validate.sh duplication` fails on any clone outside tests and test doubles,
+  however small its share of the codebase.
 - **A `TODO` carries a ticket:** `TODO(#N)`. `TODO(game)` / `TODO(init)` mark the template's
   extension points and are the only exceptions; `./validate.sh lint` fails on any other `TODO`.
 
