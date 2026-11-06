@@ -12,7 +12,7 @@ import type { MessageHandlers } from '../ws/message-router.js';
 import { GameRoom } from './game-room.js';
 import type { GameModuleFactory } from '../game/game-module.js';
 
-const DISCONNECT_GRACE_MS = 30_000;
+export const DISCONNECT_GRACE_MS = 30_000;
 
 /** A game that has been created but not yet started — players gather here. */
 export interface PendingGame {
@@ -333,6 +333,11 @@ export class LobbyManager {
 
   listActiveRooms(): ReadonlyMap<string, GameRoom> {
     return this.activeRooms;
+  }
+
+  /** The game this player is in, pending or started. */
+  gameIdOfPlayer(playerId: string): string | undefined {
+    return this.playerToGame.get(playerId);
   }
 
   /** Pending (not-yet-started) games keyed by gameId. Used by MCP + tests. */

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { LobbyGameInfo } from '@base-multiplayer-game/shared';
 import type { GameModule, GameModuleFactory, RoomInitArgs } from '../game/game-module.js';
 import { buildRecordingConnection, messagesOfType, type RecordingConnection } from '../testing/connection-builders.js';
 import type { Connection } from '../ws/connection.js';
 import type { MessageHandlers } from '../ws/message-router.js';
-import { LobbyManager } from './lobby-manager.js';
+import { DISCONNECT_GRACE_MS, LobbyManager } from './lobby-manager.js';
 
-const DISCONNECT_GRACE_MS = 30_000;
 const CLIENT_REPORT = { fps: 60, frameTimeAvgMs: 16, frameTimeP95Ms: 18, frameTimePeakMs: 30, heapMb: null };
 
 interface Lobby {
@@ -58,6 +58,15 @@ function startTwoPlayerGame(context: Lobby): string {
   joinGame(context, gameId);
   startGame(context, gameId);
   return gameId;
+}
+
+/** Runs `action` and returns the games from the single lobby_update it must have sent `watcher`. */
+function gamesFromOneUpdate(watcher: RecordingConnection, action: () => void): LobbyGameInfo[] {
+  const updatesBefore = messagesOfType(watcher.sent, 'lobby_update').length;
+  action();
+  const updates = messagesOfType(watcher.sent, 'lobby_update');
+  expect(updates).toHaveLength(updatesBefore + 1);
+  return updates.at(-1)!.games;
 }
 
 describe('lobby-manager lifecycle', () => {
@@ -134,6 +143,10 @@ describe('lobby-manager lifecycle', () => {
       expect(messagesOfType(context.bob.sent, 'game_state')).toHaveLength(1);
       expect(context.alice.sent).toContainEqual({ type: 'player_joined', playerId: 'bob', avatarIndex: 2 });
       expect(context.lobby.listGames()[0]?.players.map((player) => player.playerId)).toEqual(['alice', 'bob']);
+
+      context.handlers.onPlayerInput(context.bob.connection, { type: 'player_input', payload: 'late' });
+      expect(context.gameModule.submitInput).toHaveBeenCalledWith('bob', 'late');
+      expect(messagesOfType(context.bob.sent, 'error')).toEqual([]);
     });
 
     it('start_game hands the game module every player and their profile', () => {
@@ -186,9 +199,8 @@ describe('lobby-manager lifecycle', () => {
       context.handlers.onDeleteGame(context.alice.connection, { type: 'delete_game', gameId });
       expect(context.lobby.getActiveRoom(gameId)).toBeUndefined();
       expect(context.gameModule.free).toHaveBeenCalledOnce();
-
-      context.handlers.onPlayerInput(context.bob.connection, { type: 'player_input', payload: 1 });
-      expect(context.gameModule.submitInput).not.toHaveBeenCalled();
+      expect(context.lobby.gameIdOfPlayer('alice')).toBeUndefined();
+      expect(context.lobby.gameIdOfPlayer('bob')).toBeUndefined();
     });
 
     it('delete_game on an unknown id does nothing', () => {
@@ -218,6 +230,61 @@ describe('lobby-manager lifecycle', () => {
         report: CLIENT_REPORT,
       });
       expect(context.lobby.getActiveRoom(gameId)?.perfTracker.clientReportsSnapshot()).toEqual({ bob: CLIENT_REPORT });
+    });
+  });
+
+  describe('lobby_update broadcasts', () => {
+    it('create_game announces the new game', () => {
+      const context = buildLobby();
+      const games = gamesFromOneUpdate(context.bob, () => createGame(context));
+      expect(games.map((game) => game.gameName)).toEqual(['Arena']);
+    });
+
+    it('join_game announces the new player in a pending game', () => {
+      const context = buildLobby();
+      const gameId = createGame(context);
+      const games = gamesFromOneUpdate(context.alice, () => joinGame(context, gameId));
+      expect(games[0]?.players).toHaveLength(2);
+    });
+
+    it('join_game announces a late player in a started game', () => {
+      const context = buildLobby();
+      const gameId = createGame(context);
+      startGame(context, gameId);
+      const games = gamesFromOneUpdate(context.alice, () => joinGame(context, gameId));
+      expect(games[0]?.players).toHaveLength(2);
+    });
+
+    it('start_game announces the started game', () => {
+      const context = buildLobby();
+      const gameId = createGame(context);
+      const games = gamesFromOneUpdate(context.bob, () => startGame(context, gameId));
+      expect(games[0]?.started).toBe(true);
+    });
+
+    it('delete_game announces a removed pending game', () => {
+      const context = buildLobby();
+      const gameId = createGame(context);
+      const games = gamesFromOneUpdate(context.bob, () =>
+        context.handlers.onDeleteGame(context.alice.connection, { type: 'delete_game', gameId }),
+      );
+      expect(games).toEqual([]);
+    });
+
+    it('delete_game announces a removed started game', () => {
+      const context = buildLobby();
+      const gameId = startTwoPlayerGame(context);
+      const games = gamesFromOneUpdate(context.bob, () =>
+        context.handlers.onDeleteGame(context.alice.connection, { type: 'delete_game', gameId }),
+      );
+      expect(games).toEqual([]);
+    });
+
+    it('a disconnect from a pending game announces the change', () => {
+      const context = buildLobby();
+      joinGame(context, createGame(context));
+      const games = gamesFromOneUpdate(context.alice, () => context.lobby.handleDisconnect(context.bob.connection));
+      expect(games[0]?.players).toHaveLength(1);
     });
   });
 
@@ -294,14 +361,31 @@ describe('lobby-manager lifecycle', () => {
       context.lobby.handleConnect(returning.connection, context.connections);
       vi.advanceTimersByTime(DISCONNECT_GRACE_MS);
 
+      const room = context.lobby.getActiveRoom(gameId);
       expect(context.gameModule.removePlayer).not.toHaveBeenCalled();
-      expect(context.lobby.getActiveRoom(gameId)?.disconnectedPlayers.has('bob')).toBe(false);
+      expect(room?.disconnectedPlayers.has('bob')).toBe(false);
+      expect(room?.playerConnections.get('bob')).toBe(returning.connection);
+      expect(messagesOfType(returning.sent, 'game_snapshot').length).toBeGreaterThan(0);
       expect(messagesOfType(returning.sent, 'game_state')[0]).toMatchObject({
         gameId,
         playerId: 'bob',
         snapshot: { tick: 7 },
         playerIds: ['alice', 'bob'],
       });
+    });
+
+    it('a reconnect after the window has no game left to rejoin', () => {
+      const context = buildLobby();
+      const gameId = startTwoPlayerGame(context);
+      context.lobby.handleDisconnect(context.bob.connection);
+      vi.advanceTimersByTime(DISCONNECT_GRACE_MS);
+
+      const returning = buildRecordingConnection('bob', 2);
+      context.lobby.handleConnect(returning.connection, context.connections);
+
+      expect(context.lobby.gameIdOfPlayer('bob')).toBeUndefined();
+      expect(context.lobby.getActiveRoom(gameId)?.playerConnections.has('bob')).toBe(false);
+      expect(messagesOfType(returning.sent, 'game_state')).toEqual([]);
     });
 
     it('a connect from a player with no game or only a pending game sends no state', () => {

@@ -8,10 +8,6 @@ LOG_DIR="$SCRIPT_DIR/.game-logs"
 SERVER_PORT="${PORT:-4400}"
 CLIENT_PORT="${CLIENT_PORT:-4402}"
 
-# Matches package.json's engines. 10.16 added minimumReleaseAge (pnpm-workspace.yaml).
-PNPM_REQUIRED_MAJOR=10
-PNPM_MINIMUM_MINOR=16
-
 # ================================================
 # Dependency checks
 # ================================================
@@ -39,18 +35,18 @@ check_deps() {
 
   if ! command -v pnpm &>/dev/null; then
     echo "ERROR: pnpm is not installed."
-    echo "  Install pnpm ${PNPM_REQUIRED_MAJOR}.${PNPM_MINIMUM_MINOR} or a later ${PNPM_REQUIRED_MAJOR}.x:"
+    echo "  Install pnpm >= 10:"
     echo "    corepack enable && corepack prepare pnpm@10 --activate"
     echo "  Or: npm install -g pnpm@10"
     echo "  Or: https://pnpm.io/installation"
     echo ""
     missing=true
   else
-    local pnpm_major pnpm_minor
-    IFS=. read -r pnpm_major pnpm_minor _ <<<"$(pnpm -v)"
-    if (( pnpm_major != PNPM_REQUIRED_MAJOR || pnpm_minor < PNPM_MINIMUM_MINOR )); then
-      echo "ERROR: pnpm ${PNPM_REQUIRED_MAJOR}.${PNPM_MINIMUM_MINOR} or a later ${PNPM_REQUIRED_MAJOR}.x is required (found $(pnpm -v))."
-      echo "  Switch: corepack prepare pnpm@10 --activate"
+    local pnpm_major
+    pnpm_major=$(pnpm -v | sed 's/\([0-9]*\).*/\1/')
+    if (( pnpm_major < 10 )); then
+      echo "ERROR: pnpm >= 10 is required (found $(pnpm -v))."
+      echo "  Update: corepack prepare pnpm@10 --activate"
       echo "  Or: npm install -g pnpm@10"
       echo ""
       missing=true
@@ -227,6 +223,12 @@ if [[ ! -d "$SCRIPT_DIR/node_modules" ]]; then
   echo "  Run: pnpm install"
   echo "  Or:  ./run.sh --install"
   exit 1
+fi
+
+# The server and the client both import packages/shared from its build.
+if [[ ! -f "$SCRIPT_DIR/packages/shared/dist/index.js" ]]; then
+  echo "==> Building packages/shared..."
+  pnpm --filter @base-multiplayer-game/shared build
 fi
 
 mkdir -p "$LOG_DIR"

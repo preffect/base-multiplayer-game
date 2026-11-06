@@ -1,17 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GameRoom } from '../lobby/game-room.js';
 import type { GameModule } from '../game/game-module.js';
-import type { Connection } from '../ws/connection.js';
+import { buildRecordingConnection } from '../testing/connection-builders.js';
 import type { PlayerId } from '@base-multiplayer-game/shared';
-
-function makeConn(id: string): Connection {
-  return {
-    playerId: id,
-    playerName: id,
-    avatarIndex: 0,
-    socket: { readyState: 1, send: () => {}, close: () => {}, on: () => {} } as unknown as Connection['socket'],
-  };
-}
 
 function spyModule(): GameModule & { reduceCalls: () => number } {
   let reduceCalls = 0;
@@ -80,7 +71,7 @@ describe('game-room', () => {
   it('addLatePlayer registers the player and adds them to the module', () => {
     const mod = spyModule();
     const room = new GameRoom(mod, 'p1' as PlayerId, ['p1'], 'Test', { maxPlayers: 4 }, { p1: 0 });
-    const late = makeConn('p3');
+    const late = buildRecordingConnection('p3').connection;
     room.addLatePlayer(late, 'g1');
     expect(mod.addPlayer).toHaveBeenCalledWith('p3', 0, 'p3');
     expect(room.allPlayerIds).toContain('p3');

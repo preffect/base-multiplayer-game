@@ -2,27 +2,14 @@ import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
+import { buildStubHandlers } from '../testing/handler-builders.js';
 import type { Connection } from './connection.js';
-import type { MessageHandlers } from './message-router.js';
 import { registerWebSocketHandler, type WebSocketContext } from './websocket-handler.js';
-
-function stubHandlers(): MessageHandlers {
-  return {
-    onJoinLobby: vi.fn(),
-    onUpdatePlayerInfo: vi.fn(),
-    onCreateGame: vi.fn(),
-    onJoinGame: vi.fn(),
-    onStartGame: vi.fn(),
-    onDeleteGame: vi.fn(),
-    onPlayerInput: vi.fn(),
-    onClientPerformance: vi.fn(),
-  };
-}
 
 function buildContext(overrides: Partial<WebSocketContext> = {}): WebSocketContext {
   return {
     connections: new Map<string, Connection>(),
-    handlers: stubHandlers(),
+    handlers: buildStubHandlers(),
     onConnect: vi.fn(),
     onDisconnect: vi.fn(),
     ...overrides,
@@ -103,6 +90,7 @@ describe('ws/websocket-handler', () => {
 
     const secondTab = await server.injectWS('/ws?clientId=alice');
     await vi.waitFor(() => expect(firstTab.readyState).toBe(firstTab.CLOSED));
+    firstConnection.socket.emit('close');
 
     expect(firstConnection.replaced).toBe(true);
     expect(context.connections.get('alice')).toMatchObject({ playerName: 'Alice', avatarIndex: 4 });
