@@ -191,8 +191,8 @@ do_create() {
     "$IMAGE_NAME" \
     sleep infinity
 
-  # git trust/push setup + pnpm install + prettier — the same script devcontainer.json runs.
-  blue "Running post-create (git setup, pnpm install, prettier)..."
+  # git trust/push setup + pnpm install — the same script devcontainer.json runs.
+  blue "Running post-create (git setup, pnpm install)..."
   docker exec -u "$CONTAINER_USER" -w "$CONTAINER_WORKSPACE" "$CONTAINER_NAME" bash .devcontainer/post-create.sh \
     || yellow "post-create had issues — run 'bash .devcontainer/post-create.sh' inside the container"
 
