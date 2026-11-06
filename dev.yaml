@@ -1,2 +1,2 @@
 # Game server, Angular client.
-ports: [4400, 4402]
+ports: { server: 4400, client: 4402 }
