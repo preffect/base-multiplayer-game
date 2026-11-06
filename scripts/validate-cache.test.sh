@@ -23,6 +23,7 @@ fixture="$sandbox/repo"
 mkdir -p "$fixture/scripts" "$sandbox/bin" "$sandbox/home"
 cp "$repo_root/validate.sh" "$fixture/validate.sh"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$fixture/scripts/docs-index.sh"
+: > "$fixture/pnpm-lock.yaml"
 cat > "$sandbox/bin/pnpm" <<PNPM
 #!/usr/bin/env bash
 echo "fake pnpm \$*"
@@ -145,6 +146,11 @@ check "a run that changes the tree is not stamped" $(( rc == 0 && $(grep -q '^no
 run_validate "$fixture" test
 check "the changed tree runs again rather than hitting" $(( $(is_cached; echo $?) != 0 && $(ran_pnpm; echo $?) == 0 ))
 rm -f "$fixture/generated-by-the-run.txt"
+
+mv "$fixture/pnpm-lock.yaml" "$sandbox/held-lockfile"
+run_validate "$fixture" lint
+check "lint without a lockfile fails and says to install" $(( rc != 0 && $(grep -q '^No pnpm-lock.yaml: run pnpm install first$' <<<"$out"; echo $?) == 0 ))
+mv "$sandbox/held-lockfile" "$fixture/pnpm-lock.yaml"
 
 override_dir="$sandbox/override-cache"
 out="$(cd "$fixture" && VALIDATE_CACHE_DIR="$override_dir" ./validate.sh typecheck 2>&1)"

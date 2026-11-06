@@ -286,6 +286,7 @@ run_one() {
 
   case "$cmd" in
     test)
+      build_shared
       if [[ $# -gt 0 ]]; then
         output="$(pnpm -r test "$@" 2>&1)" || rc=$?
       else
@@ -327,7 +328,12 @@ run_one() {
       directive_out="$(audit_disable_directives)" || audit_rc=1
       todo_out="$(audit_todo_markers)" || audit_rc=1
       docs_index_out="$(scripts/docs-index.sh --check 2>&1)" || audit_rc=1
-      lockfile_out="$(pnpm install --frozen-lockfile --lockfile-only 2>&1)" || audit_rc=1
+      if [[ -f pnpm-lock.yaml ]]; then
+        lockfile_out="$(pnpm install --frozen-lockfile --lockfile-only 2>&1)" || audit_rc=1
+      else
+        lockfile_out="No pnpm-lock.yaml: run pnpm install first"
+        audit_rc=1
+      fi
 
       output="${lint_out}"
       local extra

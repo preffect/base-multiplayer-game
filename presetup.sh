@@ -7,7 +7,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #
 # Run ONCE, on the host, right after copying the template into a new folder and
 # BEFORE ./dev-container.sh — so the devcontainer's first `pnpm install` resolves
-# the FINAL package scope (@<project>). Formatting the result needs npx or docker, and
+# the FINAL package scope (@<project>). Finishing the result needs npx or docker, and
 # the npm registry the first time.
 #
 # Rewrites the template's identity tokens in place:
@@ -38,6 +38,7 @@ source "$ROOT/scripts/lib/identity.sh" # the one identity-render engine (shared 
 PORT_MIN=1024 # dev.yaml's schema allows no lower
 PORT_MAX=65535
 PORT_MAX_DIGITS=5 # longer input would overflow the shell's arithmetic
+PNPM_PACKAGE=pnpm@10 # for sorting the lockfile, on a host that may only have docker
 
 # ---- defaults ----
 PROJECT="$(basename "$ROOT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
@@ -79,12 +80,21 @@ port_ok "$CLIENT_PORT" || { echo "Invalid client port '$CLIENT_PORT' ($PORT_MIN-
 
 if [[ "$FORCE" != true ]] && ! grep -q '"name": "base-multiplayer-game"' "$ROOT/package.json" 2>/dev/null; then # KEEP_TEMPLATE_NAME
   echo "This doesn't look like a fresh template (root package.json name is not 'base-multiplayer-game')." # KEEP_TEMPLATE_NAME
-  echo "Already instantiated? Re-run with --force to rewrite anyway."
+  echo "Already instantiated? Start from a fresh copy of the template."
+  exit 1
+fi
+# The identity pass strips the keep tags, and a second pass would rewrite the lines they protected.
+if ! grep -q " # ${IDENTITY_KEEP_TAG}\$" "$ROOT/scripts/lib/identity.sh"; then
+  echo "This copy was already instantiated, and repeating that would corrupt it. Start from a fresh copy of the template." >&2
   exit 1
 fi
 
-# Fetch prettier now, so a host that can't run it stops here with the template untouched.
-run_prettier "$ROOT" --version >/dev/null || { echo "Can't run prettier: this needs npx or docker, and the npm registry" >&2; exit 1; }
+# Fetch the tools now, so a host that can't run them stops here with the template untouched.
+run_prettier "$ROOT" --version >/dev/null || exit 1
+run_npx "$ROOT" "$PNPM_PACKAGE" --version >/dev/null || { echo "error: can't run $PNPM_PACKAGE. It needs npx or docker, and the npm registry the first time." >&2; exit 1; }
+
+# From here on the copy changes, and the identity pass can't be repeated.
+trap 'echo "presetup.sh failed partway, so this copy is half-built. Delete it and start from a fresh copy of the template." >&2' ERR
 
 echo "Instantiating template:"
 echo "  project : $PROJECT   (package scope @$PROJECT)"
@@ -100,7 +110,7 @@ fi
 
 # Template-only files never belong in a game (scripts/sync-from-template.sh removes any that
 # reappear; the list lives in scripts/lib/identity.sh so both agree). presetup.sh is in that list
-# but goes last, at the bottom of this file, so a run that fails on the way can be repeated.
+# but goes last, at the bottom of this file, so a copy that still has it is visibly unfinished.
 for template_only in "${TEMPLATE_ONLY_PATHS[@]}"; do
   [[ "$template_only" == presetup.sh ]] || rm -rf "${ROOT:?}/$template_only"
 done
@@ -117,6 +127,9 @@ render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${ide
 workspace_scope="$(sed -n 's|^  "name": "\(@[^/]*\)/shared",$|\1|p' "$ROOT/packages/shared/package.json")"
 [[ -n "$workspace_scope" ]] || { echo "No package scope in packages/shared/package.json" >&2; exit 1; }
 sed -i "s|@${IDENTITY_TEMPLATE_PROJECT}/|${workspace_scope}/|g" "$ROOT/pnpm-lock.yaml"
+# The new scope can sort differently. pnpm re-sorts on any write, so do that once here rather than
+# have ./validate.sh lint change a new game's lockfile.
+run_npx "$ROOT" "$PNPM_PACKAGE" install --frozen-lockfile --lockfile-only >/dev/null
 
 # The root package description is the game's (set after the identity pass so the template name survives).
 sed -i "s|^  \"description\": \".*\",$|  \"description\": \"$(_identity_escape "$TITLE") — multiplayer game built from the base-multiplayer-game template\",|" "$ROOT/package.json" # KEEP_TEMPLATE_NAME

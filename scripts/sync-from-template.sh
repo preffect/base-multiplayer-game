@@ -26,8 +26,8 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #
 # After copying, the template identity is re-applied exactly as presetup.sh does
 # (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME,
-# and the copied files are formatted with the game's prettier. That needs npx or docker, with or
-# without node_modules, and a sync stops before copying anything if neither can run it.
+# and the template-owned files are formatted with the game's prettier. That needs npx or docker,
+# with or without node_modules, and a sync stops before copying anything if neither can run it.
 #
 # Usage:  ./scripts/sync-from-template.sh [--template <dir>] [--dry-run]
 # ---------------------------------------------------------------------------
@@ -55,11 +55,8 @@ main() {
   # shellcheck disable=SC1091
   source "$TEMPLATE/scripts/lib/identity.sh"
 
-  # A sync must leave the game formatted, so a host that can't run prettier stops before any copy.
-  if ! $DRY_RUN && ! run_prettier "$ROOT" --version >/dev/null; then
-    echo "error: can't run prettier: this needs npx or docker, and the npm registry" >&2
-    exit 1
-  fi
+  # A sync must leave its files formatted, so a host that can't run prettier stops before any copy.
+  $DRY_RUN || run_prettier "$ROOT" --version >/dev/null || exit 1
 
   # ---- identity of this game (what presetup.sh baked in) ----------------------
   PROJECT="$(sed -n 's/^  "name": "\(.*\)",$/\1/p' "$ROOT/package.json" | head -1)"
@@ -142,17 +139,29 @@ main() {
     printf '  %s\n' "${drifted[@]}"
   fi
   # Re-rendering shortens/lengthens words inside markdown tables; the game's prettier re-aligns them.
-  if ((${#copied[@]})) && ! $DRY_RUN; then
-    run_prettier "$ROOT" --write --ignore-unknown --log-level=warn "${copied[@]}"
+  # Every template-owned file, not just this run's copies, so a file an earlier sync left unformatted
+  # is repaired even when it is unchanged here. Game-owned files are not touched.
+  reformatted=""
+  if ! $DRY_RUN; then
+    to_format=("${copied[@]}")
+    for f in "${ALWAYS[@]}"; do [[ -f "$ROOT/$f" ]] && to_format+=("$f"); done
+    reformatted="$(run_prettier "$ROOT" --write --list-different --ignore-unknown "${to_format[@]}")" \
+      || { echo "error: the synced files are not all formatted. Fix the error above, then sync again." >&2; exit 1; }
   fi
   # The docs index quotes headings and first sentences of docs this run may have replaced.
-  if ((${#copied[@]} + ${#removed[@]})) && ! $DRY_RUN; then "$ROOT/scripts/docs-index.sh" >/dev/null; fi
-  if ((${#copied[@]} + ${#removed[@]} == 0)); then
+  if ((${#copied[@]} + ${#removed[@]})) || [[ -n "$reformatted" ]]; then
+    $DRY_RUN || "$ROOT/scripts/docs-index.sh" >/dev/null
+  fi
+  if ((${#copied[@]} + ${#removed[@]} == 0)) && [[ -z "$reformatted" ]]; then
     echo "Already in sync with $TEMPLATE."
   elif ((${#copied[@]})); then
     $DRY_RUN && echo "Would update (dry run):" || echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
     printf '  %s\n' "${copied[@]}"
     $DRY_RUN || echo "Review with 'git diff', then land via a PR (docs/WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
+  fi
+  if [[ -n "$reformatted" ]]; then
+    echo "Formatted with prettier:"
+    sed 's/^/  /' <<<"$reformatted"
   fi
 }
 

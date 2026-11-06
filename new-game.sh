@@ -135,7 +135,10 @@ PRESETUP_ARGS=("$NAME")
 [[ -n "$CLIENT_PORT" ]] && PRESETUP_ARGS+=(--client-port "$CLIENT_PORT")
 
 echo "==> Copying template  ->  $NAME/"
-cp -a "$TEMPLATE" "$TARGET"
+# Not node_modules or .pnpm-store: their paths belong to the template, and `pnpm install` refuses
+# to replace them without a TTY.
+mkdir "$TARGET"
+tar -C "$TEMPLATE" --exclude=node_modules --exclude=.pnpm-store -cf - . | tar -C "$TARGET" -xpf -
 
 echo "==> Instantiating ($NAME)"
 (cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}") || {

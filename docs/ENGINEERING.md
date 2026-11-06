@@ -14,8 +14,9 @@ each is checkable. An AI building a game from this template MUST follow every ru
 1. **Always use `./validate.sh`. Never run the underlying tools directly.** Do not reach for
    `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`,
    or `pnpm --filter ... exec vitest` as a shortcut. The wrapper:
-   - pre-builds `@base-multiplayer-game/shared` before typecheck (`build_shared`) so downstream
-     `.d.ts` project references are fresh — running `tsc` directly gives stale/false results;
+   - pre-builds `@base-multiplayer-game/shared` before typecheck and test (`build_shared`) so
+     downstream `.d.ts` project references are fresh — running `tsc` directly gives stale/false
+     results — and the server's tests can import it;
    - runs **eslint AND prettier `--check` as a pair** — running only eslint silently misses
      formatting failures — then audits the source for `eslint-disable` directives without a
      `-- reason` and for `TODO`s without a ticket (§3.3), printing the directive count, checks

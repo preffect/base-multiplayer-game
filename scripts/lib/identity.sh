@@ -50,19 +50,28 @@ render_identity() {
     -e "s| *<!-- ${IDENTITY_KEEP_TAG} -->||" -e "s| *# ${IDENTITY_KEEP_TAG}||" "$@"
 }
 
-# run_prettier <root> <prettier args...>
-# The prettier version <root>'s lockfile pins, so it agrees with `pnpm lint` there, with or without
-# node_modules. Through npx, or docker when Node lives only in the devcontainer.
-run_prettier() {
-  local root="$1" version; shift
-  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$root/pnpm-lock.yaml" | head -n 1)"
-  [[ -n "$version" ]] || { echo "No prettier version in $root/pnpm-lock.yaml" >&2; return 1; }
+# run_npx <root> <package> <args...>
+# An npm package's CLI, run in <root>: through npx, or docker when Node lives only in the devcontainer.
+run_npx() {
+  local root="$1" package="$2"; shift 2
   if command -v npx >/dev/null; then
-    (cd "$root" && npx --yes "prettier@$version" "$@")
+    (cd "$root" && npx --yes "$package" "$@")
   else
     docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --volume "$root:/workspace" --workdir /workspace \
-      "$FORMATTER_DOCKER_IMAGE" npx --yes "prettier@$version" "$@"
+      "$FORMATTER_DOCKER_IMAGE" npx --yes "$package" "$@"
   fi
+}
+
+# run_prettier <root> <prettier args...>
+# The prettier version <root>'s lockfile pins, so it agrees with `pnpm lint` there, with or without
+# node_modules. Prints why it couldn't run, so callers only need to stop.
+run_prettier() {
+  local root="$1" version; shift
+  [[ -f "$root/pnpm-lock.yaml" ]] || { echo "error: no pnpm-lock.yaml in $root: run pnpm install first" >&2; return 1; }
+  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$root/pnpm-lock.yaml" | head -n 1)"
+  [[ -n "$version" ]] || { echo "error: no prettier in $root/pnpm-lock.yaml: run pnpm install first" >&2; return 1; }
+  run_npx "$root" "prettier@$version" "$@" \
+    || { echo "error: prettier failed. It needs npx or docker, and the npm registry the first time." >&2; return 1; }
 }
 
 # ---- container identity: the ONE home for what dev-container.sh and scripts/agent.sh assume ----
