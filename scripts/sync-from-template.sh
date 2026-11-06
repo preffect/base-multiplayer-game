@@ -19,7 +19,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   * Never synced: package.json (its devDependencies — jscpd, @vitest/coverage-v8, the eslint
 #     plugins — are game-owned and must stay present for validate.sh), packages/**, game-owned
 #     docs/* (only the template docs listed below are),
-#     docs/INIT-GAME.md (one-shot), PORTS.env, .github/project.env, data/.
+#     docs/INIT-GAME.md (one-shot), PORTS.env, dev.yaml, pnpm-lock.yaml, .github/project.env, data/.
 #   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
 #     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh), and the
 #     per-role .claude/roles/<role>.md files that predate the .claude/agents/ definitions.

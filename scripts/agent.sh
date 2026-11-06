@@ -25,7 +25,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
-source "$ROOT/scripts/lib/identity.sh" # CONTAINER_USER / CONTAINER_HOME / CONTAINER_WORKSPACE / container_name_from_dir
+source "$ROOT/scripts/lib/identity.sh" # CONTAINER_USER / CONTAINER_HOME / CONTAINER_WORKSPACE / container_name_from_dir / in_container
 ROLES_DIR=.claude/roles   # _common.md (shared ground rules)
 AGENTS_DIR=.claude/agents # one definition per role; also what the in-session Agent tool uses
 LOG_DIR=.qa/agents
@@ -37,7 +37,6 @@ BUILTIN_TOOLS="Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,Agent,TodoWrite
 CONTAINER_PATH="$CONTAINER_HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 
 usage() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print} n==2{exit}' "${BASH_SOURCE[0]}"; exit 1; }
-in_container() { [[ -f /.dockerenv ]]; }
 
 run_in_workdir() { # <workdir-relative> <command...> — inside the container, in that directory
   local workdir="$1"; shift

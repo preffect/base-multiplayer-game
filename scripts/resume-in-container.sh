@@ -17,11 +17,11 @@ set -euo pipefail
 # for a container created before that variable existed, until it is rebuilt).
 # ---------------------------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/lib/identity.sh" # CONTAINER_WORKSPACE / in_container
 PROJECTS_DIR="${HOME}/.claude/projects"
-CONTAINER_WORKSPACE=/workspace
 
 project_key() { echo "${1//\//-}"; } # /home/me/source/game -> -home-me-source-game
-in_container() { [[ -f /.dockerenv ]]; }
 
 session="" host_dir="${HOST_WORKSPACE_DIR:-}"
 while [[ $# -gt 0 ]]; do

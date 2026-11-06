@@ -10,7 +10,8 @@
 # Lines carrying the keep tag keep the literal template values (guidance such as "upstream
 # this to base-multiplayer-game"); the tag itself is stripped afterwards. # KEEP_TEMPLATE_NAME
 # The tag is always spelled via $IDENTITY_KEEP_TAG here so this file cannot mangle itself.
-# Also sourced by dev-container.sh and scripts/agent.sh for the container identity (bottom).
+# Also sourced by dev-container.sh, scripts/agent.sh and scripts/resume-in-container.sh for the
+# container identity (bottom).
 # ---------------------------------------------------------------------------
 
 IDENTITY_KEEP_TAG="KEEP_TEMPLATE_NAME"
@@ -67,6 +68,10 @@ project_slug_from_dir() { # <dir>
   basename "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//'
 }
 container_name_from_dir() { echo "$(project_slug_from_dir "$1")$CONTAINER_NAME_SUFFIX"; } # <dir>
+
+# True inside a dev environment: the devcontainer has /.dockerenv, and a standard dev pod has no
+# such file but its image sets PREFFECT_DEV.
+in_container() { [[ -f /.dockerenv || -n "${PREFFECT_DEV:-}" ]]; }
 
 
 # Files that exist only to CREATE games and must not survive in one. presetup.sh deletes them

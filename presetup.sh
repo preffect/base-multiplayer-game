@@ -89,6 +89,9 @@ mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-di
   "${IDENTITY_TEMPLATE_TITLE}|${IDENTITY_TEMPLATE_PROJECT}|${IDENTITY_TEMPLATE_MCP}|${IDENTITY_TEMPLATE_SLUG}|\\b${IDENTITY_TEMPLATE_SERVER_PORT}\\b|\\b${IDENTITY_TEMPLATE_CLIENT_PORT}\\b|${IDENTITY_KEEP_TAG}" \
   "$ROOT" 2>/dev/null || true)
 render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${identity_files[@]}"
+# The lockfile names the workspace packages, so a frozen install fails until they match. Only those
+# change: the whole-word port rewrite above could hit a dependency's version or hash.
+sed -i "s|@${IDENTITY_TEMPLATE_PROJECT}/|@${PROJECT}/|g" "$ROOT/pnpm-lock.yaml"
 # docs/INDEX.md quotes the docs' first sentences, which the identity pass just changed.
 "$ROOT/scripts/docs-index.sh" >/dev/null
 
@@ -103,7 +106,7 @@ cat > "$ROOT/PORTS.env" <<EOF
 # Pre-selected, host-verified ports for this game. The in-container session should
 # read these rather than picking ports. They are already applied across the
 # integration files (server index.ts, client angular.json/proxy.conf.json,
-# .devcontainer/devcontainer.json, dev-container.sh, run.sh, .mcp.json).
+# .devcontainer/devcontainer.json, dev-container.sh, run.sh, .mcp.json, dev.yaml).
 SERVER_PORT=$SERVER_PORT
 CLIENT_PORT=$CLIENT_PORT
 SLUG=$SLUG

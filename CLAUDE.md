@@ -64,6 +64,11 @@ and the player loses the game. Source edits still rebuild; refresh the browser t
 ./dev-container.sh status   # show container status
 ```
 
+`dev.yaml` and the committed `pnpm-lock.yaml` serve the PreffectHome standard dev environment, an
+unprivileged pod from a shared image with no Docker inside. The devcontainer keeps working beside
+it; a script that needs to know it is inside either one uses `in_container` from
+`scripts/lib/identity.sh`.
+
 ## Project workflow (GitHub issues, board, reviews)
 
 **Planning lives in GitHub issues** — epics, tickets, roadmaps, task lists. Files under `docs/`
