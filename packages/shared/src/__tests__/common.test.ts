@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, playerId, gameId, isRoomJoinable } from '../types/common.js';
+import { clamp, playerId, gameId, entityId, tick, isRoomJoinable } from '../types/common.js';
 
 describe('clamp', () => {
   it('returns the value when within range', () => {
@@ -24,6 +24,11 @@ describe('branded id factories', () => {
   it('return the underlying string unchanged at runtime', () => {
     expect(playerId('abc')).toBe('abc');
     expect(gameId('room-1')).toBe('room-1');
+    expect(entityId('entity-1')).toBe('entity-1');
+  });
+
+  it('tick returns the underlying number unchanged at runtime', () => {
+    expect(tick(42)).toBe(42);
   });
 });
 

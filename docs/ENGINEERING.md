@@ -18,8 +18,9 @@ each is checkable. An AI building a game from this template MUST follow every ru
      `.d.ts` project references are fresh — running `tsc` directly gives stale/false results;
    - runs **eslint AND prettier `--check` as a pair** — running only eslint silently misses
      formatting failures — then audits the source for `eslint-disable` directives without a
-     `-- reason` and for `TODO`s without a ticket (§3.3), printing the directive count, and
-     checks that `docs/INDEX.md` is fresh (`scripts/docs-index.sh --check`);
+     `-- reason` and for `TODO`s without a ticket (§3.3), printing the directive count, checks
+     that `docs/INDEX.md` is fresh (`scripts/docs-index.sh --check`), and checks that
+     `pnpm-lock.yaml` still matches the manifests (a frozen lockfile-only install);
    - runs **`jscpd`** (`duplication`) against `.jscpd.json`: ≥ 5 duplicated lines / 50 tokens
      anywhere in `packages/*/src` outside tests, test builders, fakes and scenario tables fails
      (§3.3); import blocks are ignored; the offending file pairs are printed with line ranges;

@@ -35,19 +35,19 @@ check_deps() {
 
   if ! command -v pnpm &>/dev/null; then
     echo "ERROR: pnpm is not installed."
-    echo "  Install pnpm >= 10:"
-    echo "    corepack enable && corepack prepare pnpm@latest --activate"
-    echo "  Or: npm install -g pnpm"
+    echo "  Install pnpm 10:"
+    echo "    corepack enable && corepack prepare pnpm@10 --activate"
+    echo "  Or: npm install -g pnpm@10"
     echo "  Or: https://pnpm.io/installation"
     echo ""
     missing=true
   else
     local pnpm_major
     pnpm_major=$(pnpm -v | sed 's/\([0-9]*\).*/\1/')
-    if (( pnpm_major < 10 )); then
-      echo "ERROR: pnpm >= 10 is required (found $(pnpm -v))."
-      echo "  Update: corepack prepare pnpm@latest --activate"
-      echo "  Or: npm install -g pnpm@latest"
+    if (( pnpm_major != 10 )); then
+      echo "ERROR: pnpm 10 is required (found $(pnpm -v))."
+      echo "  Switch: corepack prepare pnpm@10 --activate"
+      echo "  Or: npm install -g pnpm@10"
       echo ""
       missing=true
     fi

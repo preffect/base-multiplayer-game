@@ -26,7 +26,7 @@
 ./validate.sh test                    # unit tests with coverage floors (vitest for shared/server, ng test for client)
 ./validate.sh integration             # *.integration.* tier + *.gameplay.test.ts scenarios (opt-in)
 ./validate.sh typecheck               # type check all packages
-./validate.sh lint                    # eslint + prettier --check + eslint-disable / TODO audit + docs/INDEX.md freshness
+./validate.sh lint                    # eslint + prettier --check + eslint-disable / TODO audit + docs/INDEX.md freshness + lockfile check
 ./validate.sh duplication             # jscpd against .jscpd.json
 ./validate.sh all                     # run lint, duplication, typecheck, test in sequence
 

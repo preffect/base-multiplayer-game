@@ -6,7 +6,7 @@
 #   test         Run unit tests with coverage thresholds (pnpm -r test)
 #   integration  Run the *.integration.test.ts / *.integration.spec.ts tier plus the *.gameplay.test.ts scenarios (pnpm -r test:integration)
 #   typecheck    Run type checking (pnpm -r typecheck)
-#   lint         Run linting (eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness)
+#   lint         Run linting (eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness + lockfile in step with the manifests)
 #   duplication  Run jscpd against .jscpd.json (docs/ENGINEERING.md §3.3)
 #   all          Run lint, duplication, typecheck, test in sequence
 #
@@ -319,6 +319,7 @@ run_one() {
       local directive_out=""
       local todo_out=""
       local docs_index_out=""
+      local lockfile_out=""
       local audit_rc=0
 
       lint_out="$(pnpm eslint . "$@" 2>&1)" || lint_rc=$?
@@ -326,10 +327,11 @@ run_one() {
       directive_out="$(audit_disable_directives)" || audit_rc=1
       todo_out="$(audit_todo_markers)" || audit_rc=1
       docs_index_out="$(scripts/docs-index.sh --check 2>&1)" || audit_rc=1
+      lockfile_out="$(pnpm install --frozen-lockfile --lockfile-only 2>&1)" || audit_rc=1
 
       output="${lint_out}"
       local extra
-      for extra in "$prettier_out" "$directive_out" "$todo_out" "$docs_index_out"; do
+      for extra in "$prettier_out" "$directive_out" "$todo_out" "$docs_index_out" "$lockfile_out"; do
         if [[ -n "$extra" ]]; then
           output="${output}
 ${extra}"

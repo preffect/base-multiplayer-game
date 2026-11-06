@@ -60,6 +60,35 @@ describe('message-router', () => {
     );
   });
 
+  it.each([
+    ['onUpdatePlayerInfo', { type: 'update_player_info', playerName: 'Bob', avatarIndex: 1 }],
+    ['onCreateGame', { type: 'create_game', gameName: 'Arena', config: { maxPlayers: 2 } }],
+    ['onJoinGame', { type: 'join_game', gameId: 'game' }],
+    ['onStartGame', { type: 'start_game', gameId: 'game' }],
+    ['onDeleteGame', { type: 'delete_game', gameId: 'game' }],
+    [
+      'onClientPerformance',
+      {
+        type: 'client_performance',
+        report: { fps: 60, frameTimeAvgMs: 16, frameTimeP95Ms: 18, frameTimePeakMs: 30, heapMb: null },
+      },
+    ],
+  ] as const)('routes to %s', (handlerName, message) => {
+    const h = stubHandlers();
+    const route = createMessageRouter(h);
+    const { conn, sent } = makeConn();
+    route(conn, JSON.stringify(message));
+    expect(h[handlerName]).toHaveBeenCalledWith(conn, expect.objectContaining(message));
+    expect(sent).toEqual([]);
+  });
+
+  it('rejects an unknown message type', () => {
+    const route = createMessageRouter(stubHandlers());
+    const { conn, sent } = makeConn();
+    route(conn, JSON.stringify({ type: 'not_a_verb' }));
+    expect(sent[0]).toMatchObject({ type: 'error' });
+  });
+
   it('routes player_input with an opaque payload (client-trust)', () => {
     const h = stubHandlers();
     const route = createMessageRouter(h);
