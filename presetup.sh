@@ -38,7 +38,6 @@ source "$ROOT/scripts/lib/identity.sh" # the one identity-render engine (shared 
 PORT_MIN=1024 # dev.yaml's schema allows no lower
 PORT_MAX=65535
 PORT_MAX_DIGITS=5 # longer input would overflow the shell's arithmetic
-FORMATTER_DOCKER_IMAGE=node:24-slim # the Node major of package.json's engines
 
 # ---- defaults ----
 PROJECT="$(basename "$ROOT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
@@ -84,18 +83,8 @@ if [[ "$FORCE" != true ]] && ! grep -q '"name": "base-multiplayer-game"' "$ROOT/
   exit 1
 fi
 
-# The lockfile's prettier, from npx or else docker. Node may live only in the devcontainer.
-PRETTIER_PACKAGE="prettier@$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$ROOT/pnpm-lock.yaml" | head -n 1)"
-run_prettier() {
-  if command -v npx >/dev/null; then
-    (cd "$ROOT" && npx --yes "$PRETTIER_PACKAGE" "$@")
-  else
-    docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --volume "$ROOT:/workspace" --workdir /workspace \
-      "$FORMATTER_DOCKER_IMAGE" npx --yes "$PRETTIER_PACKAGE" "$@"
-  fi
-}
-# Fetch it now, so a host that can't run it stops here with the template untouched.
-run_prettier --version >/dev/null || { echo "Can't run $PRETTIER_PACKAGE: this needs npx or docker, and the npm registry" >&2; exit 1; }
+# Fetch prettier now, so a host that can't run it stops here with the template untouched.
+run_prettier "$ROOT" --version >/dev/null || { echo "Can't run prettier: this needs npx or docker, and the npm registry" >&2; exit 1; }
 
 echo "Instantiating template:"
 echo "  project : $PROJECT   (package scope @$PROJECT)"
@@ -155,7 +144,7 @@ EOF
 
 # The new names change line lengths and table widths, and the docs index quotes the docs: format
 # first, then index what was formatted.
-run_prettier --write --log-level=warn .
+run_prettier "$ROOT" --write --log-level=warn .
 "$ROOT/scripts/docs-index.sh" >/dev/null
 
 echo "Done."

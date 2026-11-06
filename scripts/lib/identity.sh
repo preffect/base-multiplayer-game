@@ -3,7 +3,7 @@
 # identity.sh — the ONE place that knows how to turn template files into a game's files.
 #
 # Sourced by presetup.sh (first instantiation) and scripts/sync-from-template.sh (later
-# syncs). Rewrites the template identity tokens in the given files:
+# syncs), which also share run_prettier. Rewrites the template identity tokens in the given files:
 #   Base Multiplayer Game  -> <Title>          base-multiplayer-game -> <project> # KEEP_TEMPLATE_NAME
 #   game-debug             -> <slug>-debug     base-mp               -> <slug> # KEEP_TEMPLATE_NAME
 #   4400 / 4402            -> <server-port> / <client-port>   (whole-word) # KEEP_TEMPLATE_NAME
@@ -22,6 +22,7 @@ IDENTITY_TEMPLATE_SLUG="base-mp" # KEEP_TEMPLATE_NAME
 IDENTITY_TEMPLATE_SERVER_PORT="4400" # KEEP_TEMPLATE_NAME
 IDENTITY_TEMPLATE_CLIENT_PORT="4402" # KEEP_TEMPLATE_NAME
 IDENTITY_PLACEHOLDER_MARK=$'\x01' # a control byte, so no text file holds it
+FORMATTER_DOCKER_IMAGE=node:24-slim # the Node major of package.json's engines
 
 # title_case_from_name my-game -> "My Game"
 title_case_from_name() { echo "$1" | sed -E 's/[-_]+/ /g; s/\b(.)/\u\1/g'; }
@@ -47,6 +48,21 @@ render_identity() {
   done
   sed -i -e "/${IDENTITY_KEEP_TAG}/!{" "${to_placeholders[@]}" "${to_values[@]}" -e '}' \
     -e "s| *<!-- ${IDENTITY_KEEP_TAG} -->||" -e "s| *# ${IDENTITY_KEEP_TAG}||" "$@"
+}
+
+# run_prettier <root> <prettier args...>
+# The prettier version <root>'s lockfile pins, so it agrees with `pnpm lint` there, with or without
+# node_modules. Through npx, or docker when Node lives only in the devcontainer.
+run_prettier() {
+  local root="$1" version; shift
+  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$root/pnpm-lock.yaml" | head -n 1)"
+  [[ -n "$version" ]] || { echo "No prettier version in $root/pnpm-lock.yaml" >&2; return 1; }
+  if command -v npx >/dev/null; then
+    (cd "$root" && npx --yes "prettier@$version" "$@")
+  else
+    docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --volume "$root:/workspace" --workdir /workspace \
+      "$FORMATTER_DOCKER_IMAGE" npx --yes "prettier@$version" "$@"
+  fi
 }
 
 # ---- container identity: the ONE home for what dev-container.sh and scripts/agent.sh assume ----

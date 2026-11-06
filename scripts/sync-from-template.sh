@@ -25,7 +25,9 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #     per-role .claude/roles/<role>.md files that predate the .claude/agents/ definitions.
 #
 # After copying, the template identity is re-applied exactly as presetup.sh does
-# (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME.
+# (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME,
+# and the copied files are formatted with the game's prettier. That needs npx or docker, with or
+# without node_modules, and a sync stops before copying anything if neither can run it.
 #
 # Usage:  ./scripts/sync-from-template.sh [--template <dir>] [--dry-run]
 # ---------------------------------------------------------------------------
@@ -52,6 +54,12 @@ main() {
   # The identity-render engine comes from the TEMPLATE (always its newest version).
   # shellcheck disable=SC1091
   source "$TEMPLATE/scripts/lib/identity.sh"
+
+  # A sync must leave the game formatted, so a host that can't run prettier stops before any copy.
+  if ! $DRY_RUN && ! run_prettier "$ROOT" --version >/dev/null; then
+    echo "error: can't run prettier: this needs npx or docker, and the npm registry" >&2
+    exit 1
+  fi
 
   # ---- identity of this game (what presetup.sh baked in) ----------------------
   PROJECT="$(sed -n 's/^  "name": "\(.*\)",$/\1/p' "$ROOT/package.json" | head -1)"
@@ -133,9 +141,9 @@ main() {
     echo "Differs from the template but is edited in place by agents — merge manually if the template change matters:"
     printf '  %s\n' "${drifted[@]}"
   fi
-  # Re-rendering shortens/lengthens words inside markdown tables; let the game's prettier re-align.
-  if ((${#copied[@]})) && ! $DRY_RUN && [[ -x "$ROOT/node_modules/.bin/prettier" ]]; then
-    (cd "$ROOT" && node_modules/.bin/prettier --write --ignore-unknown "${copied[@]}" >/dev/null 2>&1 || true)
+  # Re-rendering shortens/lengthens words inside markdown tables; the game's prettier re-aligns them.
+  if ((${#copied[@]})) && ! $DRY_RUN; then
+    run_prettier "$ROOT" --write --ignore-unknown --log-level=warn "${copied[@]}"
   fi
   # The docs index quotes headings and first sentences of docs this run may have replaced.
   if ((${#copied[@]} + ${#removed[@]})) && ! $DRY_RUN; then "$ROOT/scripts/docs-index.sh" >/dev/null; fi

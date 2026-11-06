@@ -148,6 +148,18 @@ copy_template "$source_directory/$TEMPLATE_PROJECT"
 new_game() { "$source_directory/$TEMPLATE_PROJECT/new-game.sh" "$@" --no-start --no-ha-router --no-github; }
 check "new-game.sh: creates a game" new_game new-base-mp --server-port 4430 --client-port 4432
 check_game "$source_directory/new-base-mp" new-base-mp new-base-mp 4430 4432
+
+# A sync re-renders docs at the template's width, and this game has no node_modules to fix that with.
+synced_game="$source_directory/new-base-mp"
+sync_template() { "$synced_game/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"; }
+workflow_before_sync="$sandbox/workflow-before-sync"
+cp "$synced_game/docs/WORKFLOW.md" "$workflow_before_sync"
+check "sync stops before copying when prettier can't run" fails env PATH="$sandbox/broken-npx:$PATH" "$synced_game/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"
+check "sync copied nothing when prettier can't run" cmp "$workflow_before_sync" "$synced_game/docs/WORKFLOW.md"
+check "sync succeeds without node_modules" sync_template
+check "sync leaves prettier clean" in_directory "$synced_game" npx --yes "$PRETTIER_PACKAGE" --check .
+check "sync leaves a fresh docs index" docs_index_is_fresh "$synced_game"
+
 check "new-game.sh: stops on a bad port" fails new_game bad-port --server-port 80 --client-port 4432
 check "new-game.sh: removes the copy after a refusal" is_absent "$source_directory/bad-port"
 
