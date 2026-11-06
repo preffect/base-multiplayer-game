@@ -228,6 +228,8 @@ fi
 # The server and the client both import packages/shared from its build.
 if [[ ! -f "$SCRIPT_DIR/packages/shared/dist/index.js" ]]; then
   echo "==> Building packages/shared..."
+  # Clean first: with its .tsbuildinfo still there, tsc thinks the build is current and writes nothing.
+  pnpm --filter @base-multiplayer-game/shared clean
   pnpm --filter @base-multiplayer-game/shared build
 fi
 
