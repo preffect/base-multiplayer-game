@@ -32,6 +32,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "${PREFFECT_DEV:-}" ]]; then
+  echo "error: resume-in-container.sh is not available in a pod: it moves a transcript between the host and a devcontainer." >&2
+  exit 1
+fi
+
 if in_container; then
   [[ -n "$host_dir" ]] || {
     echo "error: the host checkout path is unknown inside the container (HOST_WORKSPACE_DIR is unset)." >&2
