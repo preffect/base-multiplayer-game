@@ -5,8 +5,8 @@
       "url": "http://localhost:4400/debug-mcp"
     },
     "angular": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/angular-mcp"]
+      "command": "pnpm",
+      "args": ["--dir", "packages/client", "exec", "ng", "mcp"]
     },
     "playwright": {
       "command": "playwright-mcp",
