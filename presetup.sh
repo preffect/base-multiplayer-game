@@ -7,7 +7,8 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #
 # Run ONCE, on the host, right after copying the template into a new folder and
 # BEFORE ./dev-container.sh — so the devcontainer's first `pnpm install` resolves
-# the FINAL package scope (@<project>).
+# the FINAL package scope (@<project>). Formatting the result needs npx or docker, and
+# the npm registry the first time.
 #
 # Rewrites the template's identity tokens in place:
 #   base-multiplayer-game / @base-multiplayer-game -> <project> / @<project> # KEEP_TEMPLATE_NAME
@@ -15,6 +16,10 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   base-mp (slug + client-id storage key)         -> <slug> # KEEP_TEMPLATE_NAME
 #   game-debug (MCP server name)                   -> <slug>-debug # KEEP_TEMPLATE_NAME
 #   4400 / 4402 (only if you pass new ports)       -> <server-port> / <client-port> # KEEP_TEMPLATE_NAME
+#   @base-multiplayer-game/ in pnpm-lock.yaml      -> @<project>/ (nothing else in that file) # KEEP_TEMPLATE_NAME
+#
+# It then writes PORTS.env and dev.yaml, and runs prettier over the result, because the new
+# names change line lengths and table widths. A new game passes `pnpm lint` as it stands.
 #
 # It does NOT touch container/image/DinD names — dev-container.sh derives those
 # from the folder name. It does NOT touch gameplay — that's docs/INIT-GAME.md.
@@ -29,6 +34,11 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/lib/identity.sh" # the one identity-render engine (shared with sync-from-template.sh)
+
+PORT_MIN=1024 # dev.yaml's schema allows no lower
+PORT_MAX=65535
+PORT_MAX_DIGITS=5 # longer input would overflow the shell's arithmetic
+FORMATTER_DOCKER_IMAGE=node:24-slim # the Node major of package.json's engines
 
 # ---- defaults ----
 PROJECT="$(basename "$ROOT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
@@ -59,12 +69,33 @@ SLUG="${SLUG:-$PROJECT}"
 name_ok() { [[ "$1" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; }
 name_ok "$PROJECT" || { echo "Invalid project name '$PROJECT' (lowercase letters, digits, - _ .)" >&2; exit 1; }
 name_ok "$SLUG"    || { echo "Invalid slug '$SLUG'" >&2; exit 1; }
+# The title lands inside quoted TypeScript and shell strings.
+title_ok() { [[ "$1" != *[\'\"\\\`\$]* ]]; }
+title_ok "$TITLE"  || { echo "Invalid title '$TITLE' (no quotes, backticks, backslashes or dollar signs)" >&2; exit 1; }
+port_ok() { [[ "$1" =~ ^[1-9][0-9]*$ ]] && ((${#1} <= PORT_MAX_DIGITS && $1 >= PORT_MIN && $1 <= PORT_MAX)); }
+port_ok "$SERVER_PORT" || { echo "Invalid server port '$SERVER_PORT' ($PORT_MIN-$PORT_MAX)" >&2; exit 1; }
+port_ok "$CLIENT_PORT" || { echo "Invalid client port '$CLIENT_PORT' ($PORT_MIN-$PORT_MAX)" >&2; exit 1; }
+[[ "$SERVER_PORT" != "$CLIENT_PORT" ]] || { echo "The server and client ports must differ (both $SERVER_PORT)" >&2; exit 1; }
+[[ -f "$ROOT/pnpm-lock.yaml" ]] || { echo "No pnpm-lock.yaml: a game needs the template's lockfile" >&2; exit 1; }
 
 if [[ "$FORCE" != true ]] && ! grep -q '"name": "base-multiplayer-game"' "$ROOT/package.json" 2>/dev/null; then # KEEP_TEMPLATE_NAME
   echo "This doesn't look like a fresh template (root package.json name is not 'base-multiplayer-game')." # KEEP_TEMPLATE_NAME
   echo "Already instantiated? Re-run with --force to rewrite anyway."
   exit 1
 fi
+
+# The lockfile's prettier, from npx or else docker. Node may live only in the devcontainer.
+PRETTIER_PACKAGE="prettier@$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$ROOT/pnpm-lock.yaml" | head -n 1)"
+run_prettier() {
+  if command -v npx >/dev/null; then
+    (cd "$ROOT" && npx --yes "$PRETTIER_PACKAGE" "$@")
+  else
+    docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --volume "$ROOT:/workspace" --workdir /workspace \
+      "$FORMATTER_DOCKER_IMAGE" npx --yes "$PRETTIER_PACKAGE" "$@"
+  fi
+}
+# Fetch it now, so a host that can't run it stops here with the template untouched.
+run_prettier --version >/dev/null || { echo "Can't run $PRETTIER_PACKAGE: this needs npx or docker, and the npm registry" >&2; exit 1; }
 
 echo "Instantiating template:"
 echo "  project : $PROJECT   (package scope @$PROJECT)"
@@ -79,9 +110,11 @@ if [[ -f "$ROOT/README.game.md" ]]; then
 fi
 
 # Template-only files never belong in a game (scripts/sync-from-template.sh removes any that
-# reappear; the list lives in scripts/lib/identity.sh so both agree). presetup.sh itself is
-# removed at the very end of this run.
-for template_only in "${TEMPLATE_ONLY_PATHS[@]}"; do rm -rf "${ROOT:?}/$template_only"; done
+# reappear; the list lives in scripts/lib/identity.sh so both agree). presetup.sh is in that list
+# but goes last, at the bottom of this file, so a run that fails on the way can be repeated.
+for template_only in "${TEMPLATE_ONLY_PATHS[@]}"; do
+  [[ "$template_only" == presetup.sh ]] || rm -rf "${ROOT:?}/$template_only"
+done
 
 # ---- rewrite every file that mentions a template identity token ----
 mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.angular \
@@ -90,13 +123,14 @@ mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-di
   "$ROOT" 2>/dev/null || true)
 render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${identity_files[@]}"
 # The lockfile names the workspace packages, so a frozen install fails until they match. Only those
-# change: the whole-word port rewrite above could hit a dependency's version or hash.
-sed -i "s|@${IDENTITY_TEMPLATE_PROJECT}/|@${PROJECT}/|g" "$ROOT/pnpm-lock.yaml"
-# docs/INDEX.md quotes the docs' first sentences, which the identity pass just changed.
-"$ROOT/scripts/docs-index.sh" >/dev/null
+# change: the whole-word port rewrite above could hit a dependency's version or hash. The scope comes
+# from the manifests the identity pass wrote, because those are what the install compares it with.
+workspace_scope="$(sed -n 's|^  "name": "\(@[^/]*\)/shared",$|\1|p' "$ROOT/packages/shared/package.json")"
+[[ -n "$workspace_scope" ]] || { echo "No package scope in packages/shared/package.json" >&2; exit 1; }
+sed -i "s|@${IDENTITY_TEMPLATE_PROJECT}/|${workspace_scope}/|g" "$ROOT/pnpm-lock.yaml"
 
 # The root package description is the game's (set after the identity pass so the template name survives).
-sed -i "s|^  \"description\": \".*\",$|  \"description\": \"$TITLE — multiplayer game built from the base-multiplayer-game template\",|" "$ROOT/package.json" # KEEP_TEMPLATE_NAME
+sed -i "s|^  \"description\": \".*\",$|  \"description\": \"$(_identity_escape "$TITLE") — multiplayer game built from the base-multiplayer-game template\",|" "$ROOT/package.json" # KEEP_TEMPLATE_NAME
 
 # Record the chosen ports + slug so the in-container session reads them instead of
 # guessing (it can't see the host or the live ha-router repo). These values are already
@@ -112,6 +146,17 @@ CLIENT_PORT=$CLIENT_PORT
 SLUG=$SLUG
 TITLE=$TITLE
 EOF
+
+# The same two ports for the standard dev environment, which reads this file instead of PORTS.env.
+cat > "$ROOT/dev.yaml" <<EOF
+# Game server, Angular client.
+ports: { server: $SERVER_PORT, client: $CLIENT_PORT }
+EOF
+
+# The new names change line lengths and table widths, and the docs index quotes the docs: format
+# first, then index what was formatted.
+run_prettier --write --log-level=warn .
+"$ROOT/scripts/docs-index.sh" >/dev/null
 
 echo "Done."
 echo

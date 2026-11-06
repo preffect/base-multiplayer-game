@@ -138,7 +138,11 @@ echo "==> Copying template  ->  $NAME/"
 cp -a "$TEMPLATE" "$TARGET"
 
 echo "==> Instantiating ($NAME)"
-(cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}")
+(cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}") || {
+  echo "Error: presetup.sh failed; removing the copy at $TARGET." >&2
+  rm -rf "${TARGET:?}"
+  exit 1
+}
 
 SLUG_FINAL="$(sed -n 's/^SLUG=//p' "$TARGET/PORTS.env")"
 HOST="${SLUG_FINAL}.preffect-ha.preffect-home.net"

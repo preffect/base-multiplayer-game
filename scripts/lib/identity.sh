@@ -6,12 +6,12 @@
 # syncs). Rewrites the template identity tokens in the given files:
 #   Base Multiplayer Game  -> <Title>          base-multiplayer-game -> <project> # KEEP_TEMPLATE_NAME
 #   game-debug             -> <slug>-debug     base-mp               -> <slug> # KEEP_TEMPLATE_NAME
-#   4400 / 4402            -> <server-port> / <client-port>   (whole-word, only if changed) # KEEP_TEMPLATE_NAME
+#   4400 / 4402            -> <server-port> / <client-port>   (whole-word) # KEEP_TEMPLATE_NAME
 # Lines carrying the keep tag keep the literal template values (guidance such as "upstream
 # this to base-multiplayer-game"); the tag itself is stripped afterwards. # KEEP_TEMPLATE_NAME
 # The tag is always spelled via $IDENTITY_KEEP_TAG here so this file cannot mangle itself.
-# Also sourced by dev-container.sh, scripts/agent.sh and scripts/resume-in-container.sh for the
-# container identity (bottom).
+# Also sourced by dev-container.sh, scripts/agent.sh, scripts/github-setup.sh and
+# scripts/resume-in-container.sh for the container identity and title helper.
 # ---------------------------------------------------------------------------
 
 IDENTITY_KEEP_TAG="KEEP_TEMPLATE_NAME"
@@ -21,36 +21,32 @@ IDENTITY_TEMPLATE_MCP="game-debug" # KEEP_TEMPLATE_NAME
 IDENTITY_TEMPLATE_SLUG="base-mp" # KEEP_TEMPLATE_NAME
 IDENTITY_TEMPLATE_SERVER_PORT="4400" # KEEP_TEMPLATE_NAME
 IDENTITY_TEMPLATE_CLIENT_PORT="4402" # KEEP_TEMPLATE_NAME
+IDENTITY_PLACEHOLDER_MARK=$'\x01' # a control byte, so no text file holds it
 
 # title_case_from_name my-game -> "My Game"
 title_case_from_name() { echo "$1" | sed -E 's/[-_]+/ /g; s/\b(.)/\u\1/g'; }
 
 _identity_escape() { printf '%s' "$1" | sed 's/[&|\\]/\\&/g'; }
 
-# _identity_replace <search> <replacement> <word|any> <file>...
-_identity_replace() {
-  local search="$1" replacement mode="$3"; replacement="$(_identity_escape "$2")"; shift 3
-  (($#)) || return 0
-  if [[ "$mode" == word ]]; then sed -i "/${IDENTITY_KEEP_TAG}/! s|\\b${search}\\b|${replacement}|g" "$@"
-  else sed -i "/${IDENTITY_KEEP_TAG}/! s|${search}|${replacement}|g" "$@"; fi
-}
-
 # render_identity <title> <project> <slug> <server-port> <client-port> <file>...
-# Rewrites the files in place and strips the keep tags.
+# Rewrites the files in place and strips the keep tags. Every token becomes a placeholder before any
+# placeholder becomes its value, so no value is rewritten by a later token: a project named
+# base-mp-arena keeps its name, and ports may swap. Both stages run on a line inside one sed, so a # KEEP_TEMPLATE_NAME
+# placeholder is never written to a file. Ports match whole words; the other tokens match anywhere.
 render_identity() {
   local title="$1" project="$2" slug="$3" server_port="$4" client_port="$5"; shift 5
   (($#)) || return 0
-  _identity_replace "$IDENTITY_TEMPLATE_TITLE" "$title" any "$@"
-  _identity_replace "$IDENTITY_TEMPLATE_PROJECT" "$project" any "$@"
-  _identity_replace "$IDENTITY_TEMPLATE_MCP" "${slug}-debug" any "$@"
-  _identity_replace "$IDENTITY_TEMPLATE_SLUG" "$slug" any "$@"
-  if [[ "$server_port" != "$IDENTITY_TEMPLATE_SERVER_PORT" ]]; then
-    _identity_replace "$IDENTITY_TEMPLATE_SERVER_PORT" "$server_port" word "$@"
-  fi
-  if [[ "$client_port" != "$IDENTITY_TEMPLATE_CLIENT_PORT" ]]; then
-    _identity_replace "$IDENTITY_TEMPLATE_CLIENT_PORT" "$client_port" word "$@"
-  fi
-  sed -i -e "s| *<!-- ${IDENTITY_KEEP_TAG} -->||" -e "s| *# ${IDENTITY_KEEP_TAG}||" "$@"
+  local tokens=("\\b${IDENTITY_TEMPLATE_SERVER_PORT}\\b" "\\b${IDENTITY_TEMPLATE_CLIENT_PORT}\\b" "$IDENTITY_TEMPLATE_TITLE"
+    "$IDENTITY_TEMPLATE_PROJECT" "$IDENTITY_TEMPLATE_MCP" "$IDENTITY_TEMPLATE_SLUG")
+  local values=("$server_port" "$client_port" "$title" "$project" "${slug}-debug" "$slug")
+  local to_placeholders=() to_values=() index placeholder
+  for index in "${!tokens[@]}"; do
+    placeholder="${IDENTITY_PLACEHOLDER_MARK}${index}${IDENTITY_PLACEHOLDER_MARK}"
+    to_placeholders+=(-e "s|${tokens[index]}|${placeholder}|g")
+    to_values+=(-e "s|${placeholder}|$(_identity_escape "${values[index]}")|g")
+  done
+  sed -i -e "/${IDENTITY_KEEP_TAG}/!{" "${to_placeholders[@]}" "${to_values[@]}" -e '}' \
+    -e "s| *<!-- ${IDENTITY_KEEP_TAG} -->||" -e "s| *# ${IDENTITY_KEEP_TAG}||" "$@"
 }
 
 # ---- container identity: the ONE home for what dev-container.sh and scripts/agent.sh assume ----
@@ -77,5 +73,5 @@ in_container() { [[ -f /.dockerenv || -n "${PREFFECT_DEV:-}" ]]; }
 # Files that exist only to CREATE games and must not survive in one. presetup.sh deletes them
 # at instantiation; scripts/sync-from-template.sh deletes any that reappear. (docs/INIT-GAME.md
 # is not here: a game keeps it until the init step has defined the game, then that step removes it.)
-TEMPLATE_ONLY_PATHS=(new-game.sh presetup.sh base-project.md README.game.md ha-router
+TEMPLATE_ONLY_PATHS=(new-game.sh presetup.sh scripts/presetup.test.sh base-project.md README.game.md ha-router
   ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md WORKFLOW.md TEAM.md init-game.md) # last row: legacy root locations, now docs/

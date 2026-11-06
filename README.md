@@ -53,6 +53,10 @@ This README is the **template's**; `presetup.sh` replaces it in the game copy wi
 `./scripts/sync-from-template.sh` inside a game (host) to pull the template-owned files across
 with the game's identity re-applied, and land the diff via a PR.
 
+**Changing instantiation:** run `scripts/presetup.test.sh` after changing `presetup.sh`, `new-game.sh`
+or `scripts/lib/identity.sh`. Like `scripts/validate-cache.test.sh`, it runs by hand, not from
+`./validate.sh`. It stays in the template: `presetup.sh` removes it from a game.
+
 <details><summary>Manual steps (what new-game.sh automates)</summary>
 
 1. `cp -r base-multiplayer-game my-game && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
