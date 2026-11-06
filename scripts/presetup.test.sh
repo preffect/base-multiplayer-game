@@ -200,7 +200,8 @@ check "the repaired file is clean" in_directory "$synced_game" npx --yes "$PRETT
 sed -i 's/"minLines":   5/"minLines": 5/' "$source_directory/$TEMPLATE_PROJECT/.jscpd.json"
 
 mv "$synced_game/pnpm-lock.yaml" "$sandbox/held-game-lockfile"
-check "sync without a lockfile says to install" says "run pnpm install first" sync_template
+check "sync without a lockfile says to install" says "no pnpm-lock.yaml in $synced_game: run pnpm install first" sync_template
+check "sync without a lockfile shows no raw sed error" fails says "can't read" sync_template
 check "sync without a lockfile stops" fails sync_template
 mv "$sandbox/held-game-lockfile" "$synced_game/pnpm-lock.yaml"
 

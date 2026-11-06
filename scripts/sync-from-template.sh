@@ -161,7 +161,8 @@ main() {
   fi
   if [[ -n "$reformatted" ]]; then
     echo "Formatted with prettier:"
-    sed 's/^/  /' <<<"$reformatted"
+    mapfile -t reformatted_files <<<"$reformatted"
+    printf '  %s\n' "${reformatted_files[@]}"
   fi
 }
 
