@@ -29,6 +29,10 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # and the template-owned files are formatted with the game's prettier. That needs npx or docker,
 # with or without node_modules, and a sync stops before copying anything if neither can run it.
 #
+# The summary is what `git status` shows for those files afterwards, so a real sync needs a git
+# checkout, and uncommitted edits to them appear too. --dry-run formats nothing, so it compares raw
+# renders: it can list a file whose only difference prettier would remove.
+#
 # Usage:  ./scripts/sync-from-template.sh [--template <dir>] [--dry-run]
 # ---------------------------------------------------------------------------
 
@@ -55,8 +59,12 @@ main() {
   # shellcheck disable=SC1091
   source "$TEMPLATE/scripts/lib/identity.sh"
 
-  # A sync must leave its files formatted, so a host that can't run prettier stops before any copy.
-  $DRY_RUN || run_prettier "$ROOT" --version >/dev/null || exit 1
+  # A sync must leave its files formatted and report what changed, so a host that can't run prettier,
+  # or a game outside git, stops before any copy.
+  if ! $DRY_RUN; then
+    git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "error: $ROOT is not a git checkout" >&2; exit 1; }
+    run_prettier "$ROOT" --version >/dev/null || exit 1
+  fi
 
   # ---- identity of this game (what presetup.sh baked in) ----------------------
   PROJECT="$(sed -n 's/^  "name": "\(.*\)",$/\1/p' "$ROOT/package.json" | head -1)"
@@ -141,28 +149,30 @@ main() {
   # Re-rendering shortens/lengthens words inside markdown tables; the game's prettier re-aligns them.
   # Every template-owned file, not just this run's copies, so a file an earlier sync left unformatted
   # is repaired even when it is unchanged here. Game-owned files are not touched.
-  reformatted=""
-  if ! $DRY_RUN; then
-    to_format=("${copied[@]}")
-    for f in "${ALWAYS[@]}"; do [[ -f "$ROOT/$f" ]] && to_format+=("$f"); done
-    reformatted="$(run_prettier "$ROOT" --write --list-different --ignore-unknown "${to_format[@]}")" \
-      || { echo "error: the synced files are not all formatted. Fix the error above, then sync again." >&2; exit 1; }
+  if $DRY_RUN; then
+    if ((${#copied[@]} + ${#removed[@]} == 0)); then
+      echo "Already in sync with $TEMPLATE."
+    elif ((${#copied[@]})); then
+      echo "Would update (dry run):"
+      printf '  %s\n' "${copied[@]}"
+    fi
+    return 0
   fi
+
+  to_format=("${copied[@]}")
+  for f in "${ALWAYS[@]}"; do [[ -f "$ROOT/$f" ]] && to_format+=("$f"); done
+  run_prettier "$ROOT" --write --ignore-unknown --log-level=warn "${to_format[@]}" \
+    || { echo "error: the synced files are not all formatted. Fix the error above, then sync again." >&2; exit 1; }
   # The docs index quotes headings and first sentences of docs this run may have replaced.
-  if ((${#copied[@]} + ${#removed[@]})) || [[ -n "$reformatted" ]]; then
-    $DRY_RUN || "$ROOT/scripts/docs-index.sh" >/dev/null
-  fi
-  if ((${#copied[@]} + ${#removed[@]} == 0)) && [[ -z "$reformatted" ]]; then
+  "$ROOT/scripts/docs-index.sh" >/dev/null
+
+  mapfile -t changed < <(git -C "$ROOT" status --porcelain -- "${to_format[@]}" docs/INDEX.md | cut -c4-)
+  if ((${#changed[@]})); then
+    echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
+    printf '  %s\n' "${changed[@]}"
+    echo "Review with 'git diff', then land via a PR (docs/WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
+  elif ((${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
-  elif ((${#copied[@]})); then
-    $DRY_RUN && echo "Would update (dry run):" || echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
-    printf '  %s\n' "${copied[@]}"
-    $DRY_RUN || echo "Review with 'git diff', then land via a PR (docs/WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
-  fi
-  if [[ -n "$reformatted" ]]; then
-    echo "Formatted with prettier:"
-    mapfile -t reformatted_files <<<"$reformatted"
-    printf '  %s\n' "${reformatted_files[@]}"
   fi
 }
 

@@ -79,6 +79,7 @@ check_game() { # <directory> <project> <slug> <server-port> <client-port>
   check "$project: no template scope left in the lockfile" file_lacks "$game/pnpm-lock.yaml" "@$TEMPLATE_PROJECT/"
   check "$project: frozen lockfile-only install leaves the lockfile alone" lockfile_gate_changes_nothing "$game"
   check "$project: keep lines still name the template" keep_lines_survive "$game"
+  check "$project: run.sh builds this game's shared package" grep -qF "pnpm --filter @$project/shared --if-present build" "$game/run.sh"
   check "$project: dev.yaml names both ports" file_has_line "$game/dev.yaml" \
     "ports: { server: $server_port, client: $client_port }"
   check "$project: PORTS.env server port" file_has_line "$game/PORTS.env" "SERVER_PORT=$server_port"
@@ -158,31 +159,56 @@ copy_template "$half_built"
 check "says the copy is half-built when formatting fails" says "start from a fresh copy" \
   env PATH="$fails_to_format:$PATH" "$half_built/presetup.sh" half-built
 check "a failed run leaves presetup.sh, so the copy is visibly unfinished" test -f "$half_built/presetup.sh"
-check "refuses --force on a copy that lost its keep tags" fails "$half_built/presetup.sh" half-built --force
-check "says to start from a fresh copy" says "Start from a fresh copy" "$half_built/presetup.sh" half-built --force
-check "a refused --force leaves the keep lines alone" keep_lines_survive "$half_built"
+check "refuses to run again on that copy" fails "$half_built/presetup.sh" half-built
+check "says to start from a fresh copy" says "Start from a fresh copy" "$half_built/presetup.sh" half-built
+check "a refused repeat leaves the keep lines alone" keep_lines_survive "$half_built"
 
-renamed="$sandbox/games/renamed-template"
-copy_template "$renamed"
-sed -i "s/^  \"name\": \"$TEMPLATE_PROJECT\",$/  \"name\": \"renamed-copy\",/" "$renamed/package.json"
-check "--force still works on a copy that has its keep tags" in_directory "$renamed" ./presetup.sh renamed-template --force
-check "--force leaves the keep lines alone" keep_lines_survive "$renamed"
+# A game given the template's own name passes the name check, so only the keep tags stop a repeat.
+same_name="$sandbox/games/same-name"
+copy_template "$same_name"
+check "a game may take the template's name" in_directory "$same_name" ./presetup.sh "$TEMPLATE_PROJECT"
+copy_template "$sandbox/presetup-again"
+cp "$sandbox/presetup-again/presetup.sh" "$same_name/presetup.sh"
+check "refuses a repeat on that game too" fails "$same_name/presetup.sh" other-name
+check "the refusal leaves the keep lines alone" keep_lines_survive "$same_name"
+
+fails_on_install="$sandbox/fails-on-install"
+mkdir "$fails_on_install"
+printf '#!/usr/bin/env bash\n[[ "$*" != *install* ]] && exit 0\necho "fake pnpm reason"\nexit 1\n' > "$fails_on_install/npx"
+chmod +x "$fails_on_install/npx"
+failed_install="$sandbox/games/failed-install"
+copy_template "$failed_install"
+failed_install_rc=0
+failed_install_output="$(env PATH="$fails_on_install:$PATH" "$failed_install/presetup.sh" failed-install 2>&1)" || failed_install_rc=$?
+half_built_notices="$(grep -c 'half-built' <<<"$failed_install_output" || true)"
+check "a failed lockfile step stops presetup.sh" test "$failed_install_rc" -ne 0
+check "it shows pnpm's reason" grep -qF "fake pnpm reason" <<<"$failed_install_output"
+check "it says the copy is half-built, once ($half_built_notices)" test "$half_built_notices" -eq 1
+
+check "the pnpm used for the lockfile is an exact version" grep -qE '^PNPM_PACKAGE=pnpm@[0-9]+[.][0-9]+[.][0-9]+$' "$repo_root/presetup.sh"
 
 # --- cases: new-game.sh -------------------------------------------------------------------------
 source_directory="$sandbox/source"
 copy_template "$source_directory/$TEMPLATE_PROJECT"
 new_game() { "$source_directory/$TEMPLATE_PROJECT/new-game.sh" "$@" --no-start --no-ha-router --no-github; }
 # What a template used for development holds, and a new game must not inherit.
-mkdir -p "$source_directory/$TEMPLATE_PROJECT/node_modules" "$source_directory/$TEMPLATE_PROJECT/packages/server/node_modules" \
-  "$source_directory/$TEMPLATE_PROJECT/.pnpm-store"
+copied_template="$source_directory/$TEMPLATE_PROJECT"
+mkdir -p "$copied_template/node_modules" "$copied_template/packages/server/node_modules" "$copied_template/.pnpm-store" \
+  "$copied_template/packages/shared/dist" "$copied_template/.worktrees/some-branch"
+touch "$copied_template/packages/shared/tsconfig.build.tsbuildinfo" "$copied_template/.env"
 check "new-game.sh: creates a game" new_game new-base-mp --server-port 4430 --client-port 4432
 check_game "$source_directory/new-base-mp" new-base-mp new-base-mp 4430 4432
-check "new-game.sh: leaves root node_modules behind" is_absent "$source_directory/new-base-mp/node_modules"
-check "new-game.sh: leaves package node_modules behind" is_absent "$source_directory/new-base-mp/packages/server/node_modules"
-check "new-game.sh: leaves the pnpm store behind" is_absent "$source_directory/new-base-mp/.pnpm-store"
+for left_behind in node_modules packages/server/node_modules .pnpm-store packages/shared/dist \
+  packages/shared/tsconfig.build.tsbuildinfo .worktrees .env; do
+  check "new-game.sh: leaves $left_behind behind" is_absent "$source_directory/new-base-mp/$left_behind"
+done
+check "new-game.sh: keeps .env.example" test -f "$source_directory/new-base-mp/.env.example"
 
 # A sync re-renders docs at the template's width, and this game has no node_modules to fix that with.
 synced_game="$source_directory/new-base-mp"
+commit_synced_game() { git -C "$synced_game" add -A && git -C "$synced_game" -c user.name=test -c user.email=test@example.com commit -q -m "$1"; }
+git -C "$synced_game" init -q
+commit_synced_game base
 sync_template() { "$synced_game/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"; }
 workflow_before_sync="$sandbox/workflow-before-sync"
 cp "$synced_game/docs/WORKFLOW.md" "$workflow_before_sync"
@@ -192,9 +218,12 @@ check "sync says why when formatting fails" says "sync again" env PATH="$fails_t
 check "sync succeeds without node_modules" sync_template
 check "sync leaves prettier clean" in_directory "$synced_game" npx --yes "$PRETTIER_PACKAGE" --check .
 check "sync leaves a fresh docs index" docs_index_is_fresh "$synced_game"
+check "sync of a game with nothing to change says so" says "Already in sync" sync_template
+check "and reports no file it put back unchanged" fails says "docs/WORKFLOW.md" sync_template
 
 # A template-owned file that matches the template but is unformatted, as an earlier sync could leave it.
 sed -i 's/"minLines": 5/"minLines":   5/' "$source_directory/$TEMPLATE_PROJECT/.jscpd.json" "$synced_game/.jscpd.json"
+commit_synced_game unformatted
 check "sync repairs a file it had no reason to copy" says "$(basename "$synced_game/.jscpd.json")" sync_template
 check "the repaired file is clean" in_directory "$synced_game" npx --yes "$PRETTIER_PACKAGE" --check .jscpd.json
 sed -i 's/"minLines":   5/"minLines": 5/' "$source_directory/$TEMPLATE_PROJECT/.jscpd.json"
@@ -204,6 +233,10 @@ check "sync without a lockfile says to install" says "no pnpm-lock.yaml in $sync
 check "sync without a lockfile shows no raw sed error" fails says "can't read" sync_template
 check "sync without a lockfile stops" fails sync_template
 mv "$sandbox/held-game-lockfile" "$synced_game/pnpm-lock.yaml"
+
+mv "$synced_game/.git" "$sandbox/held-game-git"
+check "sync outside git says so" says "not a git checkout" sync_template
+mv "$sandbox/held-game-git" "$synced_game/.git"
 
 check "new-game.sh: stops on a bad port" fails new_game bad-port --server-port 80 --client-port 4432
 check "new-game.sh: removes the copy after a refusal" is_absent "$source_directory/bad-port"

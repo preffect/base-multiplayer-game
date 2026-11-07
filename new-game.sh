@@ -135,10 +135,11 @@ PRESETUP_ARGS=("$NAME")
 [[ -n "$CLIENT_PORT" ]] && PRESETUP_ARGS+=(--client-port "$CLIENT_PORT")
 
 echo "==> Copying template  ->  $NAME/"
-# Not node_modules or .pnpm-store: their paths belong to the template, and `pnpm install` refuses
-# to replace them without a TTY.
+# Nothing built or private: `pnpm install` refuses to replace the template's node_modules without a
+# TTY, and builds, worktrees and .env belong to the template checkout.
 mkdir "$TARGET"
-tar -C "$TEMPLATE" --exclude=node_modules --exclude=.pnpm-store -cf - . | tar -C "$TARGET" -xpf -
+tar -C "$TEMPLATE" --exclude=node_modules --exclude=.pnpm-store --exclude=dist --exclude='*.tsbuildinfo' \
+  --exclude=.worktrees --exclude=.env -cf - . | tar -C "$TARGET" -xpf -
 
 echo "==> Instantiating ($NAME)"
 (cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}") || {
@@ -197,14 +198,12 @@ EOF
 
 # ---------------------------------------------------------------------------
 # Devcontainer: build/start without a TTY, make the skeleton green, start the servers.
-# ./validate.sh all MUST run before ./run.sh on a fresh copy: it builds packages/shared/dist,
-# without which the Angular client fails to compile ("Cannot find module '@<game>/shared'").
 # ---------------------------------------------------------------------------
 start_devcontainer() {
   echo "==> Building + starting devcontainer (non-interactive)"
   (cd "$TARGET" && DEVCONTAINER_YES=1 ./dev-container.sh </dev/null)
   local container="${NAME}-dev"
-  echo "==> validate.sh all (builds shared) + run.sh"
+  echo "==> validate.sh all + run.sh"
   docker exec -u vscode -w /workspace "$container" \
     sh -lc './validate.sh all -t3 && ./run.sh >/dev/null 2>&1; sleep 25; ./run.sh --status | tail -2'
 }
@@ -245,7 +244,7 @@ if $NO_START; then
 Done. Next:
   cd $TARGET
   ./dev-container.sh        # build + start the devcontainer
-  # inside it:  ./validate.sh all  &&  ./run.sh      (validate first — it builds packages/shared)
+  # inside it:  ./validate.sh all  &&  ./run.sh
   ./scripts/github-setup.sh # repo, board, groundwork epics, branch ruleset (host)
 EOF
   exit 0

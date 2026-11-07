@@ -70,8 +70,7 @@ run_prettier() {
   [[ -f "$root/pnpm-lock.yaml" ]] || { echo "error: no pnpm-lock.yaml in $root: run pnpm install first" >&2; return 1; }
   version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$root/pnpm-lock.yaml" | head -n 1)"
   [[ -n "$version" ]] || { echo "error: no prettier in $root/pnpm-lock.yaml: run pnpm install first" >&2; return 1; }
-  run_npx "$root" "prettier@$version" "$@" \
-    || { echo "error: prettier failed. It needs npx or docker, and the npm registry the first time." >&2; return 1; }
+  run_npx "$root" "prettier@$version" "$@" || { echo "error: prettier failed" >&2; return 1; }
 }
 
 # ---- container identity: the ONE home for what dev-container.sh and scripts/agent.sh assume ----

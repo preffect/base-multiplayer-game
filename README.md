@@ -79,7 +79,7 @@ or `scripts/lib/identity.sh`. Like `scripts/validate-cache.test.sh`, it runs by 
 1. `cp -r base-multiplayer-game my-game && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
 2. ha-router: `ha-router/HA-ROUTER.md` _(host; per-host DNS record needed)_
 3. `DEVCONTAINER_YES=1 ./dev-container.sh` _(host; non-interactive when no TTY)_
-4. `./validate.sh all && ./run.sh` _(container; validate first — it builds shared)_
+4. `./validate.sh all && ./run.sh` _(container)_
 5. `./scripts/github-setup.sh` _(host; needs `gh` with the `project` scope)_
 
 </details>

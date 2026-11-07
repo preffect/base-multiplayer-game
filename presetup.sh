@@ -25,7 +25,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 # from the folder name. It does NOT touch gameplay — that's docs/INIT-GAME.md.
 #
 # Usage:
-#   ./presetup.sh [project-name] [--slug s] [--title "T"] [--server-port n] [--client-port m] [--force]
+#   ./presetup.sh [project-name] [--slug s] [--title "T"] [--server-port n] [--client-port m]
 #
 # Defaults: project-name = this folder's name; slug = project-name;
 #           title = Title Case of project-name; ports unchanged (4400/4402). # KEEP_TEMPLATE_NAME
@@ -38,7 +38,9 @@ source "$ROOT/scripts/lib/identity.sh" # the one identity-render engine (shared 
 PORT_MIN=1024 # dev.yaml's schema allows no lower
 PORT_MAX=65535
 PORT_MAX_DIGITS=5 # longer input would overflow the shell's arithmetic
-PNPM_PACKAGE=pnpm@10 # for sorting the lockfile, on a host that may only have docker
+# For sorting the lockfile, on a host that may only have docker. Exact, because a range could resolve
+# a release minimumReleaseAge would refuse, or match an old global pnpm that engines would refuse.
+PNPM_PACKAGE=pnpm@10.34.9
 
 # ---- defaults ----
 PROJECT="$(basename "$ROOT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
@@ -46,7 +48,6 @@ SLUG=""
 TITLE=""
 SERVER_PORT="$IDENTITY_TEMPLATE_SERVER_PORT"
 CLIENT_PORT="$IDENTITY_TEMPLATE_CLIENT_PORT"
-FORCE=false
 
 # ---- args ----
 while [[ $# -gt 0 ]]; do
@@ -55,7 +56,6 @@ while [[ $# -gt 0 ]]; do
     --title)       TITLE="$2"; shift 2 ;;
     --server-port) SERVER_PORT="$2"; shift 2 ;;
     --client-port) CLIENT_PORT="$2"; shift 2 ;;
-    --force)       FORCE=true; shift ;;
     -h|--help)     print_help; exit 0 ;;
     -*)            echo "Unknown option: $1" >&2; exit 1 ;;
     *)             PROJECT="$1"; shift ;;
@@ -78,12 +78,13 @@ port_ok "$CLIENT_PORT" || { echo "Invalid client port '$CLIENT_PORT' ($PORT_MIN-
 [[ "$SERVER_PORT" != "$CLIENT_PORT" ]] || { echo "The server and client ports must differ (both $SERVER_PORT)" >&2; exit 1; }
 [[ -f "$ROOT/pnpm-lock.yaml" ]] || { echo "No pnpm-lock.yaml: a game needs the template's lockfile" >&2; exit 1; }
 
-if [[ "$FORCE" != true ]] && ! grep -q '"name": "base-multiplayer-game"' "$ROOT/package.json" 2>/dev/null; then # KEEP_TEMPLATE_NAME
+if ! grep -q '"name": "base-multiplayer-game"' "$ROOT/package.json" 2>/dev/null; then # KEEP_TEMPLATE_NAME
   echo "This doesn't look like a fresh template (root package.json name is not 'base-multiplayer-game')." # KEEP_TEMPLATE_NAME
   echo "Already instantiated? Start from a fresh copy of the template."
   exit 1
 fi
 # The identity pass strips the keep tags, and a second pass would rewrite the lines they protected.
+# The name check misses this when a game was given the template's own name.
 if ! grep -q " # ${IDENTITY_KEEP_TAG}\$" "$ROOT/scripts/lib/identity.sh"; then
   echo "This copy was already instantiated, and repeating that would corrupt it. Start from a fresh copy of the template." >&2
   exit 1
@@ -129,7 +130,9 @@ workspace_scope="$(sed -n 's|^  "name": "\(@[^/]*\)/shared",$|\1|p' "$ROOT/packa
 sed -i "s|@${IDENTITY_TEMPLATE_PROJECT}/|${workspace_scope}/|g" "$ROOT/pnpm-lock.yaml"
 # The new scope can sort differently. pnpm re-sorts on any write, so do that once here rather than
 # have ./validate.sh lint change a new game's lockfile.
-run_npx "$ROOT" "$PNPM_PACKAGE" install --frozen-lockfile --lockfile-only >/dev/null
+# pnpm reports errors on stdout, so keep that visible. `|| false` fails here, in the main script,
+# because bash doesn't run the ERR trap for a failure inside a function.
+run_npx "$ROOT" "$PNPM_PACKAGE" install --frozen-lockfile --lockfile-only >&2 || false
 
 # The root package description is the game's (set after the identity pass so the template name survives).
 sed -i "s|^  \"description\": \".*\",$|  \"description\": \"$(_identity_escape "$TITLE") — multiplayer game built from the base-multiplayer-game template\",|" "$ROOT/package.json" # KEEP_TEMPLATE_NAME
