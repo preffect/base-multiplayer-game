@@ -64,7 +64,7 @@ single backend — simpler and matches the template's single-Fastify design.
 > ```
 >
 > Use those values everywhere. They are already baked into the eight integration files
-> (`packages/server/src/index.ts`, `packages/client/angular.json`,
+> (`packages/shared/src/constants.ts`, `packages/client/angular.json`,
 > `packages/client/proxy.conf.json` ×3, `.devcontainer/devcontainer.json`, `dev-container.sh`,
 > `run.sh`, `.mcp.json`). Verify those files agree with `PORTS.env`; if any disagree, fix them
 > toward `PORTS.env`. Do **not** re-run the live port scan below from inside the container.

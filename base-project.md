@@ -26,20 +26,20 @@ realize this template into your specific game (planning lives in issues, not fil
 
 ### Game extension points (the deferred requirements)
 
-| #   | Decision                                         | Where it lives                                                   |
-| --- | ------------------------------------------------ | ---------------------------------------------------------------- |
-| 1   | Identity (name, slug, title, icon hue)           | `docs/INIT-GAME.md` interview                                    |
-| 2   | Ports (default 4400/4402)                        | `index.ts`, `angular.json`, `proxy.conf.json`, `.mcp.json`, etc. |
-| 3   | Player model (max players, avatars/names, teams) | session config + `GameModule`                                    |
-| 4   | Tick model (real-time 60 Hz vs turn-based)       | `lobby/game-room.ts` loop                                        |
-| 5   | `GameInput` shape                                | `shared/src/types/messages.ts`, `ws/message-schemas.ts`          |
-| 6   | `GameSnapshot` + `GameSessionConfig` shapes      | `shared/src/types/messages.ts`                                   |
-| 7   | Client-trust boundary (server-owned values)      | `game/game-module.ts` (`reduceGameState`)                        |
-| 8   | Server `GameModule` impl + factory wiring        | `server/src/game/game-module.ts`, `index.ts`                     |
-| 9   | Persistence (none by default)                    | new server module if needed                                      |
-| 10  | MCP game-state visibility                        | `mcp/debug-context.ts` (`getRoomGameState`), `mcp/handlers/*`    |
-| 11  | Client rendering (canvas/DOM/Pixi/…)             | `client/src/app/game/game-setup.ts`                              |
-| 12  | Session config fields                            | `ws/message-schemas.ts` (`createGameSchema.config`)              |
+| #   | Decision                                         | Where it lives                                                       |
+| --- | ------------------------------------------------ | -------------------------------------------------------------------- |
+| 1   | Identity (name, slug, title, icon hue)           | `docs/INIT-GAME.md` interview                                        |
+| 2   | Ports (default 4400/4402)                        | `constants.ts`, `angular.json`, `proxy.conf.json`, `.mcp.json`, etc. |
+| 3   | Player model (max players, avatars/names, teams) | session config + `GameModule`                                        |
+| 4   | Tick model (real-time 60 Hz vs turn-based)       | `lobby/game-room.ts` loop                                            |
+| 5   | `GameInput` shape                                | `shared/src/types/messages.ts`, `ws/message-schemas.ts`              |
+| 6   | `GameSnapshot` + `GameSessionConfig` shapes      | `shared/src/types/messages.ts`                                       |
+| 7   | Client-trust boundary (server-owned values)      | `game/game-module.ts` (`reduceGameState`)                            |
+| 8   | Server `GameModule` impl + factory wiring        | `server/src/game/game-module.ts`, `index.ts`                         |
+| 9   | Persistence (none by default)                    | new server module if needed                                          |
+| 10  | MCP game-state visibility                        | `mcp/debug-context.ts` (`getRoomGameState`), `mcp/handlers/*`        |
+| 11  | Client rendering (canvas/DOM/Pixi/…)             | `client/src/app/game/game-setup.ts`                                  |
+| 12  | Session config fields                            | `ws/message-schemas.ts` (`createGameSchema.config`)                  |
 
 ha-router route YAML + landing card live as ready-to-copy artifacts under
 `ha-router/` (see `ha-router/HA-ROUTER.md`).
