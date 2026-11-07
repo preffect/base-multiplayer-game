@@ -147,6 +147,13 @@ run_validate "$fixture" test
 check "the changed tree runs again rather than hitting" $(( $(is_cached; echo $?) != 0 && $(ran_pnpm; echo $?) == 0 ))
 rm -f "$fixture/generated-by-the-run.txt"
 
+echo 1 > "$FAKE_PNPM_RC_FILE"
+echo build-red > "$fixture/untracked.txt"
+run_validate "$fixture" typecheck
+check "a failed shared build fails the phase and shows the build's output" $(( rc != 0 && $(grep -q '^fake pnpm --filter ' <<<"$out"; echo $?) == 0 ))
+echo 0 > "$FAKE_PNPM_RC_FILE"
+rm "$fixture/untracked.txt"
+
 mv "$fixture/pnpm-lock.yaml" "$sandbox/held-lockfile"
 run_validate "$fixture" lint
 check "lint without a lockfile fails and says to install" $(( rc != 0 && $(grep -q '^No pnpm-lock.yaml: run pnpm install first$' <<<"$out"; echo $?) == 0 ))

@@ -243,7 +243,7 @@ run_cached() {
 
 build_shared() {
   # Build shared package so downstream .d.ts references are fresh
-  pnpm --filter @base-multiplayer-game/shared build > /dev/null 2>&1 || true
+  pnpm --filter @base-multiplayer-game/shared build 2>&1
 }
 
 # Source files the standards apply to (docs/ENGINEERING.md); tests included.
@@ -284,9 +284,15 @@ run_one() {
   local output
   local rc=0
 
+  # A failed build is the reason these fail, so report that rather than what follows from it.
+  if [[ "$cmd" == test || "$cmd" == integration || "$cmd" == typecheck ]] && ! output="$(build_shared)"; then
+    RUN_ONE_OUTPUT="$output"
+    echo "$output" | apply_filters
+    return 1
+  fi
+
   case "$cmd" in
     test)
-      build_shared
       if [[ $# -gt 0 ]]; then
         output="$(pnpm -r test "$@" 2>&1)" || rc=$?
       else
@@ -295,11 +301,9 @@ run_one() {
       ;;
     integration)
       # Each package's test:integration script selects the *.integration.* tier (docs/ENGINEERING.md §2.2).
-      build_shared
       output="$(pnpm -r --if-present test:integration "$@" 2>&1)" || rc=$?
       ;;
     typecheck)
-      build_shared
       if [[ $# -gt 0 ]]; then
         output="$(pnpm -r typecheck "$@" 2>&1)" || rc=$?
       else

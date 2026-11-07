@@ -225,13 +225,11 @@ if [[ ! -d "$SCRIPT_DIR/node_modules" ]]; then
   exit 1
 fi
 
-# The server and the client both import packages/shared from its build.
-if [[ ! -f "$SCRIPT_DIR/packages/shared/dist/index.js" ]]; then
-  echo "==> Building packages/shared..."
-  # Clean first: with its .tsbuildinfo still there, tsc thinks the build is current and writes nothing.
-  pnpm --filter @base-multiplayer-game/shared clean
-  pnpm --filter @base-multiplayer-game/shared build
-fi
+# The server and the client import packages/shared from its build, so it must be current, not just
+# present. A build with nothing to do takes about a second. Without dist, an older .tsbuildinfo beside
+# the sources would make tsc think the build is current and write nothing.
+[[ -f "$SCRIPT_DIR/packages/shared/dist/index.js" ]] || rm -f "$SCRIPT_DIR"/packages/shared/*.tsbuildinfo
+pnpm --filter @base-multiplayer-game/shared --if-present build
 
 mkdir -p "$LOG_DIR"
 > "$PID_FILE"
