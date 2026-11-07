@@ -116,6 +116,11 @@ for template_only in "${TEMPLATE_ONLY_PATHS[@]}"; do
   [[ "$template_only" == presetup.sh ]] || rm -rf "${ROOT:?}/$template_only"
 done
 
+# The template's own board ids, which a game must never write to: project-sync.sh and issue-status.sh
+# refuse to run until scripts/github-setup.sh writes the game's. Not in TEMPLATE_ONLY_PATHS, because
+# sync-from-template.sh deletes those, and a set-up game needs this file.
+rm -f "$ROOT/.github/project.env"
+
 # ---- rewrite every file that mentions a template identity token ----
 mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.angular \
   --exclude-dir=.pnpm-store --exclude-dir=dist --exclude=pnpm-lock.yaml \

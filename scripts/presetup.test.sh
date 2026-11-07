@@ -81,6 +81,7 @@ check_game() { # <directory> <project> <slug> <server-port> <client-port>
   check "$project: keep lines still name the template" keep_lines_survive "$game"
   check "$project: shared default server port" file_has_line "$game/packages/shared/src/constants.ts" "export const DEFAULT_SERVER_PORT = $server_port;"
   check "$project: shared default client port" file_has_line "$game/packages/shared/src/constants.ts" "export const DEFAULT_CLIENT_PORT = $client_port;"
+  check "$project: has none of the template's board ids" is_absent "$game/.github/project.env"
   check "$project: run.sh builds this game's shared package" grep -qF "pnpm --filter @$project/shared --if-present build" "$game/run.sh"
   check "$project: dev.yaml names both ports" file_has_line "$game/dev.yaml" \
     "ports: { server: $server_port, client: $client_port }"
@@ -273,7 +274,7 @@ check "sync outside git says so" says "not a git repository" sync_template
 mv "$sandbox/held-game-git" "$synced_game/.git"
 
 # scripts/github-setup.sh on that path, against local bare repos: its git steps run for real. It can't
-# reach GitHub: gh and the two scripts that only talk to GitHub are fakes, git@github.com:tester/ is
+# reach GitHub: gh and setup_project.py, which only talks to GitHub, are fakes, git@github.com:tester/ is
 # rewritten (a longer match than any rewrite in the machine's git config), and git may only use local files.
 fake_github="$sandbox/fake-github"
 mkdir "$fake_github"
@@ -286,21 +287,25 @@ case "$1 $2" in
   "repo view") [[ -d "$FAKE_REMOTES/$3.git" ]] ;;
   "repo create") git init -q --bare -b main "$FAKE_REMOTES/$3.git" ;;
   "issue create") echo "https://github.com/tester/fake/issues/1" ;;
+  "api graphql") echo '{"data":{"node":{"field":{"options":[]},"items":{"totalCount":0,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
+  "issue list") [[ "$*" != *--limit* ]] || echo '[]' ;;
 esac
 GH
 cat > "$fake_github/python3" <<'PYTHON'
 #!/usr/bin/env bash
-printf 'REPO=%s\nPROJECT_OWNER=tester\nPROJECT_NUMBER=1\nPROJECT_ID=fake\nSTATUS_FIELD_ID=fake\n' "$1" > .github/project.env
+printf 'REPO=%s\nPROJECT_OWNER=tester\nPROJECT_NUMBER=1\nPROJECT_ID=fake\nSTATUS_FIELD_ID=fake\n' "$2" > .github/project.env
 PYTHON
 chmod +x "$fake_github/gh" "$fake_github/python3"
 gh_log="$sandbox/gh.log"
 : > "$gh_log"
-github_setup() { # <game directory>
+with_fake_github() { # <command...>
   env PATH="$fake_github:$PATH" FAKE_GH_LOG="$gh_log" FAKE_REMOTES="$fake_remotes" GIT_ALLOW_PROTOCOL=file \
     GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$fake_remotes/tester/.insteadOf" GIT_CONFIG_VALUE_0="git@github.com:tester/" \
     GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com \
-    "$1/scripts/github-setup.sh"
+    "$@"
 }
+github_setup() { with_fake_github "$1/scripts/github-setup.sh"; } # <game directory>
+board_stays_untouched() { ! grep -q "graphql" "$gh_log"; }
 template_refs() { git -C "$template_remote" for-each-ref; }
 template_refs_before="$(template_refs)"
 template_is_unchanged() { [[ "$(template_refs)" == "$template_refs_before" ]]; }
@@ -308,15 +313,23 @@ template_is_unchanged() { [[ "$(template_refs)" == "$template_refs_before" ]]; }
 check "new-game.sh: creates a game for GitHub setup" new_game own-repo --server-port 4440 --client-port 4442
 own_repo="$source_directory/own-repo"
 own_remote="$fake_remotes/tester/own-repo.git"
-printf '#!/usr/bin/env bash\n' > "$own_repo/scripts/project-sync.sh"
+: > "$gh_log"
+check "project-sync.sh: refuses before setup" fails with_fake_github "$own_repo/scripts/project-sync.sh"
+check "project-sync.sh: says to run setup" says "run scripts/github-setup.sh first" with_fake_github "$own_repo/scripts/project-sync.sh"
+check "issue-status.sh: refuses before setup" fails with_fake_github "$own_repo/scripts/issue-status.sh" Done 1
+check "neither touched a board before setup" board_stays_untouched
 check "github-setup.sh: succeeds on a game with no repo" github_setup "$own_repo"
 check "github-setup.sh: origin is the game's own repo" says "tester/own-repo.git" git -C "$own_repo" remote get-url origin
-check "github-setup.sh: main on the game's remote is one scaffold commit" test "$(git -C "$own_remote" rev-list --count main)" -eq 1
+check "github-setup.sh: main on the game's remote is the scaffold and the board ids" test "$(git -C "$own_remote" rev-list --count main)" -eq 2
+check "github-setup.sh: the ids reach main with no PR" says "PROJECT_ID=fake" git -C "$own_remote" show main:.github/project.env
 check "github-setup.sh: that commit holds the game" says '"name": "own-repo"' git -C "$own_remote" show main:package.json
 check "github-setup.sh: the game has no template history" fails says "template history" git -C "$own_repo" log --all --oneline
 check "github-setup.sh: nothing is left uncommitted" test -z "$(git -C "$own_repo" status --porcelain)"
 check "github-setup.sh: runs again cleanly" github_setup "$own_repo"
 check "github-setup.sh: the template's remote is untouched" template_is_unchanged
+check "project-sync.sh: copes with a repo that has no issues" says "added to project:" with_fake_github "$own_repo/scripts/project-sync.sh"
+check "a sync keeps a set-up game's board ids" with_fake_github "$own_repo/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"
+check "those ids are still there" test -f "$own_repo/.github/project.env"
 
 kept_origin="$source_directory/kept-origin"
 copy_template "$kept_origin"
@@ -327,6 +340,14 @@ check "github-setup.sh: refuses a copy with the template's origin" fails github_
 check "github-setup.sh: says why" says "delete its .git" github_setup "$kept_origin"
 check "github-setup.sh: creates no repo for it" fails grep -q "repo create" "$gh_log"
 check "github-setup.sh: pushes nothing to the template" template_is_unchanged
+
+# A game made before these fixes: the template's origin and the template's ids, under the game's name.
+sed -i 's|^REPO=.*|REPO=tester/old-game|' "$kept_origin/.github/project.env"
+: > "$gh_log"
+check "project-sync.sh: refuses when origin isn't the repo project.env names" fails with_fake_github "$kept_origin/scripts/project-sync.sh"
+check "project-sync.sh: says which repo" says "origin isn't tester/old-game" with_fake_github "$kept_origin/scripts/project-sync.sh"
+check "issue-status.sh: refuses too" fails with_fake_github "$kept_origin/scripts/issue-status.sh" Done 1
+check "neither touched a board" board_stays_untouched
 
 check "new-game.sh: stops on a bad port" fails new_game bad-port --server-port 80 --client-port 4432
 check "new-game.sh: removes the copy after a refusal" is_absent "$source_directory/bad-port"

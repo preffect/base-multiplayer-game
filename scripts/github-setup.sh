@@ -9,6 +9,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   1. Create the GitHub repo if it does not exist; git init / commit / push `main`.
 #   2. Labels, milestones (M0 Setup, M1 Design), Project + Status stages + views,
 #      seeded groundwork epics/tickets as sub-issues  (scripts/github/setup_project.py).
+#      A new game's .github/project.env goes straight to main, before the ruleset exists.
 #   3. Ruleset on the default branch: PR required, review threads resolved, no force
 #      push, and the `pr-links-issue` check (every PR must close a ticket) required.
 #      `validate` / `code-review` checks are added later, once they exist (docs/WORKFLOW.md §5).
@@ -60,7 +61,7 @@ SLUG="$(sed -n 's/^SLUG=//p' PORTS.env 2>/dev/null || true)"
 # ---- 1. repo + first push --------------------------------------------------
 # An origin that isn't this repo must not receive this game's pushes. A copy that kept the template's
 # .git has the template's origin, and everything below would treat it as already set up.
-if origin_url="$(git remote get-url origin 2>/dev/null)" && [[ ! "$origin_url" =~ [:/]${REPO}(\.git)?/?$ ]]; then
+if origin_url="$(git remote get-url origin 2>/dev/null)" && ! origin_is_repo "$ROOT" "$REPO"; then
   echo "error: origin is $origin_url, not $REPO." >&2
   echo "       If this is a copy of the template, delete its .git and run this again. Otherwise pass --repo." >&2
   exit 1
@@ -88,10 +89,19 @@ fi
 mkdir -p .github
 python3 scripts/github/setup_project.py "$REPO" "$TITLE" "$SLUG" scripts/github/groundwork-issues.json .github/project.env "$SEED"
 
-# ---- 3. ruleset on the default branch (upsert, so existing repos pick up rule changes) ----
 RULESET_FILE="scripts/github/main-ruleset.json"
 RULESET_NAME="$(jq -r .name "$RULESET_FILE")"
 ruleset_id="$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$RULESET_NAME\") | .id" 2>/dev/null | head -1)"
+
+# A new game has no project.env yet. Its first ids go straight to main, before the ruleset below
+# protects it, so main never lacks them. Later changes go through a PR (step 4).
+if [[ -z "$ruleset_id" && "$(git branch --show-current)" == main ]] && ! git cat-file -e HEAD:.github/project.env 2>/dev/null; then
+  git add .github/project.env
+  git commit -q -m "chore: record GitHub project ids for project-sync.sh"
+  git push -q origin main
+fi
+
+# ---- 3. ruleset on the default branch (upsert, so existing repos pick up rule changes) ----
 if [[ -n "$ruleset_id" ]]; then
   echo "==> Updating branch ruleset #$ruleset_id"
   gh api "repos/$REPO/rulesets/$ruleset_id" --method PUT --input "$RULESET_FILE" >/dev/null

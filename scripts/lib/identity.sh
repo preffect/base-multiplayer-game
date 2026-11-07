@@ -73,6 +73,17 @@ run_prettier() {
   run_npx "$root" "prettier@$version" "$@" || { echo "error: prettier failed" >&2; return 1; }
 }
 
+# origin_is_repo <root> <owner/name>: true when the checkout's origin is that GitHub repo.
+origin_is_repo() { [[ "$(git -C "$1" remote get-url origin 2>/dev/null)" =~ [:/]${2}(\.git)?/?$ ]]; }
+
+# require_board_repo <root> <owner/name>: stops a script that writes to a project board when the
+# checkout isn't the repo .github/project.env names, because the ids in that file may be another repo's.
+require_board_repo() {
+  origin_is_repo "$1" "$2" && return 0
+  echo "error: origin isn't $2, the repo .github/project.env names. Run scripts/github-setup.sh first." >&2
+  exit 1
+}
+
 # ---- container identity: the ONE home for what dev-container.sh and scripts/agent.sh assume ----
 # The devcontainer runs as this user with the checkout mounted at this path (devcontainer.json
 # "remoteUser" / "workspaceFolder"; .devcontainer/Dockerfile ends with `USER root`, so every

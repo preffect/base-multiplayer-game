@@ -23,6 +23,9 @@ PROJECT_ENV="$SCRIPT_DIR/../.github/project.env"
 [[ -f "$PROJECT_ENV" ]] || { echo "error: $PROJECT_ENV missing — run scripts/github-setup.sh first." >&2; exit 1; }
 # shellcheck disable=SC1090
 source "$PROJECT_ENV" # REPO, PROJECT_OWNER, PROJECT_NUMBER, PROJECT_ID, STATUS_FIELD_ID
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identity.sh"
+require_board_repo "$SCRIPT_DIR/.." "$REPO"
 
 PENDING_LABEL="pending"
 ITEM_LIMIT=1000
@@ -132,6 +135,7 @@ issue_rows="$(jq -r --arg p "$PENDING_LABEL" '.[] | [.number, .id, .state, (any(
 # Pass 1: add every issue that is not on the board yet (one request per batch).
 missing=()
 while IFS=$'\t' read -r number content_id state has_pending; do
+  [[ -n "$number" ]] || continue # a repo with no issues still gives one blank line
   [[ -n "${item_id_by_number[$number]:-}" ]] || missing+=("$number=$content_id")
 done <<<"$issue_rows"
 added=${#missing[@]}
@@ -140,6 +144,7 @@ if ((added)) && ! $DRY_RUN; then add_items "${missing[@]}"; fi
 # Pass 2: queue the status rules.
 done=0 blocked=0 unblocked=0
 while IFS=$'\t' read -r number content_id state has_pending; do
+  [[ -n "$number" ]] || continue
   item_id="${item_id_by_number[$number]:-}"
   current="${status_by_number[$number]:-}"
   if [[ -z "$current" && -z "${status_by_number[$number]+x}" ]]; then # newly added this run
