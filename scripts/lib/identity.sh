@@ -74,7 +74,11 @@ run_prettier() {
 }
 
 # origin_is_repo <root> <owner/name>: true when the checkout's origin is that GitHub repo.
-origin_is_repo() { [[ "$(git -C "$1" remote get-url origin 2>/dev/null)" =~ [:/]${2}(\.git)?/?$ ]]; }
+origin_is_repo() {
+  local url; url="$(git -C "$1" remote get-url origin)" || return 1
+  url="${url%/}"; url="${url%.git}"
+  [[ "$url" == */"$2" || "$url" == *:"$2" ]]
+}
 
 # require_board_repo <root> <owner/name>: stops a script that writes to a project board when the
 # checkout isn't the repo .github/project.env names, because the ids in that file may be another repo's.

@@ -26,7 +26,7 @@ set -euo pipefail
 #   --server-port / --client-port   pin ports explicitly (default: auto-pick a free pair)
 #   --no-start    stop after instantiation; skip devcontainer, verification, GitHub
 #   --no-ha-router  skip the live ha-router edits (route + landing card + DNS check)
-#   --no-github   skip GitHub repo/board setup
+#   --no-github   skip GitHub repo/board setup; the game has no git repo until you run scripts/github-setup.sh
 #   --private     create the GitHub repo private (default public)
 #
 # Examples:

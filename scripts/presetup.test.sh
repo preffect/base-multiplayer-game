@@ -278,6 +278,7 @@ mv "$sandbox/held-game-git" "$synced_game/.git"
 # rewritten (a longer match than any rewrite in the machine's git config), and git may only use local files.
 fake_github="$sandbox/fake-github"
 mkdir "$fake_github"
+# It reads what is piped to it, as the real gh does: exiting first breaks the pipe under pipefail.
 cat > "$fake_github/gh" <<'GH'
 #!/usr/bin/env bash
 echo "gh $*" >> "$FAKE_GH_LOG"
@@ -287,12 +288,15 @@ case "$1 $2" in
   "repo view") [[ -d "$FAKE_REMOTES/$3.git" ]] ;;
   "repo create") git init -q --bare -b main "$FAKE_REMOTES/$3.git" ;;
   "issue create") echo "https://github.com/tester/fake/issues/1" ;;
-  "api graphql") echo '{"data":{"node":{"field":{"options":[]},"items":{"totalCount":0,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
+  "api repos/"*) [[ ! -e "$FAKE_REMOTES/rulesets-fail" ]] || { echo "fake ruleset reason" >&2; exit 1; } ;;
+  "api graphql") cat >/dev/null; echo '{"data":{"node":{"field":{"options":[]},"items":{"totalCount":0,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
   "issue list") [[ "$*" != *--limit* ]] || echo '[]' ;;
 esac
 GH
 cat > "$fake_github/python3" <<'PYTHON'
 #!/usr/bin/env bash
+echo "setup_project ran" >> "$FAKE_GH_LOG"
+[[ ! -e "$FAKE_REMOTES/setup-project-fails" ]] || exit 1
 printf 'REPO=%s\nPROJECT_OWNER=tester\nPROJECT_NUMBER=1\nPROJECT_ID=fake\nSTATUS_FIELD_ID=fake\n' "$2" > .github/project.env
 PYTHON
 chmod +x "$fake_github/gh" "$fake_github/python3"
@@ -338,6 +342,7 @@ git -C "$kept_origin" remote add origin "$template_remote"
 : > "$gh_log"
 check "github-setup.sh: refuses a copy with the template's origin" fails github_setup "$kept_origin"
 check "github-setup.sh: says why" says "delete its .git" github_setup "$kept_origin"
+check "github-setup.sh: and how to name a different repo" says "pass --repo <owner/name of that origin>" github_setup "$kept_origin"
 check "github-setup.sh: creates no repo for it" fails grep -q "repo create" "$gh_log"
 check "github-setup.sh: pushes nothing to the template" template_is_unchanged
 
@@ -349,6 +354,87 @@ check "project-sync.sh: says which repo" says "origin isn't tester/old-game" wit
 check "issue-status.sh: refuses too" fails with_fake_github "$kept_origin/scripts/issue-status.sh" Done 1
 check "neither touched a board" board_stays_untouched
 
+# A repo that already has a main: this copy's unrelated files must not be committed over it.
+check "new-game.sh: creates a game for a taken name" new_game taken-name --server-port 4450 --client-port 4452
+taken_name="$source_directory/taken-name"
+taken_remote="$fake_remotes/tester/taken-name.git"
+git init -q --bare -b main "$taken_remote"
+someone_else="$sandbox/someone-else"
+git init -q -b main "$someone_else"
+as_tester -C "$someone_else" commit -q --allow-empty -m "someone else's work"
+git -C "$someone_else" push -q "$taken_remote" main
+taken_main_before="$(git -C "$taken_remote" rev-parse main)"
+: > "$gh_log"
+check "github-setup.sh: refuses a repo that already has main" fails github_setup "$taken_name"
+check "github-setup.sh: says main already exists" says "already has a main branch" github_setup "$taken_name"
+check "github-setup.sh: stops before setup_project.py" fails grep -q "setup_project ran" "$gh_log"
+check "github-setup.sh: commits nothing over it" fails git -C "$taken_name" rev-parse --verify -q HEAD
+check "github-setup.sh: leaves that main alone" test "$(git -C "$taken_remote" rev-parse main)" == "$taken_main_before"
+
+# A refused push of the first ids: the commit exists, so a re-run must still push it.
+check "new-game.sh: creates a game for a refused push" new_game refused-push --server-port 4460 --client-port 4462
+refused_push="$source_directory/refused-push"
+refused_remote="$fake_remotes/tester/refused-push.git"
+refuse_flag="$sandbox/refuse-board-ids"
+git init -q --bare -b main "$refused_remote"
+cat > "$refused_remote/hooks/pre-receive" <<HOOK
+#!/usr/bin/env bash
+[[ -e "$refuse_flag" ]] || exit 0
+while read -r _ new _; do git cat-file -e "\$new:.github/project.env" 2>/dev/null && exit 1; done
+exit 0
+HOOK
+chmod +x "$refused_remote/hooks/pre-receive"
+touch "$refuse_flag"
+check "github-setup.sh: stops when the first ids are refused" fails github_setup "$refused_push"
+rm "$refuse_flag"
+check "github-setup.sh: a re-run after that succeeds" github_setup "$refused_push"
+check "github-setup.sh: and the ids reach main" says "PROJECT_ID=fake" git -C "$refused_remote" show main:.github/project.env
+
+# Something staged between runs must not ride along with the ids.
+check "new-game.sh: creates a game for a staged file" new_game staged-file --server-port 4470 --client-port 4472
+staged_file="$source_directory/staged-file"
+staged_remote="$fake_remotes/tester/staged-file.git"
+touch "$fake_remotes/setup-project-fails"
+check "github-setup.sh: stops when setup_project.py fails" fails github_setup "$staged_file"
+rm "$fake_remotes/setup-project-fails"
+touch "$staged_file/staged-by-someone.txt"
+git -C "$staged_file" add staged-by-someone.txt
+check "github-setup.sh: succeeds with a file staged" github_setup "$staged_file"
+check "github-setup.sh: the ids reach main with a file staged" says "PROJECT_ID=fake" git -C "$staged_remote" show main:.github/project.env
+check "github-setup.sh: the staged file isn't pushed" fails git -C "$staged_remote" cat-file -e main:staged-by-someone.txt
+check "github-setup.sh: it stays staged" says "staged-by-someone.txt" git -C "$staged_file" diff --cached --name-only
+
+touch "$fake_remotes/rulesets-fail"
+check "github-setup.sh: a failed ruleset lookup stops it" fails github_setup "$staged_file"
+check "github-setup.sh: and says why" says "fake ruleset reason" github_setup "$staged_file"
+rm "$fake_remotes/rulesets-fail"
+
+# origin_is_repo, across the forms an origin URL takes.
+url_checkout="$sandbox/url-checkout"
+git init -q "$url_checkout"
+git -C "$url_checkout" remote add origin placeholder
+origin_is_repo_without_origin() {
+  local no_origin="$sandbox/no-origin"
+  git init -q "$no_origin"
+  # shellcheck disable=SC1091
+  (source "$repo_root/scripts/lib/identity.sh" && origin_is_repo "$no_origin" tester/game)
+}
+origin_matches() { # <origin url> <owner/name>
+  git -C "$url_checkout" remote set-url origin "$1"
+  # shellcheck disable=SC1091
+  (source "$repo_root/scripts/lib/identity.sh" && origin_is_repo "$url_checkout" "$2")
+}
+for matching_url in git@github.com:tester/game.git git@github.com:tester/game https://github.com/tester/game.git \
+  https://github.com/tester/game https://github.com/tester/game/ ssh://git@github.com/tester/game.git; do
+  check "origin_is_repo: $matching_url" origin_matches "$matching_url" tester/game
+done
+check "origin_is_repo: a dot in the name is only a dot" fails origin_matches https://github.com/tester/axb.git tester/a.b
+check "origin_is_repo: a dotted name matches itself" origin_matches https://github.com/tester/a.b.git tester/a.b
+check "origin_is_repo: a longer repo name" fails origin_matches https://github.com/tester/game-two.git tester/game
+check "origin_is_repo: a longer owner name" fails origin_matches git@github.com:other-tester/game.git tester/game
+check "origin_is_repo: no origin" fails origin_is_repo_without_origin
+
+check "new-game.sh: says when a game has no repo" says "no git repo until you run scripts/github-setup.sh" "$source_directory/$TEMPLATE_PROJECT/new-game.sh" --help
 check "new-game.sh: stops on a bad port" fails new_game bad-port --server-port 80 --client-port 4432
 check "new-game.sh: removes the copy after a refusal" is_absent "$source_directory/bad-port"
 

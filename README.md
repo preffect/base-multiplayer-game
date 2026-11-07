@@ -24,11 +24,11 @@ games are created as siblings of the template folder.
 
 It copies the template, picks free ports, instantiates (`presetup.sh`), registers the game in the
 live **ha-router** (route + landing card, DNS check), builds and starts the **devcontainer**
-non-interactively, runs `./validate.sh all` (which builds `packages/shared` — required before the
-client can compile) and `./run.sh`, verifies `https://<slug>.preffect-ha.preffect-home.net` through
-Traefik, and sets up **GitHub** (repo, labels, milestones, project board + views, groundwork epics,
-branch ruleset) via `scripts/github-setup.sh`. Flags: `--no-start`, `--no-ha-router`, `--no-github`,
-`--private`. Each step is idempotent and can be re-run on its own (`./dev-container.sh`,
+non-interactively, runs `./validate.sh all` and `./run.sh`, verifies
+`https://<slug>.preffect-ha.preffect-home.net` through Traefik, and sets up **GitHub** (repo, labels,
+milestones, project board + views, groundwork epics, branch ruleset) via `scripts/github-setup.sh`.
+Flags: `--no-start`, `--no-ha-router`, `--no-github`, `--private`. With `--no-github`, a game has no
+git repo until you run `scripts/github-setup.sh`. Each step is idempotent and can be re-run on its own (`./dev-container.sh`,
 `./scripts/github-setup.sh`, `ha-router/HA-ROUTER.md`).
 
 Then, **inside the devcontainer** (where every agent runs):

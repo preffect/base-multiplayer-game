@@ -63,7 +63,7 @@ SLUG="$(sed -n 's/^SLUG=//p' PORTS.env 2>/dev/null || true)"
 # .git has the template's origin, and everything below would treat it as already set up.
 if origin_url="$(git remote get-url origin 2>/dev/null)" && ! origin_is_repo "$ROOT" "$REPO"; then
   echo "error: origin is $origin_url, not $REPO." >&2
-  echo "       If this is a copy of the template, delete its .git and run this again. Otherwise pass --repo." >&2
+  echo "       If this is a copy of the template, delete its .git and run this again. Otherwise pass --repo <owner/name of that origin>." >&2
   exit 1
 fi
 if ! gh repo view "$REPO" >/dev/null 2>&1; then
@@ -77,6 +77,10 @@ if ! git remote get-url origin >/dev/null 2>&1; then
   git remote add origin "git@github.com:$REPO.git"
 fi
 if [[ -z "$(git log --oneline -1 2>/dev/null)" ]]; then
+  if git ls-remote --exit-code --heads origin main >/dev/null 2>&1; then
+    echo "error: $REPO already has a main branch, and this copy has no history. Clone it, or pick another name." >&2
+    exit 1
+  fi
   git add -A
   git commit -q -m "chore: scaffold $NAME from base-multiplayer-game" # KEEP_TEMPLATE_NAME
 fi
@@ -91,13 +95,15 @@ python3 scripts/github/setup_project.py "$REPO" "$TITLE" "$SLUG" scripts/github/
 
 RULESET_FILE="scripts/github/main-ruleset.json"
 RULESET_NAME="$(jq -r .name "$RULESET_FILE")"
-ruleset_id="$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$RULESET_NAME\") | .id" 2>/dev/null | head -1)"
+ruleset_id="$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$RULESET_NAME\") | .id" | head -1)"
 
 # A new game has no project.env yet. Its first ids go straight to main, before the ruleset below
 # protects it, so main never lacks them. Later changes go through a PR (step 4).
-if [[ -z "$ruleset_id" && "$(git branch --show-current)" == main ]] && ! git cat-file -e HEAD:.github/project.env 2>/dev/null; then
-  git add .github/project.env
-  git commit -q -m "chore: record GitHub project ids for project-sync.sh"
+if [[ -z "$ruleset_id" && "$(git branch --show-current)" == main ]]; then
+  if ! git cat-file -e HEAD:.github/project.env 2>/dev/null; then
+    git add .github/project.env
+    git commit -q -m "chore: record GitHub project ids for project-sync.sh" -- .github/project.env
+  fi
   git push -q origin main
 fi
 
