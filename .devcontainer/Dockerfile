@@ -19,8 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV TERM=xterm-256color
-# Without this, ng build / test / serve stop at an interactive analytics prompt on a TTY.
-ENV NG_CLI_ANALYTICS=false
 
 # Install Node 24 via NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
@@ -50,6 +48,9 @@ RUN npm install -g @playwright/mcp@0.0.80 && \
 USER vscode
 RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
+
+# Without this, ng build / test / serve stop at an interactive analytics prompt on a TTY.
+ENV NG_CLI_ANALYTICS=false
 
 # Copy tmux config
 COPY .tmux.conf /tmp/.tmux.conf

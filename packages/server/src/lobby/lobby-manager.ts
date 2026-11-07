@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { DISCONNECT_GRACE_MS } from '@base-multiplayer-game/shared';
 import type {
   PlayerId,
   GameId,
@@ -11,8 +12,6 @@ import { broadcastMessage, sendMessage } from '../ws/connection.js';
 import type { MessageHandlers } from '../ws/message-router.js';
 import { GameRoom } from './game-room.js';
 import type { GameModuleFactory } from '../game/game-module.js';
-
-export const DISCONNECT_GRACE_MS = 30_000;
 
 /** A game that has been created but not yet started — players gather here. */
 export interface PendingGame {

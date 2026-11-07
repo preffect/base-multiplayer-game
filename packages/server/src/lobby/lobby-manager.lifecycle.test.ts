@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LobbyGameInfo } from '@base-multiplayer-game/shared';
+import { DISCONNECT_GRACE_MS, type LobbyGameInfo } from '@base-multiplayer-game/shared';
 import type { GameModule, GameModuleFactory, RoomInitArgs } from '../game/game-module.js';
 import { buildRecordingConnection, messagesOfType, type RecordingConnection } from '../testing/connection-builders.js';
 import type { Connection } from '../ws/connection.js';
 import type { MessageHandlers } from '../ws/message-router.js';
-import { DISCONNECT_GRACE_MS, LobbyManager } from './lobby-manager.js';
+import { LobbyManager } from './lobby-manager.js';
 
 const CLIENT_REPORT = { fps: 60, frameTimeAvgMs: 16, frameTimeP95Ms: 18, frameTimePeakMs: 30, heapMb: null };
 
@@ -199,6 +199,15 @@ describe('lobby-manager lifecycle', () => {
       context.handlers.onDeleteGame(context.alice.connection, { type: 'delete_game', gameId });
       expect(context.lobby.getActiveRoom(gameId)).toBeUndefined();
       expect(context.gameModule.free).toHaveBeenCalledOnce();
+      expect(context.lobby.gameIdOfPlayer('alice')).toBeUndefined();
+      expect(context.lobby.gameIdOfPlayer('bob')).toBeUndefined();
+    });
+
+    it('delete_game by the creator frees the players of a pending game', () => {
+      const context = buildLobby();
+      const gameId = createGame(context);
+      joinGame(context, gameId);
+      context.handlers.onDeleteGame(context.alice.connection, { type: 'delete_game', gameId });
       expect(context.lobby.gameIdOfPlayer('alice')).toBeUndefined();
       expect(context.lobby.gameIdOfPlayer('bob')).toBeUndefined();
     });
