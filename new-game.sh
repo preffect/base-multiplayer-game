@@ -135,11 +135,14 @@ PRESETUP_ARGS=("$NAME")
 [[ -n "$CLIENT_PORT" ]] && PRESETUP_ARGS+=(--client-port "$CLIENT_PORT")
 
 echo "==> Copying template  ->  $NAME/"
-# Nothing built or private: `pnpm install` refuses to replace the template's node_modules without a
-# TTY, and builds, worktrees and .env belong to the template checkout.
+# Only the template's files, nothing of its checkout. Not .git, or the game would keep the template's
+# history and origin and its pushes could reach the template: a game has no repo until
+# scripts/github-setup.sh makes one. Not node_modules: `pnpm install` refuses to replace it without a
+# TTY. The rest is private, or left by a build or a run.
+COPY_EXCLUDES=(.git node_modules .pnpm-store dist '*.tsbuildinfo' .worktrees .env .env.local CLAUDE.local.md data
+  .game.pid .angular .devcontainer/.build-checksum .game-logs .qa coverage)
 mkdir "$TARGET"
-tar -C "$TEMPLATE" --exclude=node_modules --exclude=.pnpm-store --exclude=dist --exclude='*.tsbuildinfo' \
-  --exclude=.worktrees --exclude=.env -cf - . | tar -C "$TARGET" -xpf -
+tar -C "$TEMPLATE" "${COPY_EXCLUDES[@]/#/--exclude=}" -cf - . | tar -C "$TARGET" -xpf -
 
 echo "==> Instantiating ($NAME)"
 (cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}") || {

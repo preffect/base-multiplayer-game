@@ -76,7 +76,7 @@ or `scripts/lib/identity.sh`. Like `scripts/validate-cache.test.sh`, it runs by 
 
 <details><summary>Manual steps (what new-game.sh automates)</summary>
 
-1. `cp -r base-multiplayer-game my-game && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
+1. `cp -r base-multiplayer-game my-game && rm -rf my-game/.git && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
 2. ha-router: `ha-router/HA-ROUTER.md` _(host; per-host DNS record needed)_
 3. `DEVCONTAINER_YES=1 ./dev-container.sh` _(host; non-interactive when no TTY)_
 4. `./validate.sh all && ./run.sh` _(container)_

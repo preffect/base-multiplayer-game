@@ -58,6 +58,13 @@ SLUG="$(sed -n 's/^SLUG=//p' PORTS.env 2>/dev/null || true)"
 [[ -n "$TITLE" ]] || TITLE="$(title_case_from_name "$NAME")"
 
 # ---- 1. repo + first push --------------------------------------------------
+# An origin that isn't this repo must not receive this game's pushes. A copy that kept the template's
+# .git has the template's origin, and everything below would treat it as already set up.
+if origin_url="$(git remote get-url origin 2>/dev/null)" && [[ ! "$origin_url" =~ [:/]${REPO}(\.git)?/?$ ]]; then
+  echo "error: origin is $origin_url, not $REPO." >&2
+  echo "       If this is a copy of the template, delete its .git and run this again. Otherwise pass --repo." >&2
+  exit 1
+fi
 if ! gh repo view "$REPO" >/dev/null 2>&1; then
   echo "==> Creating GitHub repo $REPO"
   gh repo create "$REPO" "$VISIBILITY" --description "$TITLE — multiplayer game built from base-multiplayer-game" >/dev/null # KEEP_TEMPLATE_NAME

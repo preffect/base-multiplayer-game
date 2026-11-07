@@ -79,6 +79,8 @@ check_game() { # <directory> <project> <slug> <server-port> <client-port>
   check "$project: no template scope left in the lockfile" file_lacks "$game/pnpm-lock.yaml" "@$TEMPLATE_PROJECT/"
   check "$project: frozen lockfile-only install leaves the lockfile alone" lockfile_gate_changes_nothing "$game"
   check "$project: keep lines still name the template" keep_lines_survive "$game"
+  check "$project: shared default server port" file_has_line "$game/packages/shared/src/constants.ts" "export const DEFAULT_SERVER_PORT = $server_port;"
+  check "$project: shared default client port" file_has_line "$game/packages/shared/src/constants.ts" "export const DEFAULT_CLIENT_PORT = $client_port;"
   check "$project: run.sh builds this game's shared package" grep -qF "pnpm --filter @$project/shared --if-present build" "$game/run.sh"
   check "$project: dev.yaml names both ports" file_has_line "$game/dev.yaml" \
     "ports: { server: $server_port, client: $client_port }"
@@ -185,6 +187,25 @@ check "a failed lockfile step stops presetup.sh" test "$failed_install_rc" -ne 0
 check "it shows pnpm's reason" grep -qF "fake pnpm reason" <<<"$failed_install_output"
 check "it says the copy is half-built, once ($half_built_notices)" test "$half_built_notices" -eq 1
 
+# A failure in any step after the copy starts changing must print the notice exactly once.
+half_built_notices_from() { # <copy> <presetup args...>
+  local copy="$1"
+  shift
+  "$copy/presetup.sh" "$@" 2>&1 | grep -c 'half-built' || true
+}
+unwritable_docs="$sandbox/games/unwritable-docs"
+copy_template "$unwritable_docs"
+chmod a-w "$unwritable_docs/docs"
+notices="$(half_built_notices_from "$unwritable_docs" unwritable-docs)"
+chmod u+w "$unwritable_docs/docs"
+check "a failed identity pass says half-built once ($notices)" test "$notices" -eq 1
+
+no_scope="$sandbox/games/no-scope"
+copy_template "$no_scope"
+sed -i "s|\"@$TEMPLATE_PROJECT/shared\"|\"shared\"|" "$no_scope/packages/shared/package.json"
+notices="$(half_built_notices_from "$no_scope" no-scope)"
+check "a missing package scope says half-built once ($notices)" test "$notices" -eq 1
+
 check "the pnpm used for the lockfile is an exact version" grep -qE '^PNPM_PACKAGE=pnpm@[0-9]+[.][0-9]+[.][0-9]+$' "$repo_root/presetup.sh"
 
 # --- cases: new-game.sh -------------------------------------------------------------------------
@@ -194,12 +215,25 @@ new_game() { "$source_directory/$TEMPLATE_PROJECT/new-game.sh" "$@" --no-start -
 # What a template used for development holds, and a new game must not inherit.
 copied_template="$source_directory/$TEMPLATE_PROJECT"
 mkdir -p "$copied_template/node_modules" "$copied_template/packages/server/node_modules" "$copied_template/.pnpm-store" \
-  "$copied_template/packages/shared/dist" "$copied_template/.worktrees/some-branch"
-touch "$copied_template/packages/shared/tsconfig.build.tsbuildinfo" "$copied_template/.env"
+  "$copied_template/packages/shared/dist" "$copied_template/.worktrees/some-branch" "$copied_template/data" \
+  "$copied_template/.angular" "$copied_template/.game-logs" "$copied_template/.qa" "$copied_template/coverage"
+touch "$copied_template/packages/shared/tsconfig.build.tsbuildinfo" "$copied_template/.env" "$copied_template/.env.local" \
+  "$copied_template/CLAUDE.local.md" "$copied_template/.game.pid" "$copied_template/.devcontainer/.build-checksum"
+# copy_template leaves out .git, so give this template its own repo and a remote, as a real one has.
+fake_remotes="$sandbox/remotes"
+template_remote="$fake_remotes/upstream/$TEMPLATE_PROJECT.git"
+mkdir -p "$fake_remotes/tester" "$(dirname "$template_remote")"
+git init -q --bare -b main "$template_remote"
+as_tester() { git -c user.name=test -c user.email=test@example.com "$@"; }
+git -C "$copied_template" init -q -b main
+as_tester -C "$copied_template" commit -q --allow-empty -m "template history"
+git -C "$copied_template" remote add origin "$template_remote"
+git -C "$copied_template" push -q origin main
 check "new-game.sh: creates a game" new_game new-base-mp --server-port 4430 --client-port 4432
 check_game "$source_directory/new-base-mp" new-base-mp new-base-mp 4430 4432
-for left_behind in node_modules packages/server/node_modules .pnpm-store packages/shared/dist \
-  packages/shared/tsconfig.build.tsbuildinfo .worktrees .env; do
+for left_behind in .git node_modules packages/server/node_modules .pnpm-store packages/shared/dist \
+  packages/shared/tsconfig.build.tsbuildinfo .worktrees .env .env.local CLAUDE.local.md data .game.pid .angular \
+  .devcontainer/.build-checksum .game-logs .qa coverage; do
   check "new-game.sh: leaves $left_behind behind" is_absent "$source_directory/new-base-mp/$left_behind"
 done
 check "new-game.sh: keeps .env.example" test -f "$source_directory/new-base-mp/.env.example"
@@ -235,8 +269,64 @@ check "sync without a lockfile stops" fails sync_template
 mv "$sandbox/held-game-lockfile" "$synced_game/pnpm-lock.yaml"
 
 mv "$synced_game/.git" "$sandbox/held-game-git"
-check "sync outside git says so" says "not a git checkout" sync_template
+check "sync outside git says so" says "not a git repository" sync_template
 mv "$sandbox/held-game-git" "$synced_game/.git"
+
+# scripts/github-setup.sh on that path, against local bare repos: its git steps run for real. It can't
+# reach GitHub: gh and the two scripts that only talk to GitHub are fakes, git@github.com:tester/ is
+# rewritten (a longer match than any rewrite in the machine's git config), and git may only use local files.
+fake_github="$sandbox/fake-github"
+mkdir "$fake_github"
+cat > "$fake_github/gh" <<'GH'
+#!/usr/bin/env bash
+echo "gh $*" >> "$FAKE_GH_LOG"
+case "$1 $2" in
+  "auth status") echo "Token scopes: 'project', 'repo'" ;;
+  "api user") echo tester ;;
+  "repo view") [[ -d "$FAKE_REMOTES/$3.git" ]] ;;
+  "repo create") git init -q --bare -b main "$FAKE_REMOTES/$3.git" ;;
+  "issue create") echo "https://github.com/tester/fake/issues/1" ;;
+esac
+GH
+cat > "$fake_github/python3" <<'PYTHON'
+#!/usr/bin/env bash
+printf 'REPO=%s\nPROJECT_OWNER=tester\nPROJECT_NUMBER=1\nPROJECT_ID=fake\nSTATUS_FIELD_ID=fake\n' "$1" > .github/project.env
+PYTHON
+chmod +x "$fake_github/gh" "$fake_github/python3"
+gh_log="$sandbox/gh.log"
+: > "$gh_log"
+github_setup() { # <game directory>
+  env PATH="$fake_github:$PATH" FAKE_GH_LOG="$gh_log" FAKE_REMOTES="$fake_remotes" GIT_ALLOW_PROTOCOL=file \
+    GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$fake_remotes/tester/.insteadOf" GIT_CONFIG_VALUE_0="git@github.com:tester/" \
+    GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com \
+    "$1/scripts/github-setup.sh"
+}
+template_refs() { git -C "$template_remote" for-each-ref; }
+template_refs_before="$(template_refs)"
+template_is_unchanged() { [[ "$(template_refs)" == "$template_refs_before" ]]; }
+
+check "new-game.sh: creates a game for GitHub setup" new_game own-repo --server-port 4440 --client-port 4442
+own_repo="$source_directory/own-repo"
+own_remote="$fake_remotes/tester/own-repo.git"
+printf '#!/usr/bin/env bash\n' > "$own_repo/scripts/project-sync.sh"
+check "github-setup.sh: succeeds on a game with no repo" github_setup "$own_repo"
+check "github-setup.sh: origin is the game's own repo" says "tester/own-repo.git" git -C "$own_repo" remote get-url origin
+check "github-setup.sh: main on the game's remote is one scaffold commit" test "$(git -C "$own_remote" rev-list --count main)" -eq 1
+check "github-setup.sh: that commit holds the game" says '"name": "own-repo"' git -C "$own_remote" show main:package.json
+check "github-setup.sh: the game has no template history" fails says "template history" git -C "$own_repo" log --all --oneline
+check "github-setup.sh: nothing is left uncommitted" test -z "$(git -C "$own_repo" status --porcelain)"
+check "github-setup.sh: runs again cleanly" github_setup "$own_repo"
+check "github-setup.sh: the template's remote is untouched" template_is_unchanged
+
+kept_origin="$source_directory/kept-origin"
+copy_template "$kept_origin"
+git -C "$kept_origin" init -q -b main
+git -C "$kept_origin" remote add origin "$template_remote"
+: > "$gh_log"
+check "github-setup.sh: refuses a copy with the template's origin" fails github_setup "$kept_origin"
+check "github-setup.sh: says why" says "delete its .git" github_setup "$kept_origin"
+check "github-setup.sh: creates no repo for it" fails grep -q "repo create" "$gh_log"
+check "github-setup.sh: pushes nothing to the template" template_is_unchanged
 
 check "new-game.sh: stops on a bad port" fails new_game bad-port --server-port 80 --client-port 4432
 check "new-game.sh: removes the copy after a refusal" is_absent "$source_directory/bad-port"
