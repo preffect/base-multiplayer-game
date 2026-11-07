@@ -62,7 +62,7 @@ main() {
   # A sync must leave its files formatted and report what changed, so a host that can't run prettier,
   # or a game outside git, stops before any copy.
   if ! $DRY_RUN; then
-    git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "error: $ROOT is not a git checkout" >&2; exit 1; }
+    git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null || { echo "error: a sync needs git to work in $ROOT" >&2; exit 1; }
     run_prettier "$ROOT" --version >/dev/null || exit 1
   fi
 
@@ -166,7 +166,9 @@ main() {
   # The docs index quotes headings and first sentences of docs this run may have replaced.
   "$ROOT/scripts/docs-index.sh" >/dev/null
 
-  mapfile -t changed < <(git -C "$ROOT" status --porcelain -- "${to_format[@]}" docs/INDEX.md | cut -c4-)
+  status="$(git -C "$ROOT" status --porcelain --untracked-files=all -- "${to_format[@]}" docs/INDEX.md)" \
+    || { echo "error: git status failed, so the synced files can't be listed" >&2; exit 1; }
+  mapfile -t changed < <(printf '%s' "$status" | cut -c4-)
   if ((${#changed[@]})); then
     echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
     printf '  %s\n' "${changed[@]}"

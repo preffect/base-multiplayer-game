@@ -121,17 +121,17 @@ mapfile -t identity_files < <(grep -rIlE --exclude-dir=node_modules --exclude-di
   --exclude-dir=.pnpm-store --exclude-dir=dist --exclude=pnpm-lock.yaml \
   "${IDENTITY_TEMPLATE_TITLE}|${IDENTITY_TEMPLATE_PROJECT}|${IDENTITY_TEMPLATE_MCP}|${IDENTITY_TEMPLATE_SLUG}|\\b${IDENTITY_TEMPLATE_SERVER_PORT}\\b|\\b${IDENTITY_TEMPLATE_CLIENT_PORT}\\b|${IDENTITY_KEEP_TAG}" \
   "$ROOT" 2>/dev/null || true)
-render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${identity_files[@]}"
+# `|| false`: bash doesn't run the ERR trap for a failure inside a function.
+render_identity "$TITLE" "$PROJECT" "$SLUG" "$SERVER_PORT" "$CLIENT_PORT" "${identity_files[@]}" || false
 # The lockfile names the workspace packages, so a frozen install fails until they match. Only those
 # change: the whole-word port rewrite above could hit a dependency's version or hash. The scope comes
 # from the manifests the identity pass wrote, because those are what the install compares it with.
 workspace_scope="$(sed -n 's|^  "name": "\(@[^/]*\)/shared",$|\1|p' "$ROOT/packages/shared/package.json")"
-[[ -n "$workspace_scope" ]] || { echo "No package scope in packages/shared/package.json" >&2; exit 1; }
+[[ -n "$workspace_scope" ]] || { echo "No package scope in packages/shared/package.json" >&2; false; }
 sed -i "s|@${IDENTITY_TEMPLATE_PROJECT}/|${workspace_scope}/|g" "$ROOT/pnpm-lock.yaml"
 # The new scope can sort differently. pnpm re-sorts on any write, so do that once here rather than
 # have ./validate.sh lint change a new game's lockfile.
-# pnpm reports errors on stdout, so keep that visible. `|| false` fails here, in the main script,
-# because bash doesn't run the ERR trap for a failure inside a function.
+# pnpm reports errors on stdout, so keep that visible.
 run_npx "$ROOT" "$PNPM_PACKAGE" install --frozen-lockfile --lockfile-only >&2 || false
 
 # The root package description is the game's (set after the identity pass so the template name survives).
