@@ -1,3 +1,4 @@
+import { TICK_HZ } from '@base-multiplayer-game/shared';
 import type { PlayerId } from '@base-multiplayer-game/shared';
 import type { ClientPerformanceReport } from '@base-multiplayer-game/shared';
 
@@ -82,14 +83,14 @@ export class PerfTracker {
     const sum = tickTimes.reduce((acc, v) => acc + v, 0);
     const p95Index = Math.min(n - 1, Math.floor(n * 0.95));
     const avgMs = sum / n;
-    // Approximate broadcast bytes/sec from average snapshot size * clients @ ~60Hz.
+    // Approximate broadcast bytes/sec from average snapshot size * clients at the tick rate.
     const avgBytes = this.ticks.reduce((acc, t) => acc + t.snapshotBytes * t.broadcastClients, 0) / n;
     return {
       sampleCount: n,
       tickAvgMs: round(avgMs),
       tickP95Ms: round(tickTimes[p95Index] ?? 0),
       tickPeakMs: round(this.worst?.tickMs ?? 0),
-      broadcastBytesPerSec: round(avgBytes * 60),
+      broadcastBytesPerSec: round(avgBytes * TICK_HZ),
       worstTick: this.worst,
     };
   }

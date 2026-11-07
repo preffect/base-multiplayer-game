@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GameRoom } from '../lobby/game-room.js';
 import type { GameModule } from '../game/game-module.js';
 import { buildRecordingConnection } from '../testing/connection-builders.js';
-import type { PlayerId } from '@base-multiplayer-game/shared';
+import { TICK_INTERVAL_MS, type PlayerId } from '@base-multiplayer-game/shared';
 
 function spyModule(): GameModule & { reduceCalls: () => number } {
   let reduceCalls = 0;
@@ -34,7 +34,7 @@ describe('game-room', () => {
     const mod = spyModule();
     const room = new GameRoom(mod, 'p1' as PlayerId, ['p1'], 'Test', { maxPlayers: 4 }, { p1: 0 });
     room.start();
-    vi.advanceTimersByTime((1000 / 60) * 3 + 1);
+    vi.advanceTimersByTime(TICK_INTERVAL_MS * 3 + 1);
     room.stop();
     expect(mod.reduceCalls()).toBeGreaterThanOrEqual(3);
     expect(mod.serializeRoomState).toHaveBeenCalled();

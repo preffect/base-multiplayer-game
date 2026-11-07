@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { playerId, type ClientPerformanceReport } from '@base-multiplayer-game/shared';
+import { playerId, TICK_HZ, type ClientPerformanceReport } from '@base-multiplayer-game/shared';
 import { PerfTracker, type TickRecord } from './perf-tracker.js';
 
 const SAMPLE_CAPACITY = 300;
-const BROADCASTS_PER_SECOND = 60;
 const CLIENT_REPORT: ClientPerformanceReport = {
   fps: 60,
   frameTimeAvgMs: 16,
@@ -36,7 +35,7 @@ describe('PerfTracker', () => {
       sampleCount: 2,
       tickAvgMs: 2,
       tickPeakMs: 3,
-      broadcastBytesPerSec: 400 * BROADCASTS_PER_SECOND,
+      broadcastBytesPerSec: 400 * TICK_HZ,
     });
   });
 
