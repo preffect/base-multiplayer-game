@@ -150,7 +150,7 @@ rm -f "$fixture/generated-by-the-run.txt"
 echo 1 > "$FAKE_PNPM_RC_FILE"
 echo build-red > "$fixture/untracked.txt"
 run_validate "$fixture" typecheck
-check "a failed shared build fails the phase and shows the build's output" $(( rc != 0 && $(grep -q '^fake pnpm --filter ' <<<"$out"; echo $?) == 0 ))
+check "a failed shared build fails the phase and shows the build's output" $(( rc != 0 && $(grep -q '^fake pnpm build:shared$' <<<"$out"; echo $?) == 0 ))
 echo 0 > "$FAKE_PNPM_RC_FILE"
 rm "$fixture/untracked.txt"
 

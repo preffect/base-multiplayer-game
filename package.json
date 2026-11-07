@@ -9,6 +9,7 @@
     "dev:client": "pnpm --filter @base-multiplayer-game/client dev",
     "dev": "pnpm dev:server & pnpm dev:client",
     "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @base-multiplayer-game/shared build",
     "test": "pnpm -r test",
     "test:watch": "vitest",
     "lint": "eslint . && prettier --check .",

@@ -243,7 +243,7 @@ run_cached() {
 
 build_shared() {
   # Build shared package so downstream .d.ts references are fresh
-  pnpm --filter @base-multiplayer-game/shared build 2>&1
+  pnpm build:shared 2>&1
 }
 
 # Source files the standards apply to (docs/ENGINEERING.md); tests included.
