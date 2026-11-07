@@ -19,13 +19,19 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 #   * Never synced: package.json (its devDependencies — jscpd, @vitest/coverage-v8, the eslint
 #     plugins — are game-owned and must stay present for validate.sh), packages/**, game-owned
 #     docs/* (only the template docs listed below are),
-#     docs/INIT-GAME.md (one-shot), PORTS.env, .github/project.env, data/.
-#   * Removed if present (template-only): new-game.sh, presetup.sh, base-project.md,
-#     README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh), and the
+#     docs/INIT-GAME.md (one-shot), PORTS.env, dev.yaml, pnpm-lock.yaml, .github/project.env, data/.
+#   * Removed if present (template-only): new-game.sh, presetup.sh, scripts/presetup.test.sh,
+#     base-project.md, README.game.md, ha-router/ (TEMPLATE_ONLY_PATHS in scripts/lib/identity.sh), and the
 #     per-role .claude/roles/<role>.md files that predate the .claude/agents/ definitions.
 #
 # After copying, the template identity is re-applied exactly as presetup.sh does
-# (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME.
+# (project/slug/title/MCP name/ports from package.json + PORTS.env), honouring KEEP_TEMPLATE_NAME,
+# and the template-owned files are formatted with the game's prettier. That needs npx or docker,
+# with or without node_modules, and a sync stops before copying anything if neither can run it.
+#
+# The summary is what `git status` shows for those files afterwards, so a real sync needs a git
+# checkout, and uncommitted edits to them appear too. --dry-run formats nothing, so it compares raw
+# renders: it can list a file whose only difference prettier would remove.
 #
 # Usage:  ./scripts/sync-from-template.sh [--template <dir>] [--dry-run]
 # ---------------------------------------------------------------------------
@@ -52,6 +58,13 @@ main() {
   # The identity-render engine comes from the TEMPLATE (always its newest version).
   # shellcheck disable=SC1091
   source "$TEMPLATE/scripts/lib/identity.sh"
+
+  # A sync must leave its files formatted and report what changed, so a host that can't run prettier,
+  # or a game outside git, stops before any copy.
+  if ! $DRY_RUN; then
+    git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null || { echo "error: a sync needs git to work in $ROOT" >&2; exit 1; }
+    run_prettier "$ROOT" --version >/dev/null || exit 1
+  fi
 
   # ---- identity of this game (what presetup.sh baked in) ----------------------
   PROJECT="$(sed -n 's/^  "name": "\(.*\)",$/\1/p' "$ROOT/package.json" | head -1)"
@@ -133,18 +146,35 @@ main() {
     echo "Differs from the template but is edited in place by agents — merge manually if the template change matters:"
     printf '  %s\n' "${drifted[@]}"
   fi
-  # Re-rendering shortens/lengthens words inside markdown tables; let the game's prettier re-align.
-  if ((${#copied[@]})) && ! $DRY_RUN && [[ -x "$ROOT/node_modules/.bin/prettier" ]]; then
-    (cd "$ROOT" && node_modules/.bin/prettier --write --ignore-unknown "${copied[@]}" >/dev/null 2>&1 || true)
+  # Re-rendering shortens/lengthens words inside markdown tables; the game's prettier re-aligns them.
+  # Every template-owned file, not just this run's copies, so a file an earlier sync left unformatted
+  # is repaired even when it is unchanged here. Game-owned files are not touched.
+  if $DRY_RUN; then
+    if ((${#copied[@]} + ${#removed[@]} == 0)); then
+      echo "Already in sync with $TEMPLATE."
+    elif ((${#copied[@]})); then
+      echo "Would update (dry run):"
+      printf '  %s\n' "${copied[@]}"
+    fi
+    return 0
   fi
+
+  to_format=("${copied[@]}")
+  for f in "${ALWAYS[@]}"; do [[ -f "$ROOT/$f" ]] && to_format+=("$f"); done
+  run_prettier "$ROOT" --write --ignore-unknown --log-level=warn "${to_format[@]}" \
+    || { echo "error: the synced files are not all formatted. Fix the error above, then sync again." >&2; exit 1; }
   # The docs index quotes headings and first sentences of docs this run may have replaced.
-  if ((${#copied[@]} + ${#removed[@]})) && ! $DRY_RUN; then "$ROOT/scripts/docs-index.sh" >/dev/null; fi
-  if ((${#copied[@]} + ${#removed[@]} == 0)); then
+  "$ROOT/scripts/docs-index.sh" >/dev/null
+
+  status="$(git -C "$ROOT" status --porcelain --untracked-files=all -- "${to_format[@]}" docs/INDEX.md)" \
+    || { echo "error: git status failed, so the synced files can't be listed" >&2; exit 1; }
+  mapfile -t changed < <(printf '%s' "$status" | cut -c4-)
+  if ((${#changed[@]})); then
+    echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
+    printf '  %s\n' "${changed[@]}"
+    echo "Review with 'git diff', then land via a PR (docs/WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
+  elif ((${#removed[@]} == 0)); then
     echo "Already in sync with $TEMPLATE."
-  elif ((${#copied[@]})); then
-    $DRY_RUN && echo "Would update (dry run):" || echo "Updated from template ($TITLE / $PROJECT / $SLUG / $SERVER_PORT-$CLIENT_PORT):"
-    printf '  %s\n' "${copied[@]}"
-    $DRY_RUN || echo "Review with 'git diff', then land via a PR (docs/WORKFLOW.md §5). Rebuild the devcontainer if .devcontainer/* changed."
   fi
 }
 

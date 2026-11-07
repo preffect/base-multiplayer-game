@@ -210,7 +210,7 @@ drainLatestSnapshot, host? })`: an input loop calling `send(gameInput)` (wraps
 ### 5. Ports & config
 
 The ports come from `PORTS.env` (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — do NOT change them.
-Verify they are consistent across `packages/server/src/index.ts`,
+Verify they are consistent across `packages/shared/src/constants.ts`,
 `packages/client/angular.json`, `packages/client/proxy.conf.json`,
 `.devcontainer/devcontainer.json`, `dev-container.sh`, `run.sh`, `.mcp.json`, `CLAUDE.md`
 (they should already match, baked in by `presetup.sh`; state "no change" if so, otherwise fix

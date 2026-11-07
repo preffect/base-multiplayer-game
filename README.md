@@ -24,11 +24,11 @@ games are created as siblings of the template folder.
 
 It copies the template, picks free ports, instantiates (`presetup.sh`), registers the game in the
 live **ha-router** (route + landing card, DNS check), builds and starts the **devcontainer**
-non-interactively, runs `./validate.sh all` (which builds `packages/shared` — required before the
-client can compile) and `./run.sh`, verifies `https://<slug>.preffect-ha.preffect-home.net` through
-Traefik, and sets up **GitHub** (repo, labels, milestones, project board + views, groundwork epics,
-branch ruleset) via `scripts/github-setup.sh`. Flags: `--no-start`, `--no-ha-router`, `--no-github`,
-`--private`. Each step is idempotent and can be re-run on its own (`./dev-container.sh`,
+non-interactively, runs `./validate.sh all` and `./run.sh`, verifies
+`https://<slug>.preffect-ha.preffect-home.net` through Traefik, and sets up **GitHub** (repo, labels,
+milestones, project board + views, groundwork epics, branch ruleset) via `scripts/github-setup.sh`.
+Flags: `--no-start`, `--no-ha-router`, `--no-github`, `--private`. With `--no-github`, a game has no
+git repo until you run `scripts/github-setup.sh`. Each step is idempotent and can be re-run on its own (`./dev-container.sh`,
 `./scripts/github-setup.sh`, `ha-router/HA-ROUTER.md`).
 
 Then, **inside the devcontainer** (where every agent runs):
@@ -53,12 +53,33 @@ This README is the **template's**; `presetup.sh` replaces it in the game copy wi
 `./scripts/sync-from-template.sh` inside a game (host) to pull the template-owned files across
 with the game's identity re-applied, and land the diff via a PR.
 
+**Moving an existing game onto the current dependencies:** a sync never touches `package.json`,
+`packages/**`, `pnpm-workspace.yaml` or the lockfile, so a game keeps its old versions and their
+advisories until someone does this by hand, in a PR:
+
+1. In the root and `packages/*/package.json`: `vitest` and `@vitest/coverage-v8` to `^4.1.12`,
+   `eslint` to `^10.4.0`, `zod` to `^4.6.7`, and `engines.pnpm` to `>=10.16.0 <11`.
+2. Replace `vitest.workspace.ts` with a `vitest.config.ts` that sets `test.projects`. vitest 4 has
+   no `defineWorkspace`.
+3. In `packages/client/angular.json`, use the `@angular/build` builders, then remove
+   `@angular-devkit/build-angular`.
+4. Copy `minimumReleaseAge` and `overrides` from this template's `pnpm-workspace.yaml`.
+5. Delete `pnpm-lock.yaml` and run `pnpm install`.
+6. Check the game's zod schemas: `.max()` now counts code points, `.passthrough()` is `.loose()`,
+   a `z.unknown()` field must be present, and `z.number()` rejects Infinity.
+7. Expect coverage to read lower: vitest 4 counts differently. Floors only move up
+   (`docs/ENGINEERING.md` §2.5), so add the missing tests.
+
+**Changing instantiation:** run `scripts/presetup.test.sh` after changing `presetup.sh`, `new-game.sh`
+or `scripts/lib/identity.sh`. Like `scripts/validate-cache.test.sh`, it runs by hand, not from
+`./validate.sh`. It stays in the template: `presetup.sh` removes it from a game.
+
 <details><summary>Manual steps (what new-game.sh automates)</summary>
 
-1. `cp -r base-multiplayer-game my-game && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
+1. `cp -r base-multiplayer-game my-game && rm -rf my-game/.git && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
 2. ha-router: `ha-router/HA-ROUTER.md` _(host; per-host DNS record needed)_
 3. `DEVCONTAINER_YES=1 ./dev-container.sh` _(host; non-interactive when no TTY)_
-4. `./validate.sh all && ./run.sh` _(container; validate first — it builds shared)_
+4. `./validate.sh all && ./run.sh` _(container)_
 5. `./scripts/github-setup.sh` _(host; needs `gh` with the `project` scope)_
 
 </details>

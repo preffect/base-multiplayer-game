@@ -1,6 +1,8 @@
 {
   "name": "${localWorkspaceFolderBasename}",
   "init": true,
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
   "build": {
     "dockerfile": "Dockerfile"
   },

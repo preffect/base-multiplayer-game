@@ -26,7 +26,7 @@
 ./validate.sh test                    # unit tests with coverage floors (vitest for shared/server, ng test for client)
 ./validate.sh integration             # *.integration.* tier + *.gameplay.test.ts scenarios (opt-in)
 ./validate.sh typecheck               # type check all packages
-./validate.sh lint                    # eslint + prettier --check + eslint-disable / TODO audit + docs/INDEX.md freshness
+./validate.sh lint                    # eslint + prettier --check + eslint-disable / TODO audit + docs/INDEX.md freshness + lockfile check
 ./validate.sh duplication             # jscpd against .jscpd.json
 ./validate.sh all                     # run lint, duplication, typecheck, test in sequence
 
@@ -63,6 +63,11 @@ and the player loses the game. Source edits still rebuild; refresh the browser t
 ./dev-container.sh stop     # stop the container
 ./dev-container.sh status   # show container status
 ```
+
+`dev.yaml` and the committed `pnpm-lock.yaml` serve the PreffectHome standard dev environment, an
+unprivileged pod from a shared image with no Docker inside. The devcontainer keeps working beside
+it; a script that needs to know it is inside either one uses `in_container` from
+`scripts/lib/identity.sh`.
 
 ## Project workflow (GitHub issues, board, reviews)
 

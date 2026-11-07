@@ -1,12 +1,13 @@
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
+import { DEFAULT_SERVER_PORT } from '@base-multiplayer-game/shared';
 import { LobbyManager } from './lobby/lobby-manager.js';
 import { registerWebSocketHandler } from './ws/websocket-handler.js';
 import type { Connection } from './ws/connection.js';
 import { registerMcpEndpoint } from './mcp/mcp-server.js';
 import { defaultGameModuleFactory } from './game/game-module.js'; // TODO(init): swap for real factory
 
-const PORT = Number(process.env.PORT) || 4400;
+const PORT = Number(process.env.PORT) || DEFAULT_SERVER_PORT;
 
 async function main(): Promise<void> {
   const server = Fastify({ logger: true });

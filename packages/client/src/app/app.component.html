@@ -21,7 +21,12 @@
     <h2>Connection</h2>
     <label>
       Name
-      <input type="text" [ngModel]="playerName()" (ngModelChange)="playerName.set($event)" />
+      <input
+        type="text"
+        [attr.maxlength]="playerNameMaxLength"
+        [ngModel]="playerName()"
+        (ngModelChange)="playerName.set($event)"
+      />
     </label>
     @if (!mp.connected()) {
       <button (click)="connect()">Connect & Join Lobby</button>
@@ -34,11 +39,22 @@
     <h2>Create Game</h2>
     <label>
       Game name
-      <input type="text" [ngModel]="newGameName()" (ngModelChange)="newGameName.set($event)" />
+      <input
+        type="text"
+        [attr.maxlength]="gameNameMaxLength"
+        [ngModel]="newGameName()"
+        (ngModelChange)="newGameName.set($event)"
+      />
     </label>
     <label>
       Max players
-      <input type="number" min="1" max="8" [ngModel]="maxPlayers()" (ngModelChange)="maxPlayers.set(+$event)" />
+      <input
+        type="number"
+        [attr.min]="minPlayers"
+        [attr.max]="maxPlayersAllowed"
+        [ngModel]="maxPlayers()"
+        (ngModelChange)="maxPlayers.set(+$event)"
+      />
     </label>
     <!-- TODO(game): add game-specific create-game config fields here. -->
     <button [disabled]="!mp.connected()" (click)="createGame()">Create</button>

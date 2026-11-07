@@ -26,7 +26,7 @@ set -euo pipefail
 #   --server-port / --client-port   pin ports explicitly (default: auto-pick a free pair)
 #   --no-start    stop after instantiation; skip devcontainer, verification, GitHub
 #   --no-ha-router  skip the live ha-router edits (route + landing card + DNS check)
-#   --no-github   skip GitHub repo/board setup
+#   --no-github   skip GitHub repo/board setup; the game has no git repo until you run scripts/github-setup.sh
 #   --private     create the GitHub repo private (default public)
 #
 # Examples:
@@ -135,10 +135,21 @@ PRESETUP_ARGS=("$NAME")
 [[ -n "$CLIENT_PORT" ]] && PRESETUP_ARGS+=(--client-port "$CLIENT_PORT")
 
 echo "==> Copying template  ->  $NAME/"
-cp -a "$TEMPLATE" "$TARGET"
+# Only the template's files, nothing of its checkout. Not .git, or the game would keep the template's
+# history and origin and its pushes could reach the template: a game has no repo until
+# scripts/github-setup.sh makes one. Not node_modules: `pnpm install` refuses to replace it without a
+# TTY. The rest is private, or left by a build or a run.
+COPY_EXCLUDES=(.git node_modules .pnpm-store dist '*.tsbuildinfo' .worktrees .env .env.local CLAUDE.local.md data
+  .game.pid .angular .devcontainer/.build-checksum .game-logs .qa coverage)
+mkdir "$TARGET"
+tar -C "$TEMPLATE" "${COPY_EXCLUDES[@]/#/--exclude=}" -cf - . | tar -C "$TARGET" -xpf -
 
 echo "==> Instantiating ($NAME)"
-(cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}")
+(cd "$TARGET" && ./presetup.sh "${PRESETUP_ARGS[@]}") || {
+  echo "Error: presetup.sh failed; removing the copy at $TARGET." >&2
+  rm -rf "${TARGET:?}"
+  exit 1
+}
 
 SLUG_FINAL="$(sed -n 's/^SLUG=//p' "$TARGET/PORTS.env")"
 HOST="${SLUG_FINAL}.preffect-ha.preffect-home.net"
@@ -190,14 +201,12 @@ EOF
 
 # ---------------------------------------------------------------------------
 # Devcontainer: build/start without a TTY, make the skeleton green, start the servers.
-# ./validate.sh all MUST run before ./run.sh on a fresh copy: it builds packages/shared/dist,
-# without which the Angular client fails to compile ("Cannot find module '@<game>/shared'").
 # ---------------------------------------------------------------------------
 start_devcontainer() {
   echo "==> Building + starting devcontainer (non-interactive)"
   (cd "$TARGET" && DEVCONTAINER_YES=1 ./dev-container.sh </dev/null)
   local container="${NAME}-dev"
-  echo "==> validate.sh all (builds shared) + run.sh"
+  echo "==> validate.sh all + run.sh"
   docker exec -u vscode -w /workspace "$container" \
     sh -lc './validate.sh all -t3 && ./run.sh >/dev/null 2>&1; sleep 25; ./run.sh --status | tail -2'
 }
@@ -238,7 +247,7 @@ if $NO_START; then
 Done. Next:
   cd $TARGET
   ./dev-container.sh        # build + start the devcontainer
-  # inside it:  ./validate.sh all  &&  ./run.sh      (validate first — it builds packages/shared)
+  # inside it:  ./validate.sh all  &&  ./run.sh
   ./scripts/github-setup.sh # repo, board, groundwork epics, branch ruleset (host)
 EOF
   exit 0

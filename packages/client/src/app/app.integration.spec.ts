@@ -2,6 +2,12 @@
 // WebSocketService over a fake browser socket — connect, create a game, receive game_started and a
 // snapshot, enter the room. Run with `./validate.sh integration`.
 import { TestBed } from '@angular/core/testing';
+import {
+  GAME_NAME_MAX_LEN,
+  MAX_PLAYERS_PER_GAME,
+  MIN_PLAYERS_PER_GAME,
+  PLAYER_NAME_MAX_LEN,
+} from '@base-multiplayer-game/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppComponent } from './app.component';
 import { IdentityService } from './services/identity.service';
@@ -24,6 +30,25 @@ describe('lobby shell + multiplayer services', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  function renderedInputs(selector: string): HTMLInputElement[] {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(selector));
+  }
+
+  it('limits the player and game names to what the server accepts', () => {
+    expect(renderedInputs('input[type="text"]').map((input) => input.maxLength)).toEqual([
+      PLAYER_NAME_MAX_LEN,
+      GAME_NAME_MAX_LEN,
+    ]);
+  });
+
+  it('limits the player count to what the server accepts', () => {
+    const [playerCount] = renderedInputs('input[type="number"]');
+    expect(playerCount?.min).toBe(String(MIN_PLAYERS_PER_GAME));
+    expect(playerCount?.max).toBe(String(MAX_PLAYERS_PER_GAME));
   });
 
   it('connects, creates a game and enters the room when the server starts it', async () => {

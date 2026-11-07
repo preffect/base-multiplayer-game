@@ -17,11 +17,11 @@ set -euo pipefail
 # for a container created before that variable existed, until it is rebuilt).
 # ---------------------------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/lib/identity.sh" # CONTAINER_WORKSPACE / in_container
 PROJECTS_DIR="${HOME}/.claude/projects"
-CONTAINER_WORKSPACE=/workspace
 
 project_key() { echo "${1//\//-}"; } # /home/me/source/game -> -home-me-source-game
-in_container() { [[ -f /.dockerenv ]]; }
 
 session="" host_dir="${HOST_WORKSPACE_DIR:-}"
 while [[ $# -gt 0 ]]; do
@@ -31,6 +31,11 @@ while [[ $# -gt 0 ]]; do
     *) session="$1"; shift ;;
   esac
 done
+
+if [[ -n "${PREFFECT_DEV:-}" ]]; then
+  echo "error: resume-in-container.sh is not available in a pod: it moves a transcript between the host and a devcontainer." >&2
+  exit 1
+fi
 
 if in_container; then
   [[ -n "$host_dir" ]] || {

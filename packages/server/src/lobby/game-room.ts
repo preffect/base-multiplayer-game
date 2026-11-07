@@ -1,11 +1,9 @@
+import { TICK_INTERVAL_MS } from '@base-multiplayer-game/shared';
 import type { PlayerId, GameId, GameSnapshot, GameInput, GameSessionConfig } from '@base-multiplayer-game/shared';
 import type { Connection } from '../ws/connection.js';
 import { broadcastMessage, sendMessage } from '../ws/connection.js';
 import { PerfTracker, type ClientPerfReport } from './perf-tracker.js';
 import type { GameModule } from '../game/game-module.js';
-
-const TICK_HZ = 60;
-const TICK_INTERVAL_MS = 1000 / TICK_HZ;
 
 /**
  * A running game session. Owns the connections, the late-join/disconnect

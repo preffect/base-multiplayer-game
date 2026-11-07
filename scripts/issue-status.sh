@@ -15,6 +15,9 @@ PROJECT_ENV="$SCRIPT_DIR/../.github/project.env"
 [[ -f "$PROJECT_ENV" ]] || { echo "error: $PROJECT_ENV missing — run scripts/github-setup.sh first." >&2; exit 1; }
 # shellcheck disable=SC1090
 source "$PROJECT_ENV" # REPO, PROJECT_OWNER, PROJECT_NUMBER, PROJECT_ID, STATUS_FIELD_ID
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identity.sh"
+require_board_repo "$SCRIPT_DIR/.." "$REPO"
 OWNER="${REPO%/*}" NAME="${REPO#*/}"
 
 if [[ "${1:-}" =~ ^[0-9]+$ ]]; then status="${2:?status name required}"; issues=("$1")

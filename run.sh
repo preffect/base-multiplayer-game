@@ -36,8 +36,8 @@ check_deps() {
   if ! command -v pnpm &>/dev/null; then
     echo "ERROR: pnpm is not installed."
     echo "  Install pnpm >= 10:"
-    echo "    corepack enable && corepack prepare pnpm@latest --activate"
-    echo "  Or: npm install -g pnpm"
+    echo "    corepack enable && corepack prepare pnpm@10 --activate"
+    echo "  Or: npm install -g pnpm@10"
     echo "  Or: https://pnpm.io/installation"
     echo ""
     missing=true
@@ -46,8 +46,8 @@ check_deps() {
     pnpm_major=$(pnpm -v | sed 's/\([0-9]*\).*/\1/')
     if (( pnpm_major < 10 )); then
       echo "ERROR: pnpm >= 10 is required (found $(pnpm -v))."
-      echo "  Update: corepack prepare pnpm@latest --activate"
-      echo "  Or: npm install -g pnpm@latest"
+      echo "  Update: corepack prepare pnpm@10 --activate"
+      echo "  Or: npm install -g pnpm@10"
       echo ""
       missing=true
     fi
@@ -224,6 +224,12 @@ if [[ ! -d "$SCRIPT_DIR/node_modules" ]]; then
   echo "  Or:  ./run.sh --install"
   exit 1
 fi
+
+# The server and the client import packages/shared from its build, so it must be current, not just
+# present. A build with nothing to do takes about a second. Without dist, an older .tsbuildinfo beside
+# the sources would make tsc think the build is current and write nothing.
+[[ -f "$SCRIPT_DIR/packages/shared/dist/index.js" ]] || rm -f "$SCRIPT_DIR"/packages/shared/*.tsbuildinfo
+pnpm --filter @base-multiplayer-game/shared --if-present build
 
 mkdir -p "$LOG_DIR"
 > "$PID_FILE"

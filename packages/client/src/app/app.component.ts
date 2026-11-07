@@ -1,5 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import {
+  GAME_NAME_MAX_LEN,
+  MAX_PLAYERS_PER_GAME,
+  MIN_PLAYERS_PER_GAME,
+  PLAYER_NAME_MAX_LEN,
+} from '@base-multiplayer-game/shared';
 import { MultiplayerService } from './services/multiplayer.service';
 
 /**
@@ -21,6 +27,12 @@ export class AppComponent {
   readonly title = 'Base Multiplayer Game';
 
   readonly mp = inject(MultiplayerService);
+
+  // The limits the server enforces, for the form's inputs.
+  readonly playerNameMaxLength = PLAYER_NAME_MAX_LEN;
+  readonly gameNameMaxLength = GAME_NAME_MAX_LEN;
+  readonly minPlayers = MIN_PLAYERS_PER_GAME;
+  readonly maxPlayersAllowed = MAX_PLAYERS_PER_GAME;
 
   // Local lobby form state.
   readonly playerName = signal('Player');

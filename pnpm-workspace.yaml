@@ -1,2 +1,12 @@
 packages:
   - 'packages/*'
+
+# Minutes. A release younger than a day isn't resolved, so a compromised one has time to be pulled.
+# pnpm added this in 10.16 and ignores it before that, which is why package.json's engines start there.
+minimumReleaseAge: 1440
+
+# No release of the packages that depend on these allows the fixed major yet. Remove each override
+# once `pnpm audit` stays clean without it.
+overrides:
+  glob@>=9.0.0 <14.0.2: ^14.0.2 # GHSA-3g3m-2fjr-6pw4, via @angular/cli
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1 # GHSA-g3hv-75wg-m249, via eslint and typescript-eslint
