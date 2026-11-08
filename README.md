@@ -175,7 +175,9 @@ Then open two browser tabs at the client to exercise the lobby → create → jo
 ## MCP visibility (`/debug-mcp`)
 
 The server exposes an HTTP MCP endpoint (`game-debug`) at `http://localhost:4400/debug-mcp`
-(configured in `.mcp.json`). Claude Code can inspect live state via tools such as:
+(configured in `.mcp.json`). It is a dev tool: it is mounted only when `DEBUG_MCP=1`, which the
+server's `dev` script and `./run.sh` set and `start` does not, it answers POST only (405 for other
+methods), and it refuses (403) any Host or Origin other than `localhost`, `127.0.0.1` or `[::1]`. Claude Code can inspect live state via tools such as:
 
 - `debug_get_connections` — active WebSocket connections
 - `debug_get_performance` / `debug_get_room_performance` — tick timing / broadcast telemetry

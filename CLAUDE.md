@@ -165,6 +165,6 @@ change ports inside the container; they are already baked into the integration f
 
 ### MCP Servers
 
-- **game-debug** — HTTP MCP endpoint on the game server (`http://localhost:4400/debug-mcp`) for inspecting game state (`debug_get_game_state`, `debug_list_games`, `debug_get_room`), player connections (`debug_get_connections`), and performance (`debug_get_performance`)
+- **game-debug** — HTTP MCP endpoint on the game server (`http://localhost:4400/debug-mcp`) for inspecting game state (`debug_get_game_state`, `debug_list_games`, `debug_get_room`), player connections (`debug_get_connections`), and performance (`debug_get_performance`). Mounted only when `DEBUG_MCP=1` (the server's `dev` script and `./run.sh` set it, `start` does not); POST only, loopback Host/Origin only
 - **angular** — Angular's built-in MCP server for component introspection and development assistance
 - **playwright** — headless Chromium (`@playwright/mcp`, installed in the image) for QA / graphics roles to drive and screenshot the running game; screenshots land in `.qa/screenshots/`

@@ -43,15 +43,9 @@ http:
         certResolver: cloudflare
       priority: 100
 
-    # OPTIONAL: only if you want the MCP debug endpoint reachable remotely.
-    # Otherwise leave commented — debug-mcp is normally used over localhost.
-    # <slug>-mcp:
-    #   rule: "Host(`<slug>.preffect-ha.preffect-home.net`) && PathPrefix(`/debug-mcp`)"
-    #   entryPoints: [websecure]
-    #   service: <slug>-api
-    #   tls:
-    #     certResolver: cloudflare
-    #   priority: 100
+    # No /debug-mcp router: the debug MCP is dev-only (DEBUG_MCP=1) and refuses
+    # any Host other than localhost, 127.0.0.1 or [::1], so a routed request
+    # would only ever get a 403.
 
     <slug>:
       rule: "Host(`<slug>.preffect-ha.preffect-home.net`)"
