@@ -33,7 +33,7 @@ print_help() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "$ROOT/scripts/lib/identity.sh" # the one identity-render engine (shared with sync-from-template.sh)
+source "$ROOT/scripts/lib/identity.sh" # the one identity-render engine, also the render script of later syncs
 
 PORT_MIN=1024 # dev.yaml's schema allows no lower
 PORT_MAX=65535
@@ -41,6 +41,7 @@ PORT_MAX_DIGITS=5 # longer input would overflow the shell's arithmetic
 # For sorting the lockfile, on a host that may only have docker. Exact, because a range could resolve
 # a release minimumReleaseAge would refuse, or match an old global pnpm that engines would refuse.
 PNPM_PACKAGE=pnpm@10.34.9
+TEMPLATE_REPOSITORY=preffect/base-multiplayer-game # KEEP_TEMPLATE_NAME
 
 # ---- defaults ----
 PROJECT="$(basename "$ROOT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_.-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
@@ -109,16 +110,18 @@ if [[ -f "$ROOT/README.game.md" ]]; then
   mv -f "$ROOT/README.game.md" "$ROOT/README.md"
 fi
 
-# Template-only files never belong in a game (scripts/sync-from-template.sh removes any that
-# reappear; the list lives in scripts/lib/identity.sh so both agree). presetup.sh is in that list
-# but goes last, at the bottom of this file, so a copy that still has it is visibly unfinished.
-for template_only in "${TEMPLATE_ONLY_PATHS[@]}"; do
-  [[ "$template_only" == presetup.sh ]] || rm -rf "${ROOT:?}/$template_only"
-done
+# Template-only files never belong in a game: the retired entries of template-files.txt, which
+# `preffect-dev sync-template` deletes too if they reappear. presetup.sh is one of them but goes last,
+# at the bottom of this file, so a copy that still has it is visibly unfinished.
+while read -r kind template_only; do
+  [[ "$kind" == retired && "$template_only" != presetup.sh ]] || continue
+  [[ -n "$template_only" && "$template_only" != *..* && "$template_only" != /* ]] || { echo "Bad retired path '$template_only' in template-files.txt" >&2; false; }
+  rm -rf "${ROOT:?}/$template_only"
+done < "$ROOT/template-files.txt"
 
 # The template's own board ids, which a game must never write to: project-sync.sh and issue-status.sh
-# refuse to run until scripts/github-setup.sh writes the game's. Not in TEMPLATE_ONLY_PATHS, because
-# sync-from-template.sh deletes those, and a set-up game needs this file.
+# refuse to run until scripts/github-setup.sh writes the game's. Not retired in template-files.txt,
+# because a sync deletes those, and a set-up game needs this file.
 rm -f "$ROOT/.github/project.env"
 
 # ---- rewrite every file that mentions a template identity token ----
@@ -157,10 +160,12 @@ SLUG=$SLUG
 TITLE=$TITLE
 EOF
 
-# The same two ports for the standard dev environment, which reads this file instead of PORTS.env.
+# The same two ports for the standard dev environment, which reads this file instead of PORTS.env,
+# and the template that `preffect-dev sync-template` brings later fixes from.
 cat > "$ROOT/dev.yaml" <<EOF
 # Game server, Angular client.
 ports: { server: $SERVER_PORT, client: $CLIENT_PORT }
+template: $TEMPLATE_REPOSITORY
 EOF
 
 # The new names change line lengths and table widths, and the docs index quotes the docs: format

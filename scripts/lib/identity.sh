@@ -2,8 +2,8 @@
 # ---------------------------------------------------------------------------
 # identity.sh — the ONE place that knows how to turn template files into a game's files.
 #
-# Sourced by presetup.sh (first instantiation) and scripts/sync-from-template.sh (later
-# syncs), which also share run_prettier. Rewrites the template identity tokens in the given files:
+# Sourced by presetup.sh (first instantiation), and run by `preffect-dev sync-template` as the
+# template's render script (later syncs, at the bottom). Rewrites the template identity tokens in the given files:
 #   Base Multiplayer Game  -> <Title>          base-multiplayer-game -> <project> # KEEP_TEMPLATE_NAME
 #   game-debug             -> <slug>-debug     base-mp               -> <slug> # KEEP_TEMPLATE_NAME
 #   4400 / 4402            -> <server-port> / <client-port>   (whole-word) # KEEP_TEMPLATE_NAME
@@ -62,14 +62,21 @@ run_npx() {
   fi
 }
 
+# prettier_version <root>: the prettier version <root>'s lockfile pins. Prints why when there's none.
+prettier_version() {
+  local version
+  [[ -f "$1/pnpm-lock.yaml" ]] || { echo "error: no pnpm-lock.yaml in $1: run pnpm install first" >&2; return 1; }
+  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$1/pnpm-lock.yaml" | head -n 1)"
+  [[ -n "$version" ]] || { echo "error: no prettier in $1/pnpm-lock.yaml: run pnpm install first" >&2; return 1; }
+  echo "$version"
+}
+
 # run_prettier <root> <prettier args...>
 # The prettier version <root>'s lockfile pins, so it agrees with `pnpm lint` there, with or without
 # node_modules. Prints why it couldn't run, so callers only need to stop.
 run_prettier() {
   local root="$1" version; shift
-  [[ -f "$root/pnpm-lock.yaml" ]] || { echo "error: no pnpm-lock.yaml in $root: run pnpm install first" >&2; return 1; }
-  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$root/pnpm-lock.yaml" | head -n 1)"
-  [[ -n "$version" ]] || { echo "error: no prettier in $root/pnpm-lock.yaml: run pnpm install first" >&2; return 1; }
+  version="$(prettier_version "$root")" || return 1
   run_npx "$root" "prettier@$version" "$@" || { echo "error: prettier failed" >&2; return 1; }
 }
 
@@ -109,8 +116,42 @@ container_name_from_dir() { echo "$(project_slug_from_dir "$1")$CONTAINER_NAME_S
 in_container() { [[ -f /.dockerenv || -n "${PREFFECT_DEV:-}" ]]; }
 
 
-# Files that exist only to CREATE games and must not survive in one. presetup.sh deletes them
-# at instantiation; scripts/sync-from-template.sh deletes any that reappear. (docs/INIT-GAME.md
-# is not here: a game keeps it until the init step has defined the game, then that step removes it.)
-TEMPLATE_ONLY_PATHS=(new-game.sh presetup.sh scripts/presetup.test.sh base-project.md README.game.md ha-router
-  ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md WORKFLOW.md TEAM.md init-game.md) # last row: legacy root locations, now docs/
+# ---- as the template's render script ----
+# `preffect-dev sync-template` runs this file from a checkout of the template's commit, with the game's
+# root in PREFFECT_SYNC_ROOT:
+#   identity.sh -- <folder> <path>...
+# It renders the staged template files under <folder> with the game's identity from package.json and
+# PORTS.env, then formats them as `pnpm lint` would in the game: the game's prettier config, with the
+# prettier the game has installed. It never installs anything. A staged config file is the template's
+# newer one, so it's used instead.
+render_for_sync() {
+  local folder="$1" root="${PREFFECT_SYNC_ROOT:?run this through preffect-dev sync-template}"
+  local project slug title server_port client_port prettier config path files=()
+  shift
+  project="$(sed -n 's/^  "name": "\(.*\)",$/\1/p' "$root/package.json" | head -n 1)"
+  slug="$(sed -n 's/^SLUG=//p' "$root/PORTS.env" 2>/dev/null)"
+  title="$(sed -n 's/^TITLE=//p' "$root/PORTS.env" 2>/dev/null)"
+  server_port="$(sed -n 's/^SERVER_PORT=//p' "$root/PORTS.env" 2>/dev/null)"
+  client_port="$(sed -n 's/^CLIENT_PORT=//p' "$root/PORTS.env" 2>/dev/null)"
+  [[ -n "$title" ]] || title="$(title_case_from_name "$project")"
+  if [[ -z "$project" || -z "$slug" || -z "$server_port" || -z "$client_port" ]]; then
+    echo "error: can't read the game's name from package.json, or its slug and ports from PORTS.env" >&2
+    return 1
+  fi
+  prettier="$root/node_modules/.bin/prettier"
+  [[ -x "$prettier" ]] || { echo "error: the game's prettier isn't installed: run pnpm install first" >&2; return 1; }
+  for path; do files+=("$folder/$path"); done
+  render_identity "$title" "$project" "$slug" "$server_port" "$client_port" "${files[@]}"
+  for config in .prettierrc .prettierignore .editorconfig; do
+    if [[ -f "$root/$config" && ! -e "$folder/$config" ]]; then cp "$root/$config" "$folder/$config"; fi
+  done
+  (cd "$folder" && "$prettier" --write --ignore-unknown --log-level=warn "$@") \
+    || { echo "error: prettier failed on the rendered files" >&2; return 1; }
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+  # The sync puts -- before the paths, so none can be read as an option.
+  [[ "${1:-}" != -- ]] || shift
+  render_for_sync "$@"
+fi

@@ -47,7 +47,7 @@ says() { # <text> <command...>: the command's output, pass or fail, holds the te
 # The lines the keep tags protect: they name the template itself, so a rewrite would break them.
 keep_lines_survive() { # <game directory>
   grep -qF "TEMPLATE_MOUNT=/$TEMPLATE_PROJECT" "$1/dev-container.sh" \
-    && grep -qF "pwd)/$TEMPLATE_PROJECT\"" "$1/scripts/sync-from-template.sh"
+    && grep -qF "mounted at \`/$TEMPLATE_PROJECT\`" "$1/CLAUDE.md"
 }
 lockfile_gate_changes_nothing() { # <game directory>: the ./validate.sh lint step, with the file compared around it
   local before="$sandbox/lockfile-before-gate"
@@ -109,6 +109,24 @@ instantiate_and_check() { # <project> <slug> <server-port> <client-port> [preset
   check "$project: presetup.sh succeeds" in_directory "$game" ./presetup.sh "$project" "$@"
   check_game "$game" "$project" "$slug" "$server_port" "$client_port"
 }
+
+# --- cases: template-files.txt, the list preffect-dev sync-template reads ----------------------
+list_entries() { grep -vE '^[[:space:]]*(#|$)' "$repo_root/template-files.txt"; }
+listed() { list_entries | grep -qxF -- "$1"; } # <kind path>
+listed_files_exist() {
+  local kind path
+  while read -r kind path; do
+    [[ "$kind" == retired || "$kind" == format || -e "$repo_root/$path" ]] || { echo "$kind $path doesn't exist"; return 1; }
+  done < <(list_entries)
+}
+check "every file template-files.txt names exists" listed_files_exist
+for agent in "$repo_root"/.claude/agents/*.md; do
+  agent="${agent#"$repo_root/"}"
+  check "$agent is owned" listed "owned $agent"
+  check "its old role file is retired" listed "retired .claude/roles/$(basename "$agent")"
+done
+check "the render script is identity.sh" listed "render scripts/lib/identity.sh"
+check "the after script is docs-index.sh" listed "after scripts/docs-index.sh"
 
 # --- cases: names and ports ---------------------------------------------------------------------
 # A name that holds another template token must survive the later rewrites.
@@ -227,7 +245,9 @@ mkdir -p "$fake_remotes/tester" "$(dirname "$template_remote")"
 git init -q --bare -b main "$template_remote"
 as_tester() { git -c user.name=test -c user.email=test@example.com "$@"; }
 git -C "$copied_template" init -q -b main
-as_tester -C "$copied_template" commit -q --allow-empty -m "template history"
+# The template's files, committed, so a later sync can fetch them and new-game.sh records this commit.
+git -C "$copied_template" add -A
+as_tester -C "$copied_template" commit -q -m "template history"
 git -C "$copied_template" remote add origin "$template_remote"
 git -C "$copied_template" push -q origin main
 check "new-game.sh: creates a game" new_game new-base-mp --server-port 4430 --client-port 4432
@@ -239,39 +259,76 @@ for left_behind in .git node_modules packages/server/node_modules .pnpm-store pa
 done
 check "new-game.sh: keeps .env.example" test -f "$source_directory/new-base-mp/.env.example"
 
-# A sync re-renders docs at the template's width, and this game has no node_modules to fix that with.
+check "new-game.sh: names the template in dev.yaml" file_has_line "$source_directory/new-base-mp/dev.yaml" "template: preffect/$TEMPLATE_PROJECT"
+check "new-game.sh: records the template commit it copied" test "$(cat "$source_directory/new-base-mp/.template-commit")" = "$(git -C "$copied_template" rev-parse HEAD)"
+
+# --- cases: preffect-dev sync-template, with this template's list and render and after scripts ---
+# The command is in the standard dev image, and preffect-home tests it in general. These check this
+# template's side: a sync renders the game's names and ports, formats with the game's own prettier,
+# rebuilds the docs index, lists what's left to do by hand until it's done, and keeps a retired folder
+# that holds a file the base never had.
 synced_game="$source_directory/new-base-mp"
-commit_synced_game() { git -C "$synced_game" add -A && git -C "$synced_game" -c user.name=test -c user.email=test@example.com commit -q -m "$1"; }
-git -C "$synced_game" init -q
-commit_synced_game base
-sync_template() { "$synced_game/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"; }
-workflow_before_sync="$sandbox/workflow-before-sync"
-cp "$synced_game/docs/WORKFLOW.md" "$workflow_before_sync"
-check "sync stops before copying when prettier can't run" fails env PATH="$sandbox/broken-npx:$PATH" "$synced_game/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"
-check "sync copied nothing when prettier can't run" cmp "$workflow_before_sync" "$synced_game/docs/WORKFLOW.md"
-check "sync says why when formatting fails" says "sync again" env PATH="$fails_to_format:$PATH" "$synced_game/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"
-check "sync succeeds without node_modules" sync_template
-check "sync leaves prettier clean" in_directory "$synced_game" npx --yes "$PRETTIER_PACKAGE" --check .
-check "sync leaves a fresh docs index" docs_index_is_fresh "$synced_game"
-check "sync of a game with nothing to change says so" says "Already in sync" sync_template
-check "and reports no file it put back unchanged" fails says "docs/WORKFLOW.md" sync_template
+sync_tool="$(command -v preffect-dev || true)"
+template_commit() { as_tester -C "$copied_template" commit -q -am "$1"; }
+commit_synced_game() { git -C "$synced_game" add -A && as_tester -C "$synced_game" commit -q -m "$1"; }
+sync_template() { in_directory "$synced_game" "$sync_tool" sync-template --source "file://$copied_template"; }
+# The render script formats with the game's installed prettier and never installs one, so the game gets
+# a stand-in for `pnpm install`: a prettier that runs the template's.
+give_game_prettier() { # <game directory>
+  mkdir -p "$1/node_modules/.bin"
+  printf '#!/bin/sh\nexec "%s" "$@"\n' "$repo_root/node_modules/.bin/prettier" > "$1/node_modules/.bin/prettier"
+  chmod +x "$1/node_modules/.bin/prettier"
+}
+if [[ -z "$sync_tool" ]]; then
+  echo "skip preffect-dev sync-template cases: preffect-dev isn't on PATH (the standard dev image has it)"
+elif [[ ! -x "$repo_root/node_modules/.bin/prettier" ]]; then
+  echo "skip preffect-dev sync-template cases: the template's prettier isn't installed (run pnpm install)"
+else
+  git -C "$synced_game" init -q
+  commit_synced_game base
+  check "sync of a new game says it's in step" says "Already in step" sync_template
 
-# A template-owned file that matches the template but is unformatted, as an earlier sync could leave it.
-sed -i 's/"minLines": 5/"minLines":   5/' "$source_directory/$TEMPLATE_PROJECT/.jscpd.json" "$synced_game/.jscpd.json"
-commit_synced_game unformatted
-check "sync repairs a file it had no reason to copy" says "$(basename "$synced_game/.jscpd.json")" sync_template
-check "the repaired file is clean" in_directory "$synced_game" npx --yes "$PRETTIER_PACKAGE" --check .jscpd.json
-sed -i 's/"minLines":   5/"minLines": 5/' "$source_directory/$TEMPLATE_PROJECT/.jscpd.json"
-
-mv "$synced_game/pnpm-lock.yaml" "$sandbox/held-game-lockfile"
-check "sync without a lockfile says to install" says "no pnpm-lock.yaml in $synced_game: run pnpm install first" sync_template
-check "sync without a lockfile shows no raw sed error" fails says "can't read" sync_template
-check "sync without a lockfile stops" fails sync_template
-mv "$sandbox/held-game-lockfile" "$synced_game/pnpm-lock.yaml"
-
-mv "$synced_game/.git" "$sandbox/held-game-git"
-check "sync outside git says so" says "not a git repository" sync_template
-mv "$sandbox/held-game-git" "$synced_game/.git"
+  # A template fix in an owned doc, naming the template and its ports, and a change to a shared file.
+  printf '\nThe Base Multiplayer Game server listens on 4400.\n' >> "$copied_template/docs/WORKFLOW.md"
+  printf '\nA template note.\n' >> "$copied_template/CLAUDE.md"
+  template_commit "template fix"
+  mkdir -p "$synced_game/ha-router"
+  echo stale > "$synced_game/ha-router/left-over.yml"
+  commit_synced_game "a retired folder crept back"
+  workflow_before_sync="$sandbox/workflow-before-sync"
+  cp "$synced_game/docs/WORKFLOW.md" "$workflow_before_sync"
+  check "sync stops when the game's prettier isn't installed" fails sync_template
+  check "and says to install it" says "run pnpm install first" sync_template
+  check "and changed nothing" cmp "$workflow_before_sync" "$synced_game/docs/WORKFLOW.md"
+  give_game_prettier "$synced_game"
+  sync_output="$sandbox/sync-output"
+  # Exit status 3: the sync worked, and left something to do by hand.
+  sync_leaving_hand_work() { local status=0; sync_template >"$sync_output" 2>&1 || status=$?; [[ $status -eq 3 ]]; }
+  check "sync succeeds, leaving work by hand" sync_leaving_hand_work
+  check "it ran the template's render script" grep -qF "Running scripts/lib/identity.sh from the template" "$sync_output"
+  check "it ran the template's after script" grep -qF "Running scripts/docs-index.sh from the template" "$sync_output"
+  check "the fix reaches the game with its name and port" file_has_line "$synced_game/docs/WORKFLOW.md" "The New Base Mp server listens on 4430."
+  check "the shared file is listed for a merge by hand" file_has_line "$sync_output" "  CLAUDE.md"
+  check "the game's CLAUDE.md is left as it was" fails grep -qF "A template note." "$synced_game/CLAUDE.md"
+  check "a retired folder holding a file the base never had is kept" test -f "$synced_game/ha-router/left-over.yml"
+  check "and listed" file_has_line "$sync_output" "  ha-router"
+  check "sync leaves prettier clean" in_directory "$synced_game" npx --yes "$PRETTIER_PACKAGE" --check .
+  check "sync leaves a fresh docs index" docs_index_is_fresh "$synced_game"
+  commit_synced_game "sync"
+  check "a second sync lists the shared file again" sync_leaving_hand_work
+  check "with a merge command" grep -q "git merge-file .* > CLAUDE.md" "$sync_output"
+  # What a person does with that list: run the printed merge, and delete the retired folder.
+  merge_by_hand() {
+    in_directory "$synced_game" bash -c "$(sed -n 's/^    \(git merge-file .* > CLAUDE.md\)$/\1/p' "$sync_output")" \
+      && git -C "$synced_game" rm -rq ha-router
+  }
+  check "the printed merge command merges it" merge_by_hand
+  check "the template's note reached the game's CLAUDE.md" grep -qF "A template note." "$synced_game/CLAUDE.md"
+  commit_synced_game "merged by hand"
+  check "then a sync has nothing left to do" sync_template
+  commit_synced_game "recorded"
+  check "and the next one is in step" says "Already in step" sync_template
+fi
 
 # scripts/github-setup.sh on that path, against local bare repos: its git steps run for real. It can't
 # reach GitHub: gh and setup_project.py, which only talks to GitHub, are fakes, git@github.com:tester/ is
@@ -332,8 +389,11 @@ check "github-setup.sh: nothing is left uncommitted" test -z "$(git -C "$own_rep
 check "github-setup.sh: runs again cleanly" github_setup "$own_repo"
 check "github-setup.sh: the template's remote is untouched" template_is_unchanged
 check "project-sync.sh: copes with a repo that has no issues" says "added to project:" with_fake_github "$own_repo/scripts/project-sync.sh"
-check "a sync keeps a set-up game's board ids" with_fake_github "$own_repo/scripts/sync-from-template.sh" --template "$source_directory/$TEMPLATE_PROJECT"
-check "those ids are still there" test -f "$own_repo/.github/project.env"
+if [[ -n "$sync_tool" ]]; then
+  give_game_prettier "$own_repo"
+  check "a sync keeps a set-up game's board ids" in_directory "$own_repo" "$sync_tool" sync-template --source "file://$copied_template"
+  check "those ids are still there" test -f "$own_repo/.github/project.env"
+fi
 
 kept_origin="$source_directory/kept-origin"
 copy_template "$kept_origin"

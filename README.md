@@ -1,7 +1,7 @@
 # Base Multiplayer Game
 
 Repo: https://github.com/preffect/base-multiplayer-game — `main` is PR-protected (see `docs/WORKFLOW.md`);
-template fixes are reviewed like game fixes, then pulled into games with `scripts/sync-from-template.sh`.
+template fixes are reviewed like game fixes, then pulled into games with `preffect-dev sync-template`.
 
 A reusable **multiplayer game template**: a working client/server multiplayer skeleton
 (native WebSocket transport, lobby, rooms, a 60 Hz broadcast loop, reconnection/identity,
@@ -49,9 +49,13 @@ executing the build tickets that `docs/INIT-GAME.md` files against the three ext
 This README is the **template's**; `presetup.sh` replaces it in the game copy with
 `README.game.md` (the game-facing README), so a game never describes itself as a template.
 
-**Keeping games in sync:** make template-level fixes here first, then run
-`./scripts/sync-from-template.sh` inside a game (host) to pull the template-owned files across
-with the game's identity re-applied, and land the diff via a PR.
+**Keeping games in sync:** make template-level fixes here first, then run `preffect-dev sync-template`
+in a game to pull the template-owned files across with the game's identity re-applied, and land the
+diff via a PR. `template-files.txt` says which files the template owns, shares or has retired, and the
+game's `.template-commit` records the template commit it last synced from. The command is in the
+standard dev image; in a devcontainer or on the host, run it from a preffect-home checkout as
+`images/dev-base/preffect-dev sync-template`. A sync needs a clean tree, so commit each one before the
+next, and rebuild the devcontainer if `.devcontainer/*` changed.
 
 **Moving an existing game onto the current dependencies:** a sync never touches `package.json`,
 `packages/**`, `pnpm-workspace.yaml` or the lockfile, so a game keeps its old versions and their
