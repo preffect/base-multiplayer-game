@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { defaultGameModuleFactory } from '../../game/game-module.js';
 import { LobbyManager } from '../../lobby/lobby-manager.js';
 import { buildRecordingConnection } from '../../testing/connection-builders.js';
+import { TEST_CLIENT_INFO } from '../../testing/debug-mcp-builders.js';
 import type { Connection } from '../../ws/connection.js';
 import type { DebugContext } from '../debug-context.js';
 import { registerConnectionTools } from './connections.js';
@@ -42,7 +43,7 @@ async function buildHarness(getRoomGameState?: DebugContext['getRoomGameState'])
   connections.set('alice', alice);
 
   const context: DebugContext = { lobbyManager, connections, getRoomGameState };
-  const mcp = new McpServer({ name: 'test', version: '1.0.0' });
+  const mcp = new McpServer(TEST_CLIENT_INFO);
   registerConnectionTools(mcp, context);
   registerPerformanceTools(mcp, context);
   registerRoomTools(mcp, context);
@@ -50,7 +51,7 @@ async function buildHarness(getRoomGameState?: DebugContext['getRoomGameState'])
   registerGameSpecificTools(mcp, context);
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: 'test', version: '1.0.0' });
+  const client = new Client(TEST_CLIENT_INFO);
   await Promise.all([mcp.connect(serverTransport), client.connect(clientTransport)]);
   openClients.push(client);
   openLobbies.push(lobbyManager);

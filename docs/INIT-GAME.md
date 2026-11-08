@@ -37,7 +37,8 @@ the whole game** — later build phases go in the roadmap issue until the user a
 ## How the template is wired (READ before interviewing)
 
 - **One Fastify server on port 4400** serves `/api` + `/ws` + `/debug-mcp`. The Angular
-  client runs on **4402** and proxies those three paths to 4400 (`packages/client/proxy.conf.json`).
+  client runs on **4402** and proxies `/api` and `/ws` to 4400 (`packages/client/proxy.conf.json`);
+  `/debug-mcp` is reached on 4400 directly, dev only and loopback only (README, "MCP visibility").
 - **Standards (READ and enforce):** `docs/ENGINEERING.md` (the `./validate.sh all` gate, testing,
   TS/lint, architecture, Definition of Done), `docs/ASSET-GENERATION.md` (the code-drawn visual
   quality bar), and `docs/AUDIO-PIPELINE.md` (the opt-in Google-default audio pipeline). Every edit

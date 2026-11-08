@@ -1,74 +1,49 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
+import { buildEmptyDebugContext } from '../testing/debug-context-builders.js';
 import {
   DEBUG_MCP_SWITCHED_OFF,
   DEBUG_MCP_SWITCHED_ON,
-  MCP_INITIALIZE_REQUEST,
+  LOOPBACK_HOST_WITH_PORT,
   MCP_POST_HEADERS,
-  buildEmptyDebugContext,
-} from '../testing/debug-context-builders.js';
-import { DEBUG_MCP_PATH, isDebugMcpEnabled, mountDebugMcpWhenEnabled } from './mcp-server.js';
+} from '../testing/debug-mcp-builders.js';
+import { DEBUG_MCP_PATH } from './debug-mcp-http.js';
+import { HTTP_NOT_FOUND, HTTP_OK } from './http-status.js';
+import { mountDebugMcp, registerMcpEndpoint } from './mcp-server.js';
 
-const HTTP_OK = 200;
-const HTTP_FORBIDDEN = 403;
-const HTTP_NOT_FOUND = 404;
-const HTTP_METHOD_NOT_ALLOWED = 405;
+const TOOLS_LIST_REQUEST = { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} };
 
-describe('mcp/mcp-server gate', () => {
-  let server: FastifyInstance | undefined;
+describe('mcp/mcp-server: the game mount', () => {
+  let app: FastifyInstance | undefined;
 
   afterEach(async () => {
-    await server?.close();
-    server = undefined;
+    await app?.close();
+    app = undefined;
   });
 
-  function serverWith(environment: NodeJS.ProcessEnv): FastifyInstance {
-    server = Fastify();
-    mountDebugMcpWhenEnabled(server, buildEmptyDebugContext(), environment);
-    return server;
-  }
-
-  function postFrom(app: FastifyInstance, headers: Record<string, string>) {
-    return app.inject({
+  function listTools(target: FastifyInstance) {
+    return target.inject({
       method: 'POST',
       url: DEBUG_MCP_PATH,
-      headers: { ...MCP_POST_HEADERS, ...headers },
-      payload: MCP_INITIALIZE_REQUEST,
+      headers: { ...MCP_POST_HEADERS, host: LOOPBACK_HOST_WITH_PORT },
+      payload: TOOLS_LIST_REQUEST,
     });
   }
 
-  it('is on only for exactly DEBUG_MCP=1', () => {
-    expect(isDebugMcpEnabled(DEBUG_MCP_SWITCHED_ON)).toBe(true);
-    for (const environment of DEBUG_MCP_SWITCHED_OFF) expect(isDebugMcpEnabled(environment)).toBe(false);
-  });
-
-  it.each(DEBUG_MCP_SWITCHED_OFF)('is not mounted with the switch at %o', async (environment) => {
-    const response = await postFrom(serverWith(environment), { host: 'localhost' });
-    expect(response.statusCode).toBe(HTTP_NOT_FOUND);
-  });
-
-  it('answers a loopback POST when the switch is on', async () => {
-    const response = await postFrom(serverWith(DEBUG_MCP_SWITCHED_ON), { host: 'localhost:4400' });
+  it.each([
+    ['mountDebugMcp', mountDebugMcp],
+    ['the deprecated registerMcpEndpoint', registerMcpEndpoint],
+  ])('%s is gated by the switch', async (_name, mount) => {
+    for (const environment of DEBUG_MCP_SWITCHED_OFF) {
+      app = Fastify();
+      expect(mount(app, buildEmptyDebugContext(), environment)).toBe(false);
+      expect((await listTools(app)).statusCode).toBe(HTTP_NOT_FOUND);
+      await app.close();
+    }
+    app = Fastify();
+    expect(mount(app, buildEmptyDebugContext(), DEBUG_MCP_SWITCHED_ON)).toBe(true);
+    const response = await listTools(app);
     expect(response.statusCode).toBe(HTTP_OK);
-    expect(response.body).toContain('"serverInfo"');
-  });
-
-  it.each<Record<string, string>>([
-    { host: 'debug.example.com' },
-    { host: 'localhost.example.com' },
-    { host: 'localhost', origin: 'http://attacker.example' },
-  ])('refuses %o', async (headers) => {
-    const response = await postFrom(serverWith(DEBUG_MCP_SWITCHED_ON), headers);
-    expect(response.statusCode).toBe(HTTP_FORBIDDEN);
-  });
-
-  it.each(['GET', 'DELETE'] as const)('answers %s with 405 and Allow: POST', async (method) => {
-    const response = await serverWith(DEBUG_MCP_SWITCHED_ON).inject({
-      method,
-      url: DEBUG_MCP_PATH,
-      headers: { host: 'localhost' },
-    });
-    expect(response.statusCode).toBe(HTTP_METHOD_NOT_ALLOWED);
-    expect(response.headers.allow).toBe('POST');
+    expect(response.body).toContain('debug_list_games');
   });
 });

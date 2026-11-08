@@ -117,9 +117,11 @@ container existed — `PORTS.env` is the result. The container has no reason to 
    - `<slug>`        → your slug (e.g. `base-mp`)
    - `<server-port>` → your server port (e.g. `4400`)
    - `<client-port>` → your client port (e.g. `4402`)
-3. There is no `/debug-mcp` router: the debug MCP is dev-only (`DEBUG_MCP=1`)
-   and refuses (403) any Host other than localhost, 127.0.0.1 or [::1].
-4. Save. Traefik's file provider runs with `watch: true`, so it picks the file
+
+   There is no `/debug-mcp` router: the debug MCP only answers this machine
+   (README, "MCP visibility"). A route made from an older template may still
+   have one; it can only get 403s, so delete it.
+3. Save. Traefik's file provider runs with `watch: true`, so it picks the file
    up **automatically — no restart needed**. (Per ha-router/CLAUDE.md: "Create
    a new YAML file in config/ … Traefik picks it up automatically.")
 

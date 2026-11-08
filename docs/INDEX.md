@@ -48,22 +48,22 @@ and read only that line range (`sed -n 'start,endp' docs/FILE.md`). Regenerate a
 - **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L238–268): instead of `./validate.sh`.
 - **6. Definition of Done (checklist — ALL must hold)** (L269–289): path, edge cases, and error cases.
 
-## INIT-GAME.md (263 lines)
+## INIT-GAME.md (264 lines)
 
-- **Define Your Multiplayer Game** (L1–263): You are running this prompt against a game scaffolded from `base-multiplayer-game` — a working multiplayer TEMPLATE whose game definition is DEFERRED.
+- **Define Your Multiplayer Game** (L1–264): You are running this prompt against a game scaffolded from `base-multiplayer-game` — a working multiplayer TEMPLATE whose game definition is DEFERRED.
 - **Where this fits in the process** (L26–36): `new-game.sh` already: registered the game in ha-router, built the devcontainer, verified the public URL, and seeded GitHub with the groundwork epics (devcontainer verified, tooling/MCP, team, quality gates, testing foundations, design, architecture/build plan) plus the project board and branch ruleset.
-- **How the template is wired (READ before interviewing)** (L37–97): client runs on 4402 and proxies those three paths to 4400 (`packages/client/proxy.conf.json`).
-- **DEFERRED REQUIREMENTS you must resolve (the 12-item list)** (L98–130): These are the decisions the template intentionally left open.
-- **Interview — ASK THESE QUESTIONS (group sensibly; do NOT generate until answered)** (L131–158): Ask conversationally; you may group related questions.
-- **After answers — PRODUCE `docs/GAME-DESIGN.md` and the first build epic** (L159–263): `docs/GAME-DESIGN.md` holds sections 1, 5 and 6 below plus every rule and number the interview settled (constants named as they will appear in `packages/shared/src/constants/*`).
-  - **1. Game Definition** (L176–180): Name, theme, slug, display title, ports, icon hue, player model, tick model, win/lose, late-join policy, persistence decision, trust boundary.
-  - **2. Shared type edits — `packages/shared/src/types/messages.ts`** (L181–186): Exact `GameInput` interface, exact `GameSnapshot` interface, exact `GameSessionConfig` fields (replacing the `unknown` / `{ maxPlayers }` TODO hooks).
-  - **3. Server edits** (L187–199): `z.unknown()` with the real input schema; add fields to `createGameSchema.config`.
-  - **4. Client edits** (L200–209): drainLatestSnapshot, host?
-  - **5. Ports & config** (L210–218): The ports come from `PORTS.env` (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — do NOT change them.
-  - **6. Public URL** (L219–223): Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the slug from `PORTS.env`.
-  - **7. Verification** (L224–248): Run everything INSIDE the devcontainer (open it from the host with `./dev-container.sh`): `pnpm install`; `./validate.sh all`; `./run.sh`; open two browser tabs on the client port; confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
-  - **8. Cleanup — the game is now defined** (L249–263): As the last action of this session, remove the scaffolding that only made sense before the game existed, in the same PR as `docs/GAME-DESIGN.md`:
+- **How the template is wired (READ before interviewing)** (L37–98): client runs on 4402 and proxies `/api` and `/ws` to 4400 (`packages/client/proxy.conf.json`); `/debug-mcp` is reached on 4400 directly, dev only and loopback only (README, "MCP visibility").
+- **DEFERRED REQUIREMENTS you must resolve (the 12-item list)** (L99–131): These are the decisions the template intentionally left open.
+- **Interview — ASK THESE QUESTIONS (group sensibly; do NOT generate until answered)** (L132–159): Ask conversationally; you may group related questions.
+- **After answers — PRODUCE `docs/GAME-DESIGN.md` and the first build epic** (L160–264): `docs/GAME-DESIGN.md` holds sections 1, 5 and 6 below plus every rule and number the interview settled (constants named as they will appear in `packages/shared/src/constants/*`).
+  - **1. Game Definition** (L177–181): Name, theme, slug, display title, ports, icon hue, player model, tick model, win/lose, late-join policy, persistence decision, trust boundary.
+  - **2. Shared type edits — `packages/shared/src/types/messages.ts`** (L182–187): Exact `GameInput` interface, exact `GameSnapshot` interface, exact `GameSessionConfig` fields (replacing the `unknown` / `{ maxPlayers }` TODO hooks).
+  - **3. Server edits** (L188–200): `z.unknown()` with the real input schema; add fields to `createGameSchema.config`.
+  - **4. Client edits** (L201–210): drainLatestSnapshot, host?
+  - **5. Ports & config** (L211–219): The ports come from `PORTS.env` (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — do NOT change them.
+  - **6. Public URL** (L220–224): Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the slug from `PORTS.env`.
+  - **7. Verification** (L225–249): Run everything INSIDE the devcontainer (open it from the host with `./dev-container.sh`): `pnpm install`; `./validate.sh all`; `./run.sh`; open two browser tabs on the client port; confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
+  - **8. Cleanup — the game is now defined** (L250–264): As the last action of this session, remove the scaffolding that only made sense before the game existed, in the same PR as `docs/GAME-DESIGN.md`:
 
 ## TEAM.md (159 lines)
 

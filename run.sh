@@ -81,7 +81,7 @@ Options:
 Environment variables:
   PORT            Game server port    (default: 4400)
   CLIENT_PORT     Angular client port (default: 4402)
-  DEBUG_MCP       Debug MCP on /debug-mcp, localhost only (default here: 1; 0 turns it off)
+  DEBUG_MCP       Debug MCP on /debug-mcp (the server's dev script turns it on; 0 turns it off)
 
 EOF
   exit 0
@@ -237,7 +237,7 @@ mkdir -p "$LOG_DIR"
 
 if $RUN_SERVER; then
   echo "==> Starting game server on port ${SERVER_PORT}..."
-  PORT="$SERVER_PORT" DEBUG_MCP="${DEBUG_MCP:-1}" pnpm dev:server > "$LOG_DIR/server.log" 2>&1 &
+  PORT="$SERVER_PORT" pnpm dev:server > "$LOG_DIR/server.log" 2>&1 &
   echo $! >> "$PID_FILE"
 fi
 

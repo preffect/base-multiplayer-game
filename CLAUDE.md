@@ -124,7 +124,7 @@ pnpm monorepo with three packages:
 
 - **`packages/shared`** — Shared types, constants, and logic (message envelope, branded ids). Pure TypeScript, no framework dependencies. Used by both server and client. Game-specific `GameInput` / `GameSnapshot` types are TODO hooks.
 - **`packages/server`** — Fastify + WebSocket game server. Handles multiplayer coordination (lobby, rooms, the 60Hz broadcast loop) and exposes a debug MCP endpoint at `/debug-mcp`. The single game seam is `src/game/game-module.ts` (`defaultGameModuleFactory` ships a trust-client echo). No persistence by default.
-- **`packages/client`** — Angular 21 application. Zoneless by default. Proxies `/api`, `/ws`, and `/debug-mcp` to the server via `proxy.conf.json`. The client game seam is `src/app/game/game-setup.ts`.
+- **`packages/client`** — Angular 21 application. Zoneless by default. Proxies `/api` and `/ws` to the server via `proxy.conf.json` (not `/debug-mcp`: agents reach it on 4400). The client game seam is `src/app/game/game-setup.ts`.
 
 ### Game extension points (left as TODOs)
 
@@ -165,6 +165,6 @@ change ports inside the container; they are already baked into the integration f
 
 ### MCP Servers
 
-- **game-debug** — HTTP MCP endpoint on the game server (`http://localhost:4400/debug-mcp`) for inspecting game state (`debug_get_game_state`, `debug_list_games`, `debug_get_room`), player connections (`debug_get_connections`), and performance (`debug_get_performance`). Mounted only when `DEBUG_MCP=1` (the server's `dev` script and `./run.sh` set it, `start` does not); POST only, loopback Host/Origin only
+- **game-debug** — HTTP MCP endpoint on the game server (`http://localhost:4400/debug-mcp`) for inspecting game state (`debug_get_game_state`, `debug_list_games`, `debug_get_room`), player connections (`debug_get_connections`), and performance (`debug_get_performance`). Dev only and loopback only: see README.md, "MCP visibility", for who can reach it
 - **angular** — Angular's built-in MCP server for component introspection and development assistance
 - **playwright** — headless Chromium (`@playwright/mcp`, installed in the image) for QA / graphics roles to drive and screenshot the running game; screenshots land in `.qa/screenshots/`
