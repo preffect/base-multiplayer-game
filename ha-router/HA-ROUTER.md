@@ -117,14 +117,15 @@ container existed — `PORTS.env` is the result. The container has no reason to 
    - `<slug>`        → your slug (e.g. `base-mp`)
    - `<server-port>` → your server port (e.g. `4400`)
    - `<client-port>` → your client port (e.g. `4402`)
+
+   There is no `/debug-mcp` router: the debug MCP only answers this machine
+   (README, "MCP visibility"). A route made from an older template may still
+   have one; it can only get 403s, so delete it.
 3. Save. Traefik's file provider runs with `watch: true`, so it picks the file
    up **automatically — no restart needed**. (Per ha-router/CLAUDE.md: "Create
    a new YAML file in config/ … Traefik picks it up automatically.")
 
 Optional extras (left commented in the template):
-- `<slug>-mcp` router (`PathPrefix(/debug-mcp)`) — only if you want the MCP
-  debug endpoint reachable remotely. Normally MCP is used over localhost, so
-  leave it off.
 - HTTP/2 WebSocket fix — if `/ws` fails to upgrade behind TLS, pin TLS to
   HTTP/1.1 by adding `options: <slug>-no-h2@file` to each router's `tls:` block
   and appending the `tls.options.<slug>-no-h2` block (mirrors `solar-drift.yml`).

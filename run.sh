@@ -81,6 +81,7 @@ Options:
 Environment variables:
   PORT            Game server port    (default: 4400)
   CLIENT_PORT     Angular client port (default: 4402)
+  DEBUG_MCP       Debug MCP on /debug-mcp (the server's dev script turns it on; 0 turns it off)
 
 EOF
   exit 0

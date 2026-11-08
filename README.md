@@ -129,7 +129,7 @@ packages/client   — Angular client: WS service, identity, room browser; game s
 ## Ports
 
 - **4400** — game server (Fastify: REST API `/api` + WebSocket `/ws` + debug MCP `/debug-mcp`, single instance)
-- **4402** — Angular dev server (proxies `/api`, `/ws`, `/debug-mcp` to the server)
+- **4402** — Angular dev server (proxies `/api` and `/ws` to the server; not `/debug-mcp`, which is reached on 4400 directly)
 
 ## How to run
 
@@ -175,7 +175,27 @@ Then open two browser tabs at the client to exercise the lobby → create → jo
 ## MCP visibility (`/debug-mcp`)
 
 The server exposes an HTTP MCP endpoint (`game-debug`) at `http://localhost:4400/debug-mcp`
-(configured in `.mcp.json`). Claude Code can inspect live state via tools such as:
+(configured in `.mcp.json`). It is a dev tool, and this section is the one description of who can
+reach it (the code is `packages/server/src/mcp/debug-mcp-http.ts` and `loopback-guard.ts`):
+
+- **Dev only.** It is mounted only when `DEBUG_MCP=1`. The server's `dev` script sets that by
+  default, so `pnpm dev` and `./run.sh` have it; `DEBUG_MCP=0 ./run.sh` turns it off. `start` does
+  not set it, so a production start has no `/debug-mcp` at all (404).
+- **This machine only.** It answers (otherwise 403) only when all three hold: the connection comes
+  from loopback (`127.0.0.1`, `::1`); the Host header is `localhost`, `127.0.0.1` or `[::1]`, with
+  any port; and the Origin header is absent or one of those. The peer check stops other machines,
+  which can forge a Host header but not their address; the Host and Origin checks stop a web page
+  using DNS rebinding.
+- **Devcontainer.** Run the agent inside the container. A host-side agent reaching the published
+  port arrives from Docker's bridge gateway, the same address every other outside client arrives
+  from, so it is refused.
+- **From outside the workspace** (a dev pod or a Coder workspace), use `kubectl port-forward` or
+  `coder port-forward` and connect to `localhost`. A Coder app URL, a Service name or the box's LAN
+  address is refused.
+- **POST only.** GET and DELETE answer 405: in the SDK's stateless mode there is no stream to open
+  or session to end.
+
+Claude Code can inspect live state via tools such as:
 
 - `debug_get_connections` — active WebSocket connections
 - `debug_get_performance` / `debug_get_room_performance` — tick timing / broadcast telemetry
