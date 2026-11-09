@@ -1,0 +1,212 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import { callLogLine, type CallLogLine, type CallOutcome } from './call-log.js';
+import { JSON_RPC_INTERNAL_ERROR, JSON_RPC_SERVER_ERROR, jsonRpcErrorBody } from './debug-mcp-http.js';
+import { HTTP_INTERNAL_SERVER_ERROR, HTTP_METHOD_NOT_ALLOWED, HTTP_UNAUTHORIZED } from './http-status.js';
+
+/**
+ * The prod MCP: the game's own tools, writes included, for its dev workspace to debug prod (preffect-home #73).
+ * It listens on a port of its own, MCP_PORT, which the platform opens to that workspace alone and never routes,
+ * and answers only a caller with the app's token, MCP_BEARER_TOKEN. Each call is one line of the call log
+ * (call-log.ts). It's off unless MCP_PORT is set, and won't start without the token.
+ * Template-owned: it takes a server factory and names nothing game-specific.
+ */
+
+export const PROD_MCP_PATH = '/mcp';
+export const PROD_MCP_PORT_ENV = 'MCP_PORT';
+export const PROD_MCP_TOKEN_ENV = 'MCP_BEARER_TOKEN';
+/** Every address: the platform's network policy, not the bind address, decides who reaches the port. */
+export const PROD_MCP_LISTEN_HOST = '0.0.0.0';
+export const BEARER_PREFIX = 'Bearer ';
+const HIGHEST_PORT = 65_535;
+const TOOLS_CALL_METHOD = 'tools/call';
+/** Only problems: the call log is the record of calls. */
+const PROD_MCP_LOG_LEVEL = 'warn';
+
+export type ProdMcpServerFactory = () => McpServer;
+export type CallLogWriter = (line: CallLogLine) => void;
+
+export interface ProdMcpSettings {
+  port: number;
+  token: string;
+}
+
+/** One JSON-RPC request or notification in a POST body, as the log needs it. */
+export interface RequestedCall {
+  id: string | number | undefined;
+  method: string;
+  tool: string | undefined;
+  arguments: unknown;
+}
+
+export function writeCallLogLine(line: CallLogLine): void {
+  process.stdout.write(`${JSON.stringify(line)}\n`);
+}
+
+/** The port and token, undefined when MCP_PORT is unset. A port without a token, or a bad port, stops the start. */
+export function prodMcpSettings(environment: NodeJS.ProcessEnv): ProdMcpSettings | undefined {
+  const portText = environment[PROD_MCP_PORT_ENV];
+  if (portText === undefined || portText === '') return undefined;
+  const port = Number(portText);
+  if (!Number.isInteger(port) || port < 0 || port > HIGHEST_PORT) {
+    throw new Error(`${PROD_MCP_PORT_ENV} isn't a port: ${portText}`);
+  }
+  const token = environment[PROD_MCP_TOKEN_ENV] ?? '';
+  if (token === '') throw new Error(`${PROD_MCP_PORT_ENV} is set, so the prod MCP needs its token on ${PROD_MCP_TOKEN_ENV}`);
+  return { port, token };
+}
+
+/** The token an Authorization header presents, or '' for none. */
+export function presentedToken(authorization: string | undefined): string {
+  return authorization?.startsWith(BEARER_PREFIX) === true ? authorization.slice(BEARER_PREFIX.length) : '';
+}
+
+function digest(text: string): Buffer {
+  return createHash('sha256').update(text).digest();
+}
+
+/** Compared as digests, so the time taken says nothing about the token, its length included. */
+export function tokenMatches(presented: string, token: string): boolean {
+  return presented !== '' && timingSafeEqual(digest(presented), digest(token));
+}
+
+/** The calls in a POST body: one message or a batch. Anything that isn't a request or notification is skipped. */
+export function requestedCalls(body: unknown): RequestedCall[] {
+  const messages: unknown[] = Array.isArray(body) ? body : [body];
+  return messages.flatMap((message): RequestedCall[] => {
+    if (message === null || typeof message !== 'object') return [];
+    const { id, method, params } = message as { id?: unknown; method?: unknown; params?: { name?: unknown; arguments?: unknown } };
+    if (typeof method !== 'string') return [];
+    const isToolCall = method === TOOLS_CALL_METHOD;
+    return [
+      {
+        id: typeof id === 'string' || typeof id === 'number' ? id : undefined,
+        method,
+        tool: isToolCall && typeof params?.name === 'string' ? params.name : undefined,
+        arguments: isToolCall ? params?.arguments : undefined,
+      },
+    ];
+  });
+}
+
+/** A response's outcome: a JSON-RPC error, or a tool result that says it failed, is an error. */
+export function responseOutcome(message: JSONRPCMessage): CallOutcome {
+  if ('error' in message) return 'error';
+  if ('result' in message && (message.result as { isError?: unknown }).isError === true) return 'error';
+  return 'ok';
+}
+
+function responseId(message: JSONRPCMessage): string | number | undefined {
+  return ('result' in message || 'error' in message) && 'id' in message ? message.id : undefined;
+}
+
+type LogCall = (call: RequestedCall, outcome: CallOutcome) => void;
+
+function callLogger(request: FastifyRequest, settings: ProdMcpSettings, write: CallLogWriter): LogCall {
+  const presented = presentedToken(request.headers.authorization);
+  return (call, outcome) =>
+    write(
+      callLogLine(
+        { caller: request.socket.remoteAddress, method: call.method, tool: call.tool, arguments: call.arguments, outcome, presentedToken: presented },
+        settings.token,
+      ),
+    );
+}
+
+/** After the hijack Fastify answers nothing, so a failure is answered here: a 500 if possible, else a cut connection. */
+function answerFailure(error: unknown, request: FastifyRequest, reply: FastifyReply): void {
+  request.log.error({ err: error }, 'prod MCP request failed');
+  if (reply.raw.headersSent) {
+    reply.raw.destroy(error instanceof Error ? error : undefined);
+    return;
+  }
+  reply.raw.writeHead(HTTP_INTERNAL_SERVER_ERROR, { 'content-type': 'application/json' });
+  reply.raw.end(JSON.stringify(jsonRpcErrorBody(JSON_RPC_INTERNAL_ERROR, 'Internal server error')));
+}
+
+/**
+ * Answers one request statelessly, as the debug MCP does, and logs each call with its outcome: a notification
+ * when it's taken, a request when its response goes out, and any left unanswered as an error.
+ */
+async function answerMcpRequest(
+  createServer: ProdMcpServerFactory,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  logCall: LogCall,
+): Promise<void> {
+  const calls = requestedCalls(request.body);
+  const pending = new Map(calls.filter((call) => call.id !== undefined).map((call) => [call.id, call]));
+  calls.filter((call) => call.id === undefined).forEach((call) => logCall(call, 'ok'));
+  const settle = (): void => {
+    pending.forEach((call) => logCall(call, 'error'));
+    pending.clear();
+  };
+  reply.hijack();
+  const warnOnCloseFailure = (error: unknown) => request.log.warn({ err: error }, 'prod MCP close failed');
+  try {
+    const mcp = createServer();
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const send = transport.send.bind(transport);
+    transport.send = async (message, options) => {
+      const call = pending.get(responseId(message));
+      if (call !== undefined) {
+        pending.delete(call.id);
+        logCall(call, responseOutcome(message));
+      }
+      return send(message, options);
+    };
+    reply.raw.on('close', () => {
+      settle();
+      transport.close().catch(warnOnCloseFailure);
+      mcp.close().catch(warnOnCloseFailure);
+    });
+    await mcp.connect(transport);
+    await transport.handleRequest(request.raw, reply.raw, request.body);
+  } catch (error) {
+    settle();
+    answerFailure(error, request, reply);
+  }
+}
+
+function routes(app: FastifyInstance, createServer: ProdMcpServerFactory, settings: ProdMcpSettings, write: CallLogWriter): void {
+  app.addHook('preHandler', async (request, reply) => {
+    if (tokenMatches(presentedToken(request.headers.authorization), settings.token)) return undefined;
+    const logCall = callLogger(request, settings, write);
+    requestedCalls(request.body).forEach((call) => logCall(call, 'unauthorized'));
+    return reply
+      .code(HTTP_UNAUTHORIZED)
+      .header('www-authenticate', 'Bearer')
+      .send(jsonRpcErrorBody(JSON_RPC_SERVER_ERROR, 'The prod MCP needs the app token'));
+  });
+  app.post(PROD_MCP_PATH, (request, reply) => answerMcpRequest(createServer, request, reply, callLogger(request, settings, write)));
+  // Stateless mode has no stream to open (GET) or session to end (DELETE).
+  app.route({
+    method: ['GET', 'DELETE'],
+    url: PROD_MCP_PATH,
+    handler: async (request, reply) => {
+      callLogger(request, settings, write)({ id: undefined, method: request.method, tool: undefined, arguments: undefined }, 'refused');
+      return reply.code(HTTP_METHOD_NOT_ALLOWED).header('allow', 'POST').send(jsonRpcErrorBody(JSON_RPC_SERVER_ERROR, 'Method not allowed.'));
+    },
+  });
+}
+
+/**
+ * Starts the prod MCP on its own port when MCP_PORT is set, and answers the listener, or undefined when it's off.
+ * One server is built first, so a broken tool registration fails the start rather than every call.
+ */
+export async function startProdMcp(
+  createServer: ProdMcpServerFactory,
+  environment: NodeJS.ProcessEnv = process.env,
+  write: CallLogWriter = writeCallLogLine,
+): Promise<FastifyInstance | undefined> {
+  const settings = prodMcpSettings(environment);
+  if (settings === undefined) return undefined;
+  await createServer().close();
+  const app = Fastify({ logger: { level: PROD_MCP_LOG_LEVEL } });
+  routes(app, createServer, settings, write);
+  await app.listen({ port: settings.port, host: PROD_MCP_LISTEN_HOST });
+  return app;
+}

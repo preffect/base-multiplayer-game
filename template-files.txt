@@ -53,9 +53,15 @@ owned packages/server/src/mcp/debug-mcp-http.ts
 owned packages/server/src/mcp/loopback-guard.ts
 owned packages/server/src/mcp/http-status.ts
 owned packages/server/src/testing/debug-mcp-builders.ts
+owned packages/server/src/testing/prod-mcp-builders.ts
 owned packages/server/src/mcp/debug-mcp-http.test.ts
 owned packages/server/src/mcp/debug-mcp-http.integration.test.ts
 owned packages/server/src/mcp/loopback-guard.test.ts
+owned packages/server/src/mcp/prod-mcp-http.ts
+owned packages/server/src/mcp/call-log.ts
+owned packages/server/src/mcp/prod-mcp-http.test.ts
+owned packages/server/src/mcp/prod-mcp-http.integration.test.ts
+owned packages/server/src/mcp/call-log.test.ts
 owned .claude/agents/architect.md
 owned .claude/agents/audio-designer.md
 owned .claude/agents/code-qa.md
