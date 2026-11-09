@@ -113,11 +113,23 @@ fi
 # Template-only files never belong in a game: the retired entries of template-files.txt, which
 # `preffect-dev sync-template` deletes too if they reappear. presetup.sh is one of them but goes last,
 # at the bottom of this file, so a copy that still has it is visibly unfinished.
+# The same rule as preffect-dev sync-template: no empty, ., .. or .git part in any case, no leading - or /,
+# and a folder that really is inside the copy.
+retired_path_is_safe() { # <path>
+  local part parts folder
+  [[ -n "$1" && "$1" != /* && "$1" != -* ]] || return 1
+  IFS=/ read -r -a parts <<<"$1"
+  for part in "${parts[@]}"; do
+    case "${part,,}" in "" | . | .. | .git) return 1 ;; esac
+  done
+  folder="$(realpath --canonicalize-missing -- "$ROOT/$(dirname -- "$1")")"
+  [[ "$folder" == "$(realpath -- "$ROOT")" || "$folder" == "$(realpath -- "$ROOT")"/* ]]
+}
 while read -r kind template_only; do
   [[ "$kind" == retired && "$template_only" != presetup.sh ]] || continue
-  [[ -n "$template_only" && "$template_only" != *..* && "$template_only" != /* ]] || { echo "Bad retired path '$template_only' in template-files.txt" >&2; false; }
+  retired_path_is_safe "$template_only" || { echo "Unsafe retired path '$template_only' in template-files.txt" >&2; false; }
   rm -rf "${ROOT:?}/$template_only"
-done < "$ROOT/template-files.txt"
+done < <(template_list_entries "$ROOT/template-files.txt")
 
 # The template's own board ids, which a game must never write to: project-sync.sh and issue-status.sh
 # refuse to run until scripts/github-setup.sh writes the game's. Not retired in template-files.txt,

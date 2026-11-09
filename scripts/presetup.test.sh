@@ -10,6 +10,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/identity.sh
+source "$repo_root/scripts/lib/identity.sh" # template_list_entries, for the checks of template-files.txt
 sandbox="$(mktemp -d)"
 trap 'rm -rf "$sandbox"' EXIT
 
@@ -111,7 +113,7 @@ instantiate_and_check() { # <project> <slug> <server-port> <client-port> [preset
 }
 
 # --- cases: template-files.txt, the list preffect-dev sync-template reads ----------------------
-list_entries() { grep -vE '^[[:space:]]*(#|$)' "$repo_root/template-files.txt"; }
+list_entries() { template_list_entries "$repo_root/template-files.txt"; }
 listed() { list_entries | grep -qxF -- "$1"; } # <kind path>
 listed_files_exist() {
   local kind path
@@ -125,7 +127,11 @@ for agent in "$repo_root"/.claude/agents/*.md; do
   check "$agent is owned" listed "owned $agent"
   check "its old role file is retired" listed "retired .claude/roles/$(basename "$agent")"
 done
-check "the render script is identity.sh" listed "render scripts/lib/identity.sh"
+check "the render script is render-for-sync.sh" listed "render scripts/render-for-sync.sh"
+check "which is template-only, so retired" listed "retired scripts/render-for-sync.sh"
+for extended in validate.sh run.sh vitest.tiers.ts .jscpd.json .mcp.json; do
+  check "$extended is shared, because games extend it" listed "shared $extended"
+done
 check "the after script is docs-index.sh" listed "after scripts/docs-index.sh"
 
 # --- cases: names and ports ---------------------------------------------------------------------
@@ -225,6 +231,14 @@ sed -i "s|\"@$TEMPLATE_PROJECT/shared\"|\"shared\"|" "$no_scope/packages/shared/
 notices="$(half_built_notices_from "$no_scope" no-scope)"
 check "a missing package scope says half-built once ($notices)" test "$notices" -eq 1
 
+for unsafe_retired in .GIT/hooks -rf docs/../.. ; do
+  unsafe_copy="$sandbox/games/unsafe-retired-$(echo "$unsafe_retired" | tr -c 'a-zA-Z0-9' '-')"
+  copy_template "$unsafe_copy"
+  echo "retired $unsafe_retired" >> "$unsafe_copy/template-files.txt"
+  check "presetup.sh refuses the retired path '$unsafe_retired'" says "Unsafe retired path '$unsafe_retired'" \
+    in_directory "$unsafe_copy" ./presetup.sh unsafe-retired
+done
+
 check "the pnpm used for the lockfile is an exact version" grep -qE '^PNPM_PACKAGE=pnpm@[0-9]+[.][0-9]+[.][0-9]+$' "$repo_root/presetup.sh"
 
 # --- cases: new-game.sh -------------------------------------------------------------------------
@@ -279,11 +293,48 @@ give_game_prettier() { # <game directory>
   printf '#!/bin/sh\nexec "%s" "$@"\n' "$repo_root/node_modules/.bin/prettier" > "$1/node_modules/.bin/prettier"
   chmod +x "$1/node_modules/.bin/prettier"
 }
-if [[ -z "$sync_tool" ]]; then
-  echo "skip preffect-dev sync-template cases: preffect-dev isn't on PATH (the standard dev image has it)"
-elif [[ ! -x "$repo_root/node_modules/.bin/prettier" ]]; then
-  echo "skip preffect-dev sync-template cases: the template's prettier isn't installed (run pnpm install)"
-else
+# Puts a stand-in prettier in a game, for the cases where the game's prettier misbehaves.
+give_game_broken_prettier() { # <game directory> <script body>
+  printf '#!/bin/sh\n%s\n' "$2" > "$1/node_modules/.bin/prettier"
+}
+# Commits a change to one of the game's files, runs a check, then puts the file back and commits that.
+with_committed_change() { # <file> <sed expression> <check description> <check command...>
+  local file="$synced_game/$1" expression="$2" description="$3" held="$sandbox/held-$(basename "$1")"
+  shift 3
+  cp "$file" "$held"
+  sed -i "$expression" "$file"
+  commit_synced_game "change $(basename "$file")"
+  check "$description" "$@"
+  cp "$held" "$file"
+  commit_synced_game "restore $(basename "$file")"
+}
+
+# Without preffect-dev, in a devcontainer say, these cases can't run, so they're counted as skipped. In the
+# standard dev environment, where PREFFECT_DEV is set, preffect-dev must be there, so they fail instead.
+skipped=0
+cases_in_block() { # <block name>: how many checks it holds, between its marker and the end marker
+  awk -v begin="# sync cases: $1" -v end="# sync cases: end" \
+    'index($0, begin) == 1 { counting = 1; next } index($0, end) == 1 { counting = 0 } counting && ($1 == "check" || $1 == "with_committed_change")' \
+    "${BASH_SOURCE[0]}" | wc -l
+}
+sync_cases_can_run() { # <block name>
+  local reason="" count
+  if [[ -z "$sync_tool" ]]; then reason="preffect-dev isn't on PATH"
+  elif [[ ! -x "$repo_root/node_modules/.bin/prettier" ]]; then reason="the template's prettier isn't installed"
+  else return 0
+  fi
+  if [[ -n "${PREFFECT_DEV:-}" ]]; then
+    check "the $1 sync cases can run in the standard dev environment ($reason)" false
+    return 1
+  fi
+  count="$(cases_in_block "$1")"
+  skipped=$((skipped + count))
+  echo "skip $count $1 sync cases: $reason"
+  return 1
+}
+
+# sync cases: main
+if sync_cases_can_run main; then
   git -C "$synced_game" init -q
   commit_synced_game base
   check "sync of a new game says it's in step" says "Already in step" sync_template
@@ -298,14 +349,26 @@ else
   workflow_before_sync="$sandbox/workflow-before-sync"
   cp "$synced_game/docs/WORKFLOW.md" "$workflow_before_sync"
   check "sync stops when the game's prettier isn't installed" fails sync_template
-  check "and says to install it" says "run pnpm install first" sync_template
+  check "and says where to install it" says "Install them in its dev environment" sync_template
   check "and changed nothing" cmp "$workflow_before_sync" "$synced_game/docs/WORKFLOW.md"
   give_game_prettier "$synced_game"
+  pinned_prettier="$(prettier_version "$synced_game")"
+  give_game_broken_prettier "$synced_game" 'echo 0.0.1'
+  check "sync stops when the game's prettier isn't the lockfile's version" says "but its lockfile pins $pinned_prettier" sync_template
+  give_game_broken_prettier "$synced_game" "[ \"\$1\" = --version ] && echo $pinned_prettier && exit 0; exit 2"
+  check "sync stops when prettier fails" says "prettier failed on the rendered files" sync_template
+  check "and changed nothing" cmp "$workflow_before_sync" "$synced_game/docs/WORKFLOW.md"
+  give_game_prettier "$synced_game"
+  with_committed_change PORTS.env '/^SLUG=/d' "sync stops when it can't read the game's identity" \
+    says "can't read the game's identity" sync_template
+  with_committed_change PORTS.env 's/^SERVER_PORT=.*/SERVER_PORT=4999/' "sync stops when PORTS.env and dev.yaml disagree" \
+    says "Make them agree first" sync_template
+  check "none of those changed the doc" cmp "$workflow_before_sync" "$synced_game/docs/WORKFLOW.md"
   sync_output="$sandbox/sync-output"
   # Exit status 3: the sync worked, and left something to do by hand.
   sync_leaving_hand_work() { local status=0; sync_template >"$sync_output" 2>&1 || status=$?; [[ $status -eq 3 ]]; }
   check "sync succeeds, leaving work by hand" sync_leaving_hand_work
-  check "it ran the template's render script" grep -qF "Running scripts/lib/identity.sh from the template" "$sync_output"
+  check "it ran the template's render script" grep -qF "Running scripts/render-for-sync.sh from the template" "$sync_output"
   check "it ran the template's after script" grep -qF "Running scripts/docs-index.sh from the template" "$sync_output"
   check "the fix reaches the game with its name and port" file_has_line "$synced_game/docs/WORKFLOW.md" "The New Base Mp server listens on 4430."
   check "the shared file is listed for a merge by hand" file_has_line "$sync_output" "  CLAUDE.md"
@@ -329,6 +392,13 @@ else
   commit_synced_game "recorded"
   check "and the next one is in step" says "Already in step" sync_template
 fi
+# sync cases: end
+
+# A template commit that isn't on origin/main yet: a later sync's fetch of main couldn't find it.
+as_tester -C "$copied_template" commit -q --allow-empty -m "not on origin/main yet"
+check "new-game.sh: says when it records no base" says "No template commit recorded" \
+  new_game unrecorded-base --server-port 4460 --client-port 4462
+check "new-game.sh: records none for a commit that isn't on origin/main" is_absent "$source_directory/unrecorded-base/.template-commit"
 
 # scripts/github-setup.sh on that path, against local bare repos: its git steps run for real. It can't
 # reach GitHub: gh and setup_project.py, which only talks to GitHub, are fakes, git@github.com:tester/ is
@@ -389,11 +459,13 @@ check "github-setup.sh: nothing is left uncommitted" test -z "$(git -C "$own_rep
 check "github-setup.sh: runs again cleanly" github_setup "$own_repo"
 check "github-setup.sh: the template's remote is untouched" template_is_unchanged
 check "project-sync.sh: copes with a repo that has no issues" says "added to project:" with_fake_github "$own_repo/scripts/project-sync.sh"
-if [[ -n "$sync_tool" ]]; then
+# sync cases: board ids
+if sync_cases_can_run "board ids"; then
   give_game_prettier "$own_repo"
   check "a sync keeps a set-up game's board ids" in_directory "$own_repo" "$sync_tool" sync-template --source "file://$copied_template"
   check "those ids are still there" test -f "$own_repo/.github/project.env"
 fi
+# sync cases: end
 
 kept_origin="$source_directory/kept-origin"
 copy_template "$kept_origin"
@@ -499,7 +571,7 @@ check "new-game.sh: stops on a bad port" fails new_game bad-port --server-port 8
 check "new-game.sh: removes the copy after a refusal" is_absent "$source_directory/bad-port"
 
 if [[ $failures -gt 0 ]]; then
-  echo "presetup.test.sh: $failures failure(s)"
+  echo "presetup.test.sh: $failures failure(s), $skipped cases skipped"
   exit 1
 fi
-echo "presetup.test.sh: all cases passed"
+echo "presetup.test.sh: all cases passed, $skipped cases skipped"

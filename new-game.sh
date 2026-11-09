@@ -152,12 +152,14 @@ echo "==> Instantiating ($NAME)"
 }
 
 # The template commit this game was made from, so its first `preffect-dev sync-template` has a base.
-# Only a commit GitHub has: one that's only in this checkout can't be found by a later sync's fetch.
+# Only a commit on the template's main: a later sync fetches main, and its history must hold the base.
 if [[ -z "$(git -C "$TEMPLATE" status --porcelain 2>/dev/null)" ]] \
-  && git -C "$TEMPLATE" branch --remotes --contains HEAD 2>/dev/null | grep -q .; then
+  && git -C "$TEMPLATE" fetch --quiet origin 2>/dev/null \
+  && git -C "$TEMPLATE" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
   git -C "$TEMPLATE" rev-parse HEAD > "$TARGET/.template-commit"
 else
-  echo "==> No template commit recorded: the template checkout has changes or unpushed commits, so the game's first sync lists every difference"
+  echo "==> No template commit recorded: the template checkout has changes, or a commit that isn't on origin/main," \
+    "so the game's first sync lists every difference"
 fi
 
 SLUG_FINAL="$(sed -n 's/^SLUG=//p' "$TARGET/PORTS.env")"

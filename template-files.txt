@@ -3,16 +3,17 @@
 # images/dev-base/preffect-sync-template has the full rules, and the format line says which version of them.
 #
 #   owned <path>      the template's file, which games don't edit. Replaced when a game hasn't changed it.
-#   shared <path>     games edit it in place, so the sync lists it for a merge by hand when the template changes it
+#   shared <path>     games edit or extend it, so the sync lists it for a merge by hand when the template changes it
 #   retired <path>    never belongs in a game: deleted if present
-#   render <script>   rewrites the template's names and ports to the game's, then formats with the game's prettier
+#   render <script>   rewrites the template's names and ports to the game's, then formats with the game's prettier.
+#                     It's template-only, so it's also retired.
 #   after <script>    runs once a sync has changed files
 #
 # scripts/presetup.test.sh checks that every agent definition is owned, its old role file retired, and every
 # listed file exists. A game's README.md isn't here: it starts as README.game.md and is the game's own.
 
 format 1
-render scripts/lib/identity.sh
+render scripts/render-for-sync.sh
 after scripts/docs-index.sh
 
 owned template-files.txt
@@ -37,12 +38,7 @@ owned .devcontainer/devcontainer.json
 owned .devcontainer/.tmux.conf
 owned .devcontainer/post-create.sh
 owned dev-container.sh
-owned run.sh
-owned validate.sh
 owned ai-pipeline.sh
-owned .mcp.json
-owned .jscpd.json
-owned vitest.tiers.ts
 owned .prettierrc
 owned .prettierignore
 owned .github/PULL_REQUEST_TEMPLATE.md
@@ -52,6 +48,14 @@ owned docs/ENGINEERING.md
 owned docs/ASSET-GENERATION.md
 owned docs/AUDIO-PIPELINE.md
 owned .claude/roles/_common.md
+# The debug MCP's gate: game-agnostic, so gate fixes reach every game. Its tests use their own probe server.
+owned packages/server/src/mcp/debug-mcp-http.ts
+owned packages/server/src/mcp/loopback-guard.ts
+owned packages/server/src/mcp/http-status.ts
+owned packages/server/src/testing/debug-mcp-builders.ts
+owned packages/server/src/mcp/debug-mcp-http.test.ts
+owned packages/server/src/mcp/debug-mcp-http.integration.test.ts
+owned packages/server/src/mcp/loopback-guard.test.ts
 owned .claude/agents/architect.md
 owned .claude/agents/audio-designer.md
 owned .claude/agents/code-qa.md
@@ -67,6 +71,11 @@ owned .claude/agents/ui-designer.md
 shared CLAUDE.md
 shared .claude/commands/team.md
 shared .gitignore
+shared validate.sh
+shared run.sh
+shared vitest.tiers.ts
+shared .jscpd.json
+shared .mcp.json
 
 retired new-game.sh
 retired presetup.sh
@@ -75,6 +84,7 @@ retired base-project.md
 retired README.game.md
 retired ha-router
 retired scripts/sync-from-template.sh
+retired scripts/render-for-sync.sh
 retired ENGINEERING.md
 retired ASSET-GENERATION.md
 retired AUDIO-PIPELINE.md

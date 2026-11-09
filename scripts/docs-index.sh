@@ -13,7 +13,11 @@ set -euo pipefail
 
 # As the template's after script, `preffect-dev sync-template` runs this file from a checkout of the
 # template and names the game's root in PREFFECT_SYNC_ROOT.
-repo_root="${PREFFECT_SYNC_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+if [[ "${PREFFECT_SYNC:-}" == 1 && -n "${PREFFECT_SYNC_ROOT:-}" ]]; then
+  repo_root="$PREFFECT_SYNC_ROOT"
+else
+  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
 docs_dir="$repo_root/docs"
 index_file="$docs_dir/INDEX.md"
 

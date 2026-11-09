@@ -54,8 +54,15 @@ in a game to pull the template-owned files across with the game's identity re-ap
 diff via a PR. `template-files.txt` says which files the template owns, shares or has retired, and the
 game's `.template-commit` records the template commit it last synced from. The command is in the
 standard dev image; in a devcontainer or on the host, run it from a preffect-home checkout as
-`images/dev-base/preffect-dev sync-template`. A sync needs a clean tree, so commit each one before the
-next, and rebuild the devcontainer if `.devcontainer/*` changed.
+`images/dev-base/preffect-dev sync-template`. It formats what it brings in with the game's own prettier,
+so the game's dependencies must already be installed, by the devcontainer or a dev pod; it never installs
+anything, and never runs `pnpm install` on the host. A sync needs a clean tree, so commit each one before
+the next, and rebuild the devcontainer if `.devcontainer/*` changed. It formats only the files it brings
+in: an owned file that an earlier sync left unformatted stays as it is until the template changes it, and
+`./validate.sh lint` points it out. A game's first sync, with no base, lists every file that differs, but
+adds the owned files the game doesn't have yet. After the game upgrades prettier, files it hasn't changed
+can be listed for a merge once, because the base is formatted with the new version. A prettier plugin named
+in `.prettierrc` won't load during a sync.
 
 **Moving an existing game onto the current dependencies:** a sync never touches `package.json`,
 `packages/**`, `pnpm-workspace.yaml` or the lockfile, so a game keeps its old versions and their
