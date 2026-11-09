@@ -26,8 +26,13 @@ describe('maskArguments', () => {
     expect(maskArguments(args, TOKEN)).toEqual({ outer: { password: MASKED, list: [{ secret: MASKED, name: 'kept' }] } });
   });
 
-  it("masks any value equal to the app's token, whatever its name", () => {
-    expect(maskArguments({ note: TOKEN, list: [TOKEN] }, TOKEN)).toEqual({ note: MASKED, list: [MASKED] });
+  it("masks any value that holds the app's token anywhere, whatever its name", () => {
+    expect(maskArguments({ note: TOKEN, list: [TOKEN], header: `Bearer ${TOKEN}`, deep: { a: [`x${TOKEN}y`] } }, TOKEN)).toEqual({
+      note: MASKED,
+      list: [MASKED],
+      header: MASKED,
+      deep: { a: [MASKED] },
+    });
   });
 
   it('cuts a long value short', () => {

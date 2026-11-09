@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 
 /**
  * The prod MCP's call log: one JSON line per call, which the platform's log collector keeps (preffect-home #73).
- * It never holds the token: arguments that look secret, or equal the token, are masked, long values are cut
+ * It never holds the token: arguments whose name looks secret, at any depth, and any value that holds the token
+ * anywhere are masked, long values are cut
  * short, and the token presented shows only as a hash prefix, so two calls with one token can be matched up.
  * Template-owned: it names nothing game-specific.
  */
@@ -52,7 +53,7 @@ function cutShort(text: string): string {
 function maskValue(value: unknown, secret: string): unknown {
   if (Array.isArray(value)) return value.map((item) => maskValue(item, secret));
   if (value !== null && typeof value === 'object') return maskObject(value as Record<string, unknown>, secret);
-  if (typeof value === 'string') return secret !== '' && value === secret ? MASKED : cutShort(value);
+  if (typeof value === 'string') return secret !== '' && value.includes(secret) ? MASKED : cutShort(value);
   return value;
 }
 

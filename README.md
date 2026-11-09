@@ -227,8 +227,8 @@ fixes still go through a PR; this is for diagnosis and live state. The code is
   routes it, so the token is a second lock, not the only one.
 - **Every call logged**, one JSON line on stdout: the method, the tool, its arguments, the outcome (`ok`, `error`,
   `unauthorized` or `refused`), the caller's address and a hash prefix of the token presented, never the token.
-  Arguments named like token, secret, password, key or auth are masked, as is any value equal to the token, and long
-  values are cut at 200 characters.
+  Arguments named like token, secret, password, key or auth are masked at any depth, as is any value that holds the
+  token anywhere, and long values are cut at 200 characters.
 
 On preffect-home, the game's `service.yaml` has the port and the token, and the platform sets `MCP_PORT` from the
 port, as it sets `PORT`:
