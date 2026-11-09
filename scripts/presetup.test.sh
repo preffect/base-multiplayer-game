@@ -333,6 +333,25 @@ sync_cases_can_run() { # <block name>
   return 1
 }
 
+# The sync refuses, at fetch, render code whose sources it can't follow, which would stop every game's
+# sync. The tool's own check catches that here first. It needs only preffect-dev, not prettier.
+if [[ -n "$sync_tool" ]]; then
+  check "the sync can follow every source in the render code" "$sync_tool" sync-template --check-render "$repo_root"
+  refused_render="$sandbox/refused-render"
+  mkdir -p "$refused_render/scripts/lib"
+  git -C "$refused_render" init -q
+  printf 'format 1\nrender scripts/render-for-sync.sh\n' >"$refused_render/template-files.txt"
+  cp "$repo_root/scripts/lib/identity.sh" "$refused_render/scripts/lib/identity.sh"
+  sed 's|^source "|[[ -f x ]] \&\& source "|' "$repo_root/scripts/render-for-sync.sh" >"$refused_render/scripts/render-for-sync.sh"
+  check "and the check refuses a source it can't follow" \
+    says "sources in a way the sync can't follow" fails "$sync_tool" sync-template --check-render "$refused_render"
+elif [[ -n "${PREFFECT_DEV:-}" ]]; then
+  check "the render code check can run in the standard dev environment (preffect-dev isn't on PATH)" false
+else
+  skipped=$((skipped + 2))
+  echo "skip 2 render code cases: preffect-dev isn't on PATH"
+fi
+
 # sync cases: main
 if sync_cases_can_run main; then
   git -C "$synced_game" init -q
