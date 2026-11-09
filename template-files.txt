@@ -1,0 +1,104 @@
+# The files the game template owns, for `preffect-dev sync-template`. The sync reads the template's copy of
+# this list, so a file the template starts owning later reaches games too. preffect-home's
+# images/dev-base/preffect-sync-template has the full rules, and the format line says which version of them.
+#
+#   owned <path>      the template's file, which games don't edit. Replaced when a game hasn't changed it.
+#   shared <path>     games edit or extend it, so the sync lists it for a merge by hand when the template changes it
+#   retired <path>    never belongs in a game: deleted if present
+#   render <script>   rewrites the template's names and ports to the game's, then formats with the game's prettier.
+#                     It's template-only, so it's also retired.
+#   after <script>    runs once a sync has changed files
+#
+# scripts/presetup.test.sh checks that every agent definition is owned, its old role file retired, and every
+# listed file exists. A game's README.md isn't here: it starts as README.game.md and is the game's own.
+
+format 1
+render scripts/render-for-sync.sh
+after scripts/docs-index.sh
+
+owned template-files.txt
+owned scripts/project-sync.sh
+owned scripts/issue-status.sh
+owned scripts/github-setup.sh
+owned scripts/lib/identity.sh
+owned scripts/agent.sh
+owned scripts/land-pr.sh
+owned scripts/worktree.sh
+owned scripts/resume-in-container.sh
+owned scripts/pr-threads.sh
+owned scripts/docs-index.sh
+owned scripts/validate-cache.test.sh
+owned .claude/.gitignore
+owned scripts/github/setup_project.py
+owned scripts/github/groundwork-issues.json
+owned scripts/github/main-ruleset.json
+owned .github/workflows/pr-links-issue.yml
+owned .devcontainer/Dockerfile
+owned .devcontainer/devcontainer.json
+owned .devcontainer/.tmux.conf
+owned .devcontainer/post-create.sh
+owned dev-container.sh
+owned ai-pipeline.sh
+owned .prettierrc
+owned .prettierignore
+owned .github/PULL_REQUEST_TEMPLATE.md
+owned docs/WORKFLOW.md
+owned docs/TEAM.md
+owned docs/ENGINEERING.md
+owned docs/ASSET-GENERATION.md
+owned docs/AUDIO-PIPELINE.md
+owned .claude/roles/_common.md
+# The debug MCP's gate: game-agnostic, so gate fixes reach every game. Its tests use their own probe server.
+owned packages/server/src/mcp/debug-mcp-http.ts
+owned packages/server/src/mcp/loopback-guard.ts
+owned packages/server/src/mcp/http-status.ts
+owned packages/server/src/testing/debug-mcp-builders.ts
+owned packages/server/src/mcp/debug-mcp-http.test.ts
+owned packages/server/src/mcp/debug-mcp-http.integration.test.ts
+owned packages/server/src/mcp/loopback-guard.test.ts
+owned .claude/agents/architect.md
+owned .claude/agents/audio-designer.md
+owned .claude/agents/code-qa.md
+owned .claude/agents/devops.md
+owned .claude/agents/engineer.md
+owned .claude/agents/game-designer.md
+owned .claude/agents/gameplay-qa.md
+owned .claude/agents/graphics-designer.md
+owned .claude/agents/graphics-qa.md
+owned .claude/agents/perf-engineer.md
+owned .claude/agents/ui-designer.md
+
+shared CLAUDE.md
+shared .claude/commands/team.md
+shared .gitignore
+shared validate.sh
+shared run.sh
+shared vitest.tiers.ts
+shared .jscpd.json
+shared .mcp.json
+
+retired new-game.sh
+retired presetup.sh
+retired scripts/presetup.test.sh
+retired base-project.md
+retired README.game.md
+retired ha-router
+retired scripts/sync-from-template.sh
+retired scripts/render-for-sync.sh
+retired ENGINEERING.md
+retired ASSET-GENERATION.md
+retired AUDIO-PIPELINE.md
+retired WORKFLOW.md
+retired TEAM.md
+retired init-game.md
+retired .claude/roles/architect.md
+retired .claude/roles/audio-designer.md
+retired .claude/roles/code-qa.md
+retired .claude/roles/devops.md
+retired .claude/roles/engineer.md
+retired .claude/roles/game-designer.md
+retired .claude/roles/gameplay-qa.md
+retired .claude/roles/graphics-designer.md
+retired .claude/roles/graphics-qa.md
+retired .claude/roles/perf-engineer.md
+retired .claude/roles/ui-designer.md

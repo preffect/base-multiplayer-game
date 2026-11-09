@@ -151,6 +151,17 @@ echo "==> Instantiating ($NAME)"
   exit 1
 }
 
+# The template commit this game was made from, so its first `preffect-dev sync-template` has a base.
+# Only a commit on the template's main: a later sync fetches main, and its history must hold the base.
+if [[ -z "$(git -C "$TEMPLATE" status --porcelain 2>/dev/null)" ]] \
+  && git -C "$TEMPLATE" fetch --quiet origin 2>/dev/null \
+  && git -C "$TEMPLATE" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+  git -C "$TEMPLATE" rev-parse HEAD > "$TARGET/.template-commit"
+else
+  echo "==> No template commit recorded: the template checkout has changes, or a commit that isn't on origin/main," \
+    "so the game's first sync lists every difference"
+fi
+
 SLUG_FINAL="$(sed -n 's/^SLUG=//p' "$TARGET/PORTS.env")"
 HOST="${SLUG_FINAL}.preffect-ha.preffect-home.net"
 TRAEFIK_HOST_IP="192.168.1.180"

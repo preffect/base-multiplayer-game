@@ -2,8 +2,8 @@
 # ---------------------------------------------------------------------------
 # identity.sh — the ONE place that knows how to turn template files into a game's files.
 #
-# Sourced by presetup.sh (first instantiation) and scripts/sync-from-template.sh (later
-# syncs), which also share run_prettier. Rewrites the template identity tokens in the given files:
+# Sourced by presetup.sh (first instantiation), and by scripts/render-for-sync.sh, the template's render
+# script for `preffect-dev sync-template` (later syncs). Rewrites the template identity tokens in the given files:
 #   Base Multiplayer Game  -> <Title>          base-multiplayer-game -> <project> # KEEP_TEMPLATE_NAME
 #   game-debug             -> <slug>-debug     base-mp               -> <slug> # KEEP_TEMPLATE_NAME
 #   4400 / 4402            -> <server-port> / <client-port>   (whole-word) # KEEP_TEMPLATE_NAME
@@ -23,6 +23,17 @@ IDENTITY_TEMPLATE_SERVER_PORT="4400" # KEEP_TEMPLATE_NAME
 IDENTITY_TEMPLATE_CLIENT_PORT="4402" # KEEP_TEMPLATE_NAME
 IDENTITY_PLACEHOLDER_MARK=$'\x01' # a control byte, so no text file holds it
 FORMATTER_DOCKER_IMAGE=node:24-slim # the Node major of package.json's engines
+# The files that decide how prettier formats, which a sync copies beside the staged files it formats.
+PRETTIER_CONFIG_FILES=(.prettierrc .prettierignore .editorconfig)
+
+# ports_env_value <PORTS.env> <key>: one value from a game's PORTS.env, or nothing.
+ports_env_value() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1 | tr -d '\r'; }
+
+# dev_yaml_port <dev.yaml> <name>: a port by name, from `ports: { server: 4400, ... }` or a block of them.
+dev_yaml_port() { sed -nE "s/.*[{ ,]$2: *([0-9]+).*/\1/p" "$1" 2>/dev/null | head -n 1; }
+
+# template_list_entries <template-files.txt>: its "kind path" lines, without comments or blank lines.
+template_list_entries() { awk 'NF && $1 !~ /^#/ { print $1, $2 }' "$1"; }
 
 # title_case_from_name my-game -> "My Game"
 title_case_from_name() { echo "$1" | sed -E 's/[-_]+/ /g; s/\b(.)/\u\1/g'; }
@@ -62,14 +73,24 @@ run_npx() {
   fi
 }
 
+# prettier_version <root>: the prettier version <root>'s lockfile pins. Prints why when there's none.
+# run_prettier fetches that version, and render-for-sync.sh checks the game's installed one against it.
+prettier_version() {
+  local version
+  [[ -f "$1/pnpm-lock.yaml" ]] || { echo "error: no pnpm-lock.yaml in $1: run pnpm install first" >&2; return 1; }
+  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$1/pnpm-lock.yaml" | head -n 1)"
+  [[ -n "$version" ]] || { echo "error: no prettier in $1/pnpm-lock.yaml: run pnpm install first" >&2; return 1; }
+  echo "$version"
+}
+
 # run_prettier <root> <prettier args...>
 # The prettier version <root>'s lockfile pins, so it agrees with `pnpm lint` there, with or without
-# node_modules. Prints why it couldn't run, so callers only need to stop.
+# node_modules. Prints why it couldn't run, so callers only need to stop. presetup.sh uses it, on a fresh
+# copy with nothing installed. A sync's render doesn't: it must never install anything, so it uses the
+# game's own installed prettier instead (scripts/render-for-sync.sh).
 run_prettier() {
   local root="$1" version; shift
-  [[ -f "$root/pnpm-lock.yaml" ]] || { echo "error: no pnpm-lock.yaml in $root: run pnpm install first" >&2; return 1; }
-  version="$(sed -n 's/^  prettier@\([0-9.]*\):$/\1/p' "$root/pnpm-lock.yaml" | head -n 1)"
-  [[ -n "$version" ]] || { echo "error: no prettier in $root/pnpm-lock.yaml: run pnpm install first" >&2; return 1; }
+  version="$(prettier_version "$root")" || return 1
   run_npx "$root" "prettier@$version" "$@" || { echo "error: prettier failed" >&2; return 1; }
 }
 
@@ -107,10 +128,3 @@ container_name_from_dir() { echo "$(project_slug_from_dir "$1")$CONTAINER_NAME_S
 # True inside a dev environment: the devcontainer has /.dockerenv, and a standard dev pod has no
 # such file but its image sets PREFFECT_DEV.
 in_container() { [[ -f /.dockerenv || -n "${PREFFECT_DEV:-}" ]]; }
-
-
-# Files that exist only to CREATE games and must not survive in one. presetup.sh deletes them
-# at instantiation; scripts/sync-from-template.sh deletes any that reappear. (docs/INIT-GAME.md
-# is not here: a game keeps it until the init step has defined the game, then that step removes it.)
-TEMPLATE_ONLY_PATHS=(new-game.sh presetup.sh scripts/presetup.test.sh base-project.md README.game.md ha-router
-  ENGINEERING.md ASSET-GENERATION.md AUDIO-PIPELINE.md WORKFLOW.md TEAM.md init-game.md) # last row: legacy root locations, now docs/

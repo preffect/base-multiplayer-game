@@ -261,4 +261,4 @@ game existed, in the same PR as `docs/GAME-DESIGN.md`:
   description and its public URL;
 - make sure `package.json`'s root `description` names this game.
 
-Nothing else in the repo refers to this prompt; `scripts/sync-from-template.sh` never brings it back.
+Nothing else in the repo refers to this prompt; `preffect-dev sync-template` never brings it back.

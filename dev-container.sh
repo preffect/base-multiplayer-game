@@ -144,8 +144,8 @@ do_create() {
   else
     yellow "Warning: ~/.claude not found, skipping mount"
   fi
-  #   ../base-multiplayer-game  the template checkout (rw), so template-first fixes and # KEEP_TEMPLATE_NAME
-  #                  scripts/sync-from-template.sh work from inside the container too.
+  #   ../base-multiplayer-game  the template checkout (rw), so template-first fixes work from # KEEP_TEMPLATE_NAME
+  #                  inside the container too.
   local template_dir="$SCRIPT_DIR/../base-multiplayer-game" # KEEP_TEMPLATE_NAME
   if [[ -d "$template_dir" && "$(cd "$template_dir" && pwd)" != "$SCRIPT_DIR" ]]; then
     host_mounts+=" -v $(cd "$template_dir" && pwd):$TEMPLATE_MOUNT:cached"

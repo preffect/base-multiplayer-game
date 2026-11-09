@@ -7,11 +7,17 @@
 #
 # A section's range runs from its heading to the line before the next heading of the same or a higher level.
 # Headings inside fenced code blocks (``` or ~~~, at any indent) are ignored. The generator's output is already
-# prettier-clean (presetup.sh and sync-from-template.sh run it without node_modules); when prettier is installed the
+# prettier-clean (presetup.sh and a template sync run it without node_modules); when prettier is installed the
 # output is passed through it as well so any future formatting rule still holds, and --check compares against that.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# As the template's after script, `preffect-dev sync-template` runs this file from a checkout of the
+# template and names the game's root in PREFFECT_SYNC_ROOT.
+if [[ "${PREFFECT_SYNC:-}" == 1 && -n "${PREFFECT_SYNC_ROOT:-}" ]]; then
+  repo_root="$PREFFECT_SYNC_ROOT"
+else
+  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
 docs_dir="$repo_root/docs"
 index_file="$docs_dir/INDEX.md"
 
