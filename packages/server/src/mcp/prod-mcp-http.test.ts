@@ -153,10 +153,22 @@ describe('the prod MCP over a real socket', () => {
   });
 
   it('refuses a call without the token before reading it: one line, no body, no hash', async () => {
-    const answer = await post(await listen(), [MCP_INITIALIZE_REQUEST, MCP_INITIALIZE_REQUEST, INITIALIZED_NOTIFICATION]);
+    const answer = await post(await listen(), [
+      MCP_INITIALIZE_REQUEST,
+      MCP_INITIALIZE_REQUEST,
+      INITIALIZED_NOTIFICATION,
+    ]);
     expect(answer.status).toBe(HTTP_UNAUTHORIZED);
     expect(answer.headers.get('www-authenticate')).toBe('Bearer');
-    expect(lines).toEqual([expect.objectContaining({ method: 'POST', tool: null, arguments: {}, outcome: 'unauthorized', token_sha256: null })]);
+    expect(lines).toEqual([
+      expect.objectContaining({
+        method: 'POST',
+        tool: null,
+        arguments: {},
+        outcome: 'unauthorized',
+        token_sha256: null,
+      }),
+    ]);
   });
 
   it('refuses a big body without the token, unread, and with it, as too big', async () => {

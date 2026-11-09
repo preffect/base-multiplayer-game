@@ -78,10 +78,10 @@ describe('maskArguments', () => {
 
   it('logs only so many keys and items, and counts the rest', () => {
     const many = MOST_LOGGED_ENTRIES + 3;
-    const keys = Object.fromEntries(Array.from({ length: many }, (_, index) => [`k${index}`, index]));
-    const logged = maskArguments({ keys, items: Array.from({ length: many }, (_, index) => index) }, TOKEN);
-    expect(Object.keys(logged.keys as object)).toHaveLength(MOST_LOGGED_ENTRIES + 1);
-    expect((logged.keys as Record<string, unknown>)[MORE_KEY]).toBe('3 more');
+    const fields = Object.fromEntries(Array.from({ length: many }, (_, index) => [`k${index}`, index]));
+    const logged = maskArguments({ fields, items: Array.from({ length: many }, (_, index) => index) }, TOKEN);
+    expect(Object.keys(logged.fields as object)).toHaveLength(MOST_LOGGED_ENTRIES + 1);
+    expect((logged.fields as Record<string, unknown>)[MORE_KEY]).toBe('3 more');
     expect(logged.items).toHaveLength(MOST_LOGGED_ENTRIES + 1);
     expect((logged.items as unknown[]).at(-1)).toBe('3 more');
   });

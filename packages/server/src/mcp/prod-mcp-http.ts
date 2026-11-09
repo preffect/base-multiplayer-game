@@ -199,7 +199,11 @@ function routes(
   // Before the body is read: a caller without the token costs one short line and a 401, whatever it sent.
   app.addHook('onRequest', async (request, reply) => {
     if (tokenMatches(presentedToken(request.headers.authorization), settings.token)) return undefined;
-    callLogger(request, settings, write)({ id: undefined, method: request.method, tool: undefined, arguments: undefined }, 'unauthorized');
+    callLogger(
+      request,
+      settings,
+      write,
+    )({ id: undefined, method: request.method, tool: undefined, arguments: undefined }, 'unauthorized');
     return reply
       .code(HTTP_UNAUTHORIZED)
       .header('www-authenticate', 'Bearer')
