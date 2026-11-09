@@ -3,7 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
-import { callLogLine, type CallLogLine, type CallOutcome } from './call-log.js';
+import { safeCallLogLine, type CallLogLine, type CallOutcome } from './call-log.js';
 import { JSON_RPC_INTERNAL_ERROR, JSON_RPC_SERVER_ERROR, jsonRpcErrorBody } from './debug-mcp-http.js';
 import { HTTP_INTERNAL_SERVER_ERROR, HTTP_METHOD_NOT_ALLOWED, HTTP_UNAUTHORIZED } from './http-status.js';
 
@@ -22,6 +22,10 @@ export const PROD_MCP_TOKEN_ENV = 'MCP_BEARER_TOKEN';
 export const PROD_MCP_LISTEN_HOST = '0.0.0.0';
 export const BEARER_PREFIX = 'Bearer ';
 const HIGHEST_PORT = 65_535;
+/** A token's own hash prefix is only logged for a refused caller, but a short token would still be easy to guess. */
+export const SHORTEST_TOKEN = 32;
+/** MCP calls are small; a bigger body is refused before it's read. */
+export const PROD_MCP_BODY_LIMIT = 64 * 1024;
 const TOOLS_CALL_METHOD = 'tools/call';
 /** Only problems: the call log is the record of calls. */
 const PROD_MCP_LOG_LEVEL = 'warn';
@@ -46,7 +50,7 @@ export function writeCallLogLine(line: CallLogLine): void {
   process.stdout.write(`${JSON.stringify(line)}\n`);
 }
 
-/** The port and token, undefined when MCP_PORT is unset. A port without a token, or a bad port, stops the start. */
+/** The port and token, undefined when MCP_PORT is unset. A port without a strong token, or a bad port, stops the start. */
 export function prodMcpSettings(environment: NodeJS.ProcessEnv): ProdMcpSettings | undefined {
   const portText = environment[PROD_MCP_PORT_ENV];
   if (portText === undefined || portText === '') return undefined;
@@ -57,6 +61,9 @@ export function prodMcpSettings(environment: NodeJS.ProcessEnv): ProdMcpSettings
   const token = environment[PROD_MCP_TOKEN_ENV] ?? '';
   if (token === '')
     throw new Error(`${PROD_MCP_PORT_ENV} is set, so the prod MCP needs its token on ${PROD_MCP_TOKEN_ENV}`);
+  if (token.length < SHORTEST_TOKEN || token.trim() !== token) {
+    throw new Error(`${PROD_MCP_TOKEN_ENV} has to be at least ${SHORTEST_TOKEN} characters, with no space around it`);
+  }
   return { port, token };
 }
 
@@ -114,7 +121,7 @@ function callLogger(request: FastifyRequest, settings: ProdMcpSettings, write: C
   const presented = presentedToken(request.headers.authorization);
   return (call, outcome) =>
     write(
-      callLogLine(
+      safeCallLogLine(
         {
           caller: request.socket.remoteAddress,
           method: call.method,
@@ -189,10 +196,10 @@ function routes(
   settings: ProdMcpSettings,
   write: CallLogWriter,
 ): void {
-  app.addHook('preHandler', async (request, reply) => {
+  // Before the body is read: a caller without the token costs one short line and a 401, whatever it sent.
+  app.addHook('onRequest', async (request, reply) => {
     if (tokenMatches(presentedToken(request.headers.authorization), settings.token)) return undefined;
-    const logCall = callLogger(request, settings, write);
-    requestedCalls(request.body).forEach((call) => logCall(call, 'unauthorized'));
+    callLogger(request, settings, write)({ id: undefined, method: request.method, tool: undefined, arguments: undefined }, 'unauthorized');
     return reply
       .code(HTTP_UNAUTHORIZED)
       .header('www-authenticate', 'Bearer')
@@ -231,7 +238,7 @@ export async function startProdMcp(
   const settings = prodMcpSettings(environment);
   if (settings === undefined) return undefined;
   await createServer().close();
-  const app = Fastify({ logger: { level: PROD_MCP_LOG_LEVEL } });
+  const app = Fastify({ logger: { level: PROD_MCP_LOG_LEVEL }, bodyLimit: PROD_MCP_BODY_LIMIT });
   routes(app, createServer, settings, write);
   await app.listen({ port: settings.port, host: PROD_MCP_LISTEN_HOST });
   return app;

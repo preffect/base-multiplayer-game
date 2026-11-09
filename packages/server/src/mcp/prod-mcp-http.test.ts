@@ -23,7 +23,9 @@ import {
   BEARER_PREFIX,
   PROD_MCP_PATH,
   PROD_MCP_PORT_ENV,
+  PROD_MCP_BODY_LIMIT,
   PROD_MCP_TOKEN_ENV,
+  SHORTEST_TOKEN,
   type ProdMcpServerFactory,
   presentedToken,
   prodMcpSettings,
@@ -34,6 +36,7 @@ import {
 } from './prod-mcp-http.js';
 
 const HTTP_ACCEPTED = 202;
+const HTTP_PAYLOAD_TOO_LARGE = 413;
 const WRONG_TOKEN = `${PROD_MCP_TEST_TOKEN}-wrong`;
 const INITIALIZED_NOTIFICATION = { jsonrpc: '2.0', method: 'notifications/initialized' };
 
@@ -46,6 +49,16 @@ describe('prodMcpSettings', () => {
     expect(() => prodMcpSettings({ [PROD_MCP_PORT_ENV]: '9090' })).toThrow(PROD_MCP_TOKEN_ENV);
     expect(() => prodMcpSettings({ [PROD_MCP_PORT_ENV]: '9090', [PROD_MCP_TOKEN_ENV]: '' })).toThrow(
       PROD_MCP_TOKEN_ENV,
+    );
+  });
+
+  it.each([
+    ['short', 'a'.repeat(SHORTEST_TOKEN - 1)],
+    ['spaced', ` ${'a'.repeat(SHORTEST_TOKEN)}`],
+    ['trailing newline', `${'a'.repeat(SHORTEST_TOKEN)}\n`],
+  ])('refuses a %s token', (_name, token) => {
+    expect(() => prodMcpSettings({ [PROD_MCP_PORT_ENV]: '9090', [PROD_MCP_TOKEN_ENV]: token })).toThrow(
+      `at least ${SHORTEST_TOKEN} characters`,
     );
   });
 
@@ -139,11 +152,24 @@ describe('the prod MCP over a real socket', () => {
     expect(await startProdMcp(createProbeProdServer, {}, (line) => lines.push(line))).toBeUndefined();
   });
 
-  it('refuses a call without the token, and logs it with no hash', async () => {
-    const answer = await post(await listen(), MCP_INITIALIZE_REQUEST);
+  it('refuses a call without the token before reading it: one line, no body, no hash', async () => {
+    const answer = await post(await listen(), [MCP_INITIALIZE_REQUEST, MCP_INITIALIZE_REQUEST, INITIALIZED_NOTIFICATION]);
     expect(answer.status).toBe(HTTP_UNAUTHORIZED);
     expect(answer.headers.get('www-authenticate')).toBe('Bearer');
-    expect(lines).toMatchObject([{ method: 'initialize', outcome: 'unauthorized', token_sha256: null }]);
+    expect(lines).toEqual([expect.objectContaining({ method: 'POST', tool: null, arguments: {}, outcome: 'unauthorized', token_sha256: null })]);
+  });
+
+  it('refuses a big body without the token, unread, and with it, as too big', async () => {
+    const url = await listen();
+    const big = { ...MCP_INITIALIZE_REQUEST, params: { padding: 'x'.repeat(PROD_MCP_BODY_LIMIT) } };
+    expect((await post(url, big)).status).toBe(HTTP_UNAUTHORIZED);
+    expect((await post(url, big, PROD_MCP_TEST_TOKEN)).status).toBe(HTTP_PAYLOAD_TOO_LARGE);
+    expect(lines).toEqual([expect.objectContaining({ method: 'POST', outcome: 'unauthorized' })]);
+  });
+
+  it('refuses a GET without the token, and logs it once', async () => {
+    expect((await fetch(await listen())).status).toBe(HTTP_UNAUTHORIZED);
+    expect(lines).toEqual([expect.objectContaining({ method: 'GET', outcome: 'unauthorized' })]);
   });
 
   it("refuses a wrong token, and logs the wrong token's hash", async () => {
@@ -171,7 +197,8 @@ describe('the prod MCP over a real socket', () => {
       ['tools/call', FAILING_TOOL_NAME, 'error'],
     ]);
     expect(calls[3]?.arguments).toEqual({ value: 'v', api_key: MASKED, note: MASKED });
-    expect(lines.every((line) => line.token_sha256 === tokenHash(PROD_MCP_TEST_TOKEN))).toBe(true);
+    // An accepted call presented the app's own token, so it carries no hash of it.
+    expect(lines.every((line) => line.token_sha256 === null)).toBe(true);
     expect(JSON.stringify(lines)).not.toContain(PROD_MCP_TEST_TOKEN);
   });
 

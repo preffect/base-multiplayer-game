@@ -5,7 +5,8 @@ import { TEST_CLIENT_INFO } from './debug-mcp-builders.js';
 
 /** Template-owned test doubles for the prod MCP. Nothing here is game-specific. */
 
-export const PROD_MCP_TEST_TOKEN = 'prod-mcp-test-token';
+/** As long as the prod MCP asks for, and no longer. */
+export const PROD_MCP_TEST_TOKEN = 'prod-mcp-test-token-0123456789abc';
 export const SETTING_TOOL_NAME = 'prod_probe_set';
 export const FAILING_TOOL_NAME = 'prod_probe_fail';
 
