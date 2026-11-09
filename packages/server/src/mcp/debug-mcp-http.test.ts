@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type InjectOptions } from 'fastify';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { request as httpRequest } from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BRIDGE_GATEWAY_ADDRESS,
@@ -34,6 +35,41 @@ const REFUSED_HEADERS: Record<string, string>[] = [
   { host: 'localhost.example.com' },
   { host: LOOPBACK_HOST_WITH_PORT, origin: 'http://attacker.example' },
 ];
+
+const ANY_FREE_PORT = 0;
+const LOOPBACK_LISTEN_HOST = '127.0.0.1';
+
+/**
+ * Posts an initialize over a real socket and answers the status and body. A request that reaches the
+ * SDK transport uses a real socket, not inject: older SDKs' HTTP layer (@hono/node-server 1.x) calls
+ * socket.destroySoon() on close, which inject's fake socket lacks, and on a slow machine that timer
+ * fires during the run as an unhandled error.
+ */
+function postOverSocket(
+  address: string,
+  headers: Record<string, string> = {},
+): Promise<{ statusCode: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const outgoing = httpRequest(
+      `${address}${DEBUG_MCP_PATH}`,
+      { method: 'POST', headers: { ...MCP_POST_HEADERS, host: LOOPBACK_HOST_WITH_PORT, ...headers } },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => {
+          if (response.statusCode === undefined) reject(new Error('response without a status'));
+          else resolve({ statusCode: response.statusCode, body: Buffer.concat(chunks).toString() });
+        });
+      },
+    );
+    outgoing.on('error', reject);
+    outgoing.end(JSON.stringify(MCP_INITIALIZE_REQUEST));
+  });
+}
+
+function listenOnLoopback(target: FastifyInstance): Promise<string> {
+  return target.listen({ port: ANY_FREE_PORT, host: LOOPBACK_LISTEN_HOST });
+}
 
 /** A Fastify whose warnings and errors are kept as parsed log lines. */
 function recordingFastify(): { app: FastifyInstance; logLines: { level: number; msg: string }[] } {
@@ -87,10 +123,11 @@ describe('mcp/debug-mcp-http', () => {
 
   it('answers a loopback POST, and one with a loopback Origin', async () => {
     const { app: target } = mounted(DEBUG_MCP_SWITCHED_ON);
-    const response = await post(target);
+    const address = await listenOnLoopback(target);
+    const response = await postOverSocket(address);
     expect(response.statusCode).toBe(HTTP_OK);
     expect(response.body).toContain('"serverInfo"');
-    expect((await post(target, {}, { origin: LOOPBACK_ORIGIN })).statusCode).toBe(HTTP_OK);
+    expect((await postOverSocket(address, { origin: LOOPBACK_ORIGIN })).statusCode).toBe(HTTP_OK);
   });
 
   it.each(REFUSED_HEADERS)('refuses %o with a JSON-RPC 403', async (headers) => {
@@ -173,9 +210,10 @@ describe('mcp/debug-mcp-http', () => {
     try {
       vi.spyOn(McpServer.prototype, 'close').mockRejectedValue(new Error('close failed'));
       const { app: target, logLines } = mounted(DEBUG_MCP_SWITCHED_ON);
-      expect((await post(target)).statusCode).toBe(HTTP_OK);
-      await new Promise((resolve) => setImmediate(resolve));
-      expect(logLines.filter((line) => line.msg === 'debug MCP close failed').length).toBeGreaterThan(0);
+      expect((await postOverSocket(await listenOnLoopback(target))).statusCode).toBe(HTTP_OK);
+      await vi.waitFor(() =>
+        expect(logLines.filter((line) => line.msg === 'debug MCP close failed').length).toBeGreaterThan(0),
+      );
       expect(unhandled).toEqual([]);
     } finally {
       process.off('unhandledRejection', recordUnhandled);
