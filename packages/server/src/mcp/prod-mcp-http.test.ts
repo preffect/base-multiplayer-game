@@ -12,7 +12,13 @@ import {
   prodMcpEnvironment,
 } from '../testing/prod-mcp-builders.js';
 import { MASKED, tokenHash, type CallLogLine } from './call-log.js';
-import { HTTP_INTERNAL_SERVER_ERROR, HTTP_METHOD_NOT_ALLOWED, HTTP_NOT_FOUND, HTTP_OK, HTTP_UNAUTHORIZED } from './http-status.js';
+import {
+  HTTP_INTERNAL_SERVER_ERROR,
+  HTTP_METHOD_NOT_ALLOWED,
+  HTTP_NOT_FOUND,
+  HTTP_OK,
+  HTTP_UNAUTHORIZED,
+} from './http-status.js';
 import {
   BEARER_PREFIX,
   PROD_MCP_PATH,
@@ -38,7 +44,9 @@ describe('prodMcpSettings', () => {
 
   it('wants the token once a port is set', () => {
     expect(() => prodMcpSettings({ [PROD_MCP_PORT_ENV]: '9090' })).toThrow(PROD_MCP_TOKEN_ENV);
-    expect(() => prodMcpSettings({ [PROD_MCP_PORT_ENV]: '9090', [PROD_MCP_TOKEN_ENV]: '' })).toThrow(PROD_MCP_TOKEN_ENV);
+    expect(() => prodMcpSettings({ [PROD_MCP_PORT_ENV]: '9090', [PROD_MCP_TOKEN_ENV]: '' })).toThrow(
+      PROD_MCP_TOKEN_ENV,
+    );
   });
 
   it.each(['x', '-1', '65536', '1.5'])('refuses the port %s', (port) => {
@@ -118,8 +126,13 @@ describe('the prod MCP over a real socket', () => {
   }
 
   async function post(url: string, body: unknown, token?: string): Promise<Response> {
-    const authorization: Record<string, string> = token === undefined ? {} : { authorization: `${BEARER_PREFIX}${token}` };
-    return fetch(url, { method: 'POST', headers: { ...MCP_POST_HEADERS, ...authorization }, body: JSON.stringify(body) });
+    const authorization: Record<string, string> =
+      token === undefined ? {} : { authorization: `${BEARER_PREFIX}${token}` };
+    return fetch(url, {
+      method: 'POST',
+      headers: { ...MCP_POST_HEADERS, ...authorization },
+      body: JSON.stringify(body),
+    });
   }
 
   it('is off without a port, and listens nowhere', async () => {
@@ -147,14 +160,17 @@ describe('the prod MCP over a real socket', () => {
     const args = { value: 'v', api_key: 'k', note: PROD_MCP_TEST_TOKEN };
     expect((await client.callTool({ name: SETTING_TOOL_NAME, arguments: args })).isError).toBeFalsy();
     expect((await client.callTool({ name: FAILING_TOOL_NAME, arguments: {} })).isError).toBe(true);
-    expect(lines.map((line) => [line.method, line.tool, line.outcome])).toEqual([
+    // The SDK client also opens a GET stream, whenever it likes; it's refused, and logged, and not a call.
+    expect(lines.filter((line) => line.method === 'GET').every((line) => line.outcome === 'refused')).toBe(true);
+    const calls = lines.filter((line) => line.method !== 'GET');
+    expect(calls.map((line) => [line.method, line.tool, line.outcome])).toEqual([
       ['initialize', null, 'ok'],
       ['notifications/initialized', null, 'ok'],
       ['tools/list', null, 'ok'],
       ['tools/call', SETTING_TOOL_NAME, 'ok'],
       ['tools/call', FAILING_TOOL_NAME, 'error'],
     ]);
-    expect(lines[3]?.arguments).toEqual({ value: 'v', api_key: MASKED, note: MASKED });
+    expect(calls[3]?.arguments).toEqual({ value: 'v', api_key: MASKED, note: MASKED });
     expect(lines.every((line) => line.token_sha256 === tokenHash(PROD_MCP_TEST_TOKEN))).toBe(true);
     expect(JSON.stringify(lines)).not.toContain(PROD_MCP_TEST_TOKEN);
   });

@@ -24,7 +24,11 @@ describe('the prod MCP with the game tools', () => {
   it('serves the debug tools to a caller with the token, and logs each call', async () => {
     const lines: CallLogLine[] = [];
     const context = buildEmptyDebugContext();
-    app = await startProdMcp(() => createDebugMcpServer(context), prodMcpEnvironment('0'), (line) => lines.push(line));
+    app = await startProdMcp(
+      () => createDebugMcpServer(context),
+      prodMcpEnvironment('0'),
+      (line) => lines.push(line),
+    );
     const port = (app?.server.address() as AddressInfo).port;
     client = new Client(TEST_CLIENT_INFO);
     await client.connect(

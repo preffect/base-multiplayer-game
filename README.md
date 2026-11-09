@@ -222,8 +222,7 @@ fixes still go through a PR; this is for diagnosis and live state. The code is
 
 - **Off unless `MCP_PORT` is set.** It then listens on that port, all addresses, with `POST /mcp` only. It won't start
   without the app's token on `MCP_BEARER_TOKEN`.
-- **The token on every call.** `Authorization: Bearer <token>`, compared in constant time; none or a wrong one gets a
-  401. On preffect-home the platform opens `MCP_PORT` to this game's own dev workspace and nothing else, and never
+- **The token on every call.** `Authorization: Bearer <token>`, compared in constant time; none or a wrong one gets a 401. On preffect-home the platform opens `MCP_PORT` to this game's own dev workspace and nothing else, and never
   routes it, so the token is a second lock, not the only one.
 - **Every call logged**, one JSON line on stdout: the method, the tool, its arguments, the outcome (`ok`, `error`,
   `unauthorized` or `refused`), the caller's address and a hash prefix of the token presented, never the token.

@@ -55,7 +55,8 @@ export function prodMcpSettings(environment: NodeJS.ProcessEnv): ProdMcpSettings
     throw new Error(`${PROD_MCP_PORT_ENV} isn't a port: ${portText}`);
   }
   const token = environment[PROD_MCP_TOKEN_ENV] ?? '';
-  if (token === '') throw new Error(`${PROD_MCP_PORT_ENV} is set, so the prod MCP needs its token on ${PROD_MCP_TOKEN_ENV}`);
+  if (token === '')
+    throw new Error(`${PROD_MCP_PORT_ENV} is set, so the prod MCP needs its token on ${PROD_MCP_TOKEN_ENV}`);
   return { port, token };
 }
 
@@ -78,7 +79,11 @@ export function requestedCalls(body: unknown): RequestedCall[] {
   const messages: unknown[] = Array.isArray(body) ? body : [body];
   return messages.flatMap((message): RequestedCall[] => {
     if (message === null || typeof message !== 'object') return [];
-    const { id, method, params } = message as { id?: unknown; method?: unknown; params?: { name?: unknown; arguments?: unknown } };
+    const { id, method, params } = message as {
+      id?: unknown;
+      method?: unknown;
+      params?: { name?: unknown; arguments?: unknown };
+    };
     if (typeof method !== 'string') return [];
     const isToolCall = method === TOOLS_CALL_METHOD;
     return [
@@ -110,7 +115,14 @@ function callLogger(request: FastifyRequest, settings: ProdMcpSettings, write: C
   return (call, outcome) =>
     write(
       callLogLine(
-        { caller: request.socket.remoteAddress, method: call.method, tool: call.tool, arguments: call.arguments, outcome, presentedToken: presented },
+        {
+          caller: request.socket.remoteAddress,
+          method: call.method,
+          tool: call.tool,
+          arguments: call.arguments,
+          outcome,
+          presentedToken: presented,
+        },
         settings.token,
       ),
     );
@@ -171,7 +183,12 @@ async function answerMcpRequest(
   }
 }
 
-function routes(app: FastifyInstance, createServer: ProdMcpServerFactory, settings: ProdMcpSettings, write: CallLogWriter): void {
+function routes(
+  app: FastifyInstance,
+  createServer: ProdMcpServerFactory,
+  settings: ProdMcpSettings,
+  write: CallLogWriter,
+): void {
   app.addHook('preHandler', async (request, reply) => {
     if (tokenMatches(presentedToken(request.headers.authorization), settings.token)) return undefined;
     const logCall = callLogger(request, settings, write);
@@ -181,14 +198,23 @@ function routes(app: FastifyInstance, createServer: ProdMcpServerFactory, settin
       .header('www-authenticate', 'Bearer')
       .send(jsonRpcErrorBody(JSON_RPC_SERVER_ERROR, 'The prod MCP needs the app token'));
   });
-  app.post(PROD_MCP_PATH, (request, reply) => answerMcpRequest(createServer, request, reply, callLogger(request, settings, write)));
+  app.post(PROD_MCP_PATH, (request, reply) =>
+    answerMcpRequest(createServer, request, reply, callLogger(request, settings, write)),
+  );
   // Stateless mode has no stream to open (GET) or session to end (DELETE).
   app.route({
     method: ['GET', 'DELETE'],
     url: PROD_MCP_PATH,
     handler: async (request, reply) => {
-      callLogger(request, settings, write)({ id: undefined, method: request.method, tool: undefined, arguments: undefined }, 'refused');
-      return reply.code(HTTP_METHOD_NOT_ALLOWED).header('allow', 'POST').send(jsonRpcErrorBody(JSON_RPC_SERVER_ERROR, 'Method not allowed.'));
+      callLogger(
+        request,
+        settings,
+        write,
+      )({ id: undefined, method: request.method, tool: undefined, arguments: undefined }, 'refused');
+      return reply
+        .code(HTTP_METHOD_NOT_ALLOWED)
+        .header('allow', 'POST')
+        .send(jsonRpcErrorBody(JSON_RPC_SERVER_ERROR, 'Method not allowed.'));
     },
   });
 }

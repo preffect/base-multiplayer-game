@@ -23,11 +23,15 @@ describe('maskArguments', () => {
 
   it('masks at any depth, in objects and arrays', () => {
     const args = { outer: { password: 'x', list: [{ secret: 'y', name: 'kept' }] } };
-    expect(maskArguments(args, TOKEN)).toEqual({ outer: { password: MASKED, list: [{ secret: MASKED, name: 'kept' }] } });
+    expect(maskArguments(args, TOKEN)).toEqual({
+      outer: { password: MASKED, list: [{ secret: MASKED, name: 'kept' }] },
+    });
   });
 
   it("masks any value that holds the app's token anywhere, whatever its name", () => {
-    expect(maskArguments({ note: TOKEN, list: [TOKEN], header: `Bearer ${TOKEN}`, deep: { a: [`x${TOKEN}y`] } }, TOKEN)).toEqual({
+    expect(
+      maskArguments({ note: TOKEN, list: [TOKEN], header: `Bearer ${TOKEN}`, deep: { a: [`x${TOKEN}y`] } }, TOKEN),
+    ).toEqual({
       note: MASKED,
       list: [MASKED],
       header: MASKED,
@@ -37,7 +41,9 @@ describe('maskArguments', () => {
 
   it('cuts a long value short', () => {
     const long = 'a'.repeat(LONGEST_LOGGED_VALUE + 1);
-    expect(maskArguments({ text: long }, TOKEN)).toEqual({ text: `${'a'.repeat(LONGEST_LOGGED_VALUE)}${TRUNCATION_MARK}` });
+    expect(maskArguments({ text: long }, TOKEN)).toEqual({
+      text: `${'a'.repeat(LONGEST_LOGGED_VALUE)}${TRUNCATION_MARK}`,
+    });
     expect(maskArguments({ text: 'a'.repeat(LONGEST_LOGGED_VALUE) }, TOKEN)).toEqual({
       text: 'a'.repeat(LONGEST_LOGGED_VALUE),
     });
@@ -100,7 +106,14 @@ describe('callLogLine', () => {
 
   it('logs no caller, tool or token as null', () => {
     const line = callLogLine(
-      { caller: undefined, method: 'GET', tool: undefined, arguments: undefined, outcome: 'refused', presentedToken: '' },
+      {
+        caller: undefined,
+        method: 'GET',
+        tool: undefined,
+        arguments: undefined,
+        outcome: 'refused',
+        presentedToken: '',
+      },
       TOKEN,
     );
     expect(line).toMatchObject({ caller: null, tool: null, arguments: {}, token_sha256: null, outcome: 'refused' });
