@@ -214,6 +214,46 @@ Claude Code can inspect live state via tools such as:
 - `debug_get_game_state` — the full game-state blob (wired up by your game via
   `DebugContext.getRoomGameState(gameId)`)
 
+## Prod MCP (`/mcp` on `MCP_PORT`)
+
+The same tools, writes included, for this game's dev workspace to debug its prod instance (preffect-home #73). Code
+fixes still go through a PR; this is for diagnosis and live state. The code is
+`packages/server/src/mcp/prod-mcp-http.ts` and `call-log.ts`, and this section is who can reach it:
+
+- **Off unless `MCP_PORT` is set.** It then listens on that port, all addresses, with `POST /mcp` only. It won't start
+  without the app's token on `MCP_BEARER_TOKEN`.
+- **The token on every call.** `Authorization: Bearer <token>`, compared in constant time; none or a wrong one gets a 401. On preffect-home the platform opens `MCP_PORT` to this game's own dev workspace and nothing else, and never
+  routes it, so the token is a second lock, not the only one.
+- **Every call logged**, one JSON line on stdout: the method, the tool, its arguments, the outcome (`ok`, `error`,
+  `unauthorized` or `refused`), the caller's address and a hash prefix of the token presented, never the token.
+  Arguments named like token, secret, password, key or auth are masked at any depth, as is any value that holds the
+  token anywhere, and long values are cut at 200 characters.
+
+On preffect-home, the game's `service.yaml` has the port and the token, and the platform sets `MCP_PORT` from the
+port, as it sets `PORT`:
+
+```yaml
+ports:
+  - { name: web, port: 4400 }
+  - { name: mcp, port: 9090 }
+devAccess: { mcpPort: mcp }
+secrets:
+  - { env: MCP_BEARER_TOKEN, path: <game>/mcp, key: token }
+```
+
+The dev workspace gets the prod MCP's address on `PROD_MCP_URL` and the token on `PROD_MCP_TOKEN`. Its `.mcp.json`
+adds the prod server beside `game-debug`:
+
+```json
+"game-prod": {
+  "type": "http",
+  "url": "${PROD_MCP_URL}",
+  "headers": { "Authorization": "Bearer ${PROD_MCP_TOKEN}" }
+}
+```
+
+A game made before this calls `startProdMcp` in its `index.ts` after `server.listen`, as the template's does.
+
 ## ha-router integration
 
 This template targets the local `ha-router` Traefik reverse proxy. Ready-to-copy integration

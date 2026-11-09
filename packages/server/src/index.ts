@@ -5,7 +5,8 @@ import { LobbyManager } from './lobby/lobby-manager.js';
 import { registerWebSocketHandler } from './ws/websocket-handler.js';
 import type { Connection } from './ws/connection.js';
 import { DEBUG_MCP_PATH } from './mcp/debug-mcp-http.js';
-import { mountDebugMcp } from './mcp/mcp-server.js';
+import { createDebugMcpServer, mountDebugMcp } from './mcp/mcp-server.js';
+import { PROD_MCP_PATH, startProdMcp } from './mcp/prod-mcp-http.js';
 import { defaultGameModuleFactory } from './game/game-module.js'; // TODO(init): swap for real factory
 
 const PORT = Number(process.env.PORT) || DEFAULT_SERVER_PORT;
@@ -43,6 +44,11 @@ async function main(): Promise<void> {
   }
 
   await server.listen({ port: PORT, host: '0.0.0.0' });
+
+  // The prod MCP, the same tools on a port of their own for this game's dev workspace (README, "Prod MCP"):
+  // off unless MCP_PORT is set, and only with the app's token.
+  const prodMcp = await startProdMcp(() => createDebugMcpServer({ lobbyManager, connections }));
+  if (prodMcp !== undefined) server.log.info(`Prod MCP on ${PROD_MCP_PATH}, port ${process.env.MCP_PORT}`);
 }
 
 main().catch((err) => {
