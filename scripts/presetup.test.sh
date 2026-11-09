@@ -129,45 +129,6 @@ for agent in "$repo_root"/.claude/agents/*.md; do
 done
 check "the render script is render-for-sync.sh" listed "render scripts/render-for-sync.sh"
 check "which is template-only, so retired" listed "retired scripts/render-for-sync.sh"
-# preffect-dev sync-template fingerprints the render script and every file it sources, and refuses any
-# other way of sourcing, which would stop every game's sync. Checked here too, because the sync cases below
-# need preffect-dev. The one form: on a line of its own, a plain path below the sourcing file's folder.
-# shellcheck disable=SC2016 # The form is literal text, never expanded.
-SOURCED_BESIDE='"$(dirname "${BASH_SOURCE[0]}")/'
-SOURCED_PATH='^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$'
-# source or . where bash runs it as a command, but not at the start of its line, as after && or ; or then.
-SOURCE_ANYWHERE='(^|[;&|({!]|\b(then|do|else|elif|if|while|until|builtin|command|exec)\b)[[:space:]]*(source|\.)[[:space:]]'
-SOURCE_DEPTH_LIMIT=4 # as the sync's
-render_sources_use_the_followed_form() { # <file> [depth]
-  local file="$1" depth="${2:-0}" line argument sourced
-  while IFS= read -r line; do
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue
-    if [[ "$line" =~ ^[[:space:]]*(source|\.)[[:space:]]+(.*[^[:space:]])[[:space:]]*$ ]]; then
-      argument="${BASH_REMATCH[2]%%  #*}"
-      sourced="${argument#"$SOURCED_BESIDE"}"
-      sourced="${sourced%\"}"
-      if [[ "$argument" != "$SOURCED_BESIDE"*\" || ! "$sourced" =~ $SOURCED_PATH || "/$sourced/" == */../* ]]; then
-        echo "$file sources $argument, not as $SOURCED_BESIDE<path>\" below its folder"
-        return 1
-      fi
-      [[ -f "$(dirname "$file")/$sourced" ]] || { echo "$file sources $sourced, which doesn't exist"; return 1; }
-      ((depth < SOURCE_DEPTH_LIMIT)) || { echo "$file nests sources more than $SOURCE_DEPTH_LIMIT deep"; return 1; }
-      render_sources_use_the_followed_form "$(dirname "$file")/$sourced" $((depth + 1)) || return 1
-    elif grep -qE -- "$SOURCE_ANYWHERE" <<<"$line"; then
-      echo "$file sources in a way the sync can't follow: $line"
-      return 1
-    fi
-  done <"$file"
-}
-check "the render script sources only in the form the sync follows" \
-  render_sources_use_the_followed_form "$repo_root/scripts/render-for-sync.sh"
-refused_sources="$sandbox/refused-sources"
-mkdir -p "$refused_sources/lib"
-cp "$repo_root/scripts/lib/identity.sh" "$refused_sources/lib/identity.sh"
-sed 's|/lib/identity.sh"|/lib/../lib/identity.sh"|' "$repo_root/scripts/render-for-sync.sh" >"$refused_sources/dotdot.sh"
-sed 's|^source "|[[ -f x ]] \&\& source "|' "$repo_root/scripts/render-for-sync.sh" >"$refused_sources/conditional.sh"
-check "and the check catches a source through .." fails render_sources_use_the_followed_form "$refused_sources/dotdot.sh"
-check "and one the sync can't follow" fails render_sources_use_the_followed_form "$refused_sources/conditional.sh"
 for extended in validate.sh run.sh vitest.tiers.ts .jscpd.json .mcp.json; do
   check "$extended is shared, because games extend it" listed "shared $extended"
 done
@@ -371,6 +332,25 @@ sync_cases_can_run() { # <block name>
   echo "skip $count $1 sync cases: $reason"
   return 1
 }
+
+# The sync refuses, at fetch, render code whose sources it can't follow, which would stop every game's
+# sync. The tool's own check catches that here first. It needs only preffect-dev, not prettier.
+if [[ -n "$sync_tool" ]]; then
+  check "the sync can follow every source in the render code" "$sync_tool" sync-template --check-render "$repo_root"
+  refused_render="$sandbox/refused-render"
+  mkdir -p "$refused_render/scripts/lib"
+  git -C "$refused_render" init -q
+  printf 'format 1\nrender scripts/render-for-sync.sh\n' >"$refused_render/template-files.txt"
+  cp "$repo_root/scripts/lib/identity.sh" "$refused_render/scripts/lib/identity.sh"
+  sed 's|^source "|[[ -f x ]] \&\& source "|' "$repo_root/scripts/render-for-sync.sh" >"$refused_render/scripts/render-for-sync.sh"
+  check "and the check refuses a source it can't follow" \
+    says "sources in a way the sync can't follow" fails "$sync_tool" sync-template --check-render "$refused_render"
+elif [[ -n "${PREFFECT_DEV:-}" ]]; then
+  check "the render code check can run in the standard dev environment (preffect-dev isn't on PATH)" false
+else
+  skipped=$((skipped + 2))
+  echo "skip 2 render code cases: preffect-dev isn't on PATH"
+fi
 
 # sync cases: main
 if sync_cases_can_run main; then
