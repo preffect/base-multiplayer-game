@@ -21,7 +21,7 @@ export const DISCONNECT_GRACE_MS = 30_000;
 /** localStorage key the client uses to persist its stable identity. */
 export const CLIENT_ID_STORAGE_KEY = 'base-mp.clientId';
 
-/** Bounds enforced on lobby player descriptors (kept in sync with server zod schemas). */
+/** Bounds the server's zod schemas enforce on lobby names, in `String.length` units (UTF-16 code units). */
 export const PLAYER_NAME_MAX_LEN = 20;
 export const GAME_NAME_MAX_LEN = 40;
 /** Inclusive avatar index range for the generic lobby. TODO(game): adjust if needed. */

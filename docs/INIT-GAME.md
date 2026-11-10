@@ -37,7 +37,8 @@ the whole game** — later build phases go in the roadmap issue until the user a
 ## How the template is wired (READ before interviewing)
 
 - **One Fastify server on port 4400** serves `/api` + `/ws` + `/debug-mcp`. The Angular
-  client runs on **4402** and proxies those three paths to 4400 (`packages/client/proxy.conf.json`).
+  client runs on **4402** and proxies `/api` and `/ws` to 4400 (`packages/client/proxy.conf.json`);
+  `/debug-mcp` is reached on 4400 directly, dev only and loopback only (README, "MCP visibility").
 - **Standards (READ and enforce):** `docs/ENGINEERING.md` (the `./validate.sh all` gate, testing,
   TS/lint, architecture, Definition of Done), `docs/ASSET-GENERATION.md` (the code-drawn visual
   quality bar), and `docs/AUDIO-PIPELINE.md` (the opt-in Google-default audio pipeline). Every edit
@@ -210,7 +211,7 @@ drainLatestSnapshot, host? })`: an input loop calling `send(gameInput)` (wraps
 ### 5. Ports & config
 
 The ports come from `PORTS.env` (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — do NOT change them.
-Verify they are consistent across `packages/server/src/index.ts`,
+Verify they are consistent across `packages/shared/src/constants.ts`,
 `packages/client/angular.json`, `packages/client/proxy.conf.json`,
 `.devcontainer/devcontainer.json`, `dev-container.sh`, `run.sh`, `.mcp.json`, `CLAUDE.md`
 (they should already match, baked in by `presetup.sh`; state "no change" if so, otherwise fix
@@ -260,4 +261,4 @@ game existed, in the same PR as `docs/GAME-DESIGN.md`:
   description and its public URL;
 - make sure `package.json`'s root `description` names this game.
 
-Nothing else in the repo refers to this prompt; `scripts/sync-from-template.sh` never brings it back.
+Nothing else in the repo refers to this prompt; `preffect-dev sync-template` never brings it back.

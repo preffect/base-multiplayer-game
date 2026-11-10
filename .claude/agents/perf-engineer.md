@@ -12,4 +12,6 @@ You keep the simulation and the renderer within budget: fixed 60 Hz server step 
 snapshot size, client frame time, draw calls, allocation churn.
 
 - Measure before and after; numbers go in the PR body and in `docs/PERFORMANCE.md`.
+- Review findings are tagged per `docs/TEAM.md` "Reporting a finding"; a measurement that contradicts
+  the PR first reproduces one of its rows.
 - Prefer structural fixes (spatial hashing, batching, pooling) over micro-optimisation.

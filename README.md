@@ -1,7 +1,7 @@
 # Base Multiplayer Game
 
 Repo: https://github.com/preffect/base-multiplayer-game — `main` is PR-protected (see `docs/WORKFLOW.md`);
-template fixes are reviewed like game fixes, then pulled into games with `scripts/sync-from-template.sh`.
+template fixes are reviewed like game fixes, then pulled into games with `preffect-dev sync-template`.
 
 A reusable **multiplayer game template**: a working client/server multiplayer skeleton
 (native WebSocket transport, lobby, rooms, a 60 Hz broadcast loop, reconnection/identity,
@@ -24,11 +24,11 @@ games are created as siblings of the template folder.
 
 It copies the template, picks free ports, instantiates (`presetup.sh`), registers the game in the
 live **ha-router** (route + landing card, DNS check), builds and starts the **devcontainer**
-non-interactively, runs `./validate.sh all` (which builds `packages/shared` — required before the
-client can compile) and `./run.sh`, verifies `https://<slug>.preffect-ha.preffect-home.net` through
-Traefik, and sets up **GitHub** (repo, labels, milestones, project board + views, groundwork epics,
-branch ruleset) via `scripts/github-setup.sh`. Flags: `--no-start`, `--no-ha-router`, `--no-github`,
-`--private`. Each step is idempotent and can be re-run on its own (`./dev-container.sh`,
+non-interactively, runs `./validate.sh all` and `./run.sh`, verifies
+`https://<slug>.preffect-ha.preffect-home.net` through Traefik, and sets up **GitHub** (repo, labels,
+milestones, project board + views, groundwork epics, branch ruleset) via `scripts/github-setup.sh`.
+Flags: `--no-start`, `--no-ha-router`, `--no-github`, `--private`. With `--no-github`, a game has no
+git repo until you run `scripts/github-setup.sh`. Each step is idempotent and can be re-run on its own (`./dev-container.sh`,
 `./scripts/github-setup.sh`, `ha-router/HA-ROUTER.md`).
 
 Then, **inside the devcontainer** (where every agent runs):
@@ -49,16 +49,48 @@ executing the build tickets that `docs/INIT-GAME.md` files against the three ext
 This README is the **template's**; `presetup.sh` replaces it in the game copy with
 `README.game.md` (the game-facing README), so a game never describes itself as a template.
 
-**Keeping games in sync:** make template-level fixes here first, then run
-`./scripts/sync-from-template.sh` inside a game (host) to pull the template-owned files across
-with the game's identity re-applied, and land the diff via a PR.
+**Keeping games in sync:** make template-level fixes here first, then run `preffect-dev sync-template`
+in a game to pull the template-owned files across with the game's identity re-applied, and land the
+diff via a PR. `template-files.txt` says which files the template owns, shares or has retired, and the
+game's `.template-commit` records the template commit it last synced from. The command is in the
+standard dev image; in a devcontainer or on the host, run it from a preffect-home checkout as
+`images/dev-base/preffect-dev sync-template`. It formats what it brings in with the game's own prettier,
+so the game's dependencies must already be installed, by the devcontainer or a dev pod; it never installs
+anything, and never runs `pnpm install` on the host. A sync needs a clean tree, so commit each one before
+the next, and rebuild the devcontainer if `.devcontainer/*` changed. It formats only the files it brings
+in: an owned file that an earlier sync left unformatted stays as it is until the template changes it, and
+`./validate.sh lint` points it out. A game's first sync, with no base, lists every file that differs, but
+adds the owned files the game doesn't have yet. After the game upgrades prettier, files it hasn't changed
+can be listed for a merge once, because the base is formatted with the new version. A prettier plugin named
+in `.prettierrc` won't load during a sync.
+
+**Moving an existing game onto the current dependencies:** a sync never touches `package.json`,
+`packages/**`, `pnpm-workspace.yaml` or the lockfile, so a game keeps its old versions and their
+advisories until someone does this by hand, in a PR:
+
+1. In the root and `packages/*/package.json`: `vitest` and `@vitest/coverage-v8` to `^4.1.12`,
+   `eslint` to `^10.4.0`, `zod` to `^4.6.7`, and `engines.pnpm` to `>=10.16.0 <11`.
+2. Replace `vitest.workspace.ts` with a `vitest.config.ts` that sets `test.projects`. vitest 4 has
+   no `defineWorkspace`.
+3. In `packages/client/angular.json`, use the `@angular/build` builders, then remove
+   `@angular-devkit/build-angular`.
+4. Copy `minimumReleaseAge` and `overrides` from this template's `pnpm-workspace.yaml`.
+5. Delete `pnpm-lock.yaml` and run `pnpm install`.
+6. Check the game's zod schemas: `.max()` now counts code points, `.passthrough()` is `.loose()`,
+   a `z.unknown()` field must be present, and `z.number()` rejects Infinity.
+7. Expect coverage to read lower: vitest 4 counts differently. Floors only move up
+   (`docs/ENGINEERING.md` §2.5), so add the missing tests.
+
+**Changing instantiation:** run `scripts/presetup.test.sh` after changing `presetup.sh`, `new-game.sh`
+or `scripts/lib/identity.sh`. Like `scripts/validate-cache.test.sh`, it runs by hand, not from
+`./validate.sh`. It stays in the template: `presetup.sh` removes it from a game.
 
 <details><summary>Manual steps (what new-game.sh automates)</summary>
 
-1. `cp -r base-multiplayer-game my-game && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
+1. `cp -r base-multiplayer-game my-game && rm -rf my-game/.git && cd my-game && ./presetup.sh` _(host)_ <!-- KEEP_TEMPLATE_NAME -->
 2. ha-router: `ha-router/HA-ROUTER.md` _(host; per-host DNS record needed)_
 3. `DEVCONTAINER_YES=1 ./dev-container.sh` _(host; non-interactive when no TTY)_
-4. `./validate.sh all && ./run.sh` _(container; validate first — it builds shared)_
+4. `./validate.sh all && ./run.sh` _(container)_
 5. `./scripts/github-setup.sh` _(host; needs `gh` with the `project` scope)_
 
 </details>
@@ -108,7 +140,7 @@ packages/client   — Angular client: WS service, identity, room browser; game s
 ## Ports
 
 - **4400** — game server (Fastify: REST API `/api` + WebSocket `/ws` + debug MCP `/debug-mcp`, single instance)
-- **4402** — Angular dev server (proxies `/api`, `/ws`, `/debug-mcp` to the server)
+- **4402** — Angular dev server (proxies `/api` and `/ws` to the server; not `/debug-mcp`, which is reached on 4400 directly)
 
 ## How to run
 
@@ -154,13 +186,73 @@ Then open two browser tabs at the client to exercise the lobby → create → jo
 ## MCP visibility (`/debug-mcp`)
 
 The server exposes an HTTP MCP endpoint (`game-debug`) at `http://localhost:4400/debug-mcp`
-(configured in `.mcp.json`). Claude Code can inspect live state via tools such as:
+(configured in `.mcp.json`). It is a dev tool, and this section is the one description of who can
+reach it (the code is `packages/server/src/mcp/debug-mcp-http.ts` and `loopback-guard.ts`):
+
+- **Dev only.** It is mounted only when `DEBUG_MCP=1`. The server's `dev` script sets that by
+  default, so `pnpm dev` and `./run.sh` have it; `DEBUG_MCP=0 ./run.sh` turns it off. `start` does
+  not set it, so a production start has no `/debug-mcp` at all (404).
+- **This machine only.** It answers (otherwise 403) only when all three hold: the connection comes
+  from loopback (`127.0.0.1`, `::1`); the Host header is `localhost`, `127.0.0.1` or `[::1]`, with
+  any port; and the Origin header is absent or one of those. The peer check stops other machines,
+  which can forge a Host header but not their address; the Host and Origin checks stop a web page
+  using DNS rebinding.
+- **Devcontainer.** Run the agent inside the container. A host-side agent reaching the published
+  port arrives from Docker's bridge gateway, the same address every other outside client arrives
+  from, so it is refused.
+- **From outside the workspace** (a dev pod or a Coder workspace), use `kubectl port-forward` or
+  `coder port-forward` and connect to `localhost`. A Coder app URL, a Service name or the box's LAN
+  address is refused.
+- **POST only.** GET and DELETE answer 405: in the SDK's stateless mode there is no stream to open
+  or session to end.
+
+Claude Code can inspect live state via tools such as:
 
 - `debug_get_connections` — active WebSocket connections
 - `debug_get_performance` / `debug_get_room_performance` — tick timing / broadcast telemetry
 - `debug_list_games` / `debug_get_room` — lobby and room membership
 - `debug_get_game_state` — the full game-state blob (wired up by your game via
   `DebugContext.getRoomGameState(gameId)`)
+
+## Prod MCP (`/mcp` on `MCP_PORT`)
+
+The same tools, writes included, for this game's dev workspace to debug its prod instance (preffect-home #73). Code
+fixes still go through a PR; this is for diagnosis and live state. The code is
+`packages/server/src/mcp/prod-mcp-http.ts` and `call-log.ts`, and this section is who can reach it:
+
+- **Off unless `MCP_PORT` is set.** It then listens on that port, all addresses, with `POST /mcp` only. It won't start
+  without the app's token on `MCP_BEARER_TOKEN`.
+- **The token on every call.** `Authorization: Bearer <token>`, compared in constant time; none or a wrong one gets a 401. On preffect-home the platform opens `MCP_PORT` to this game's own dev workspace and nothing else, and never
+  routes it, so the token is a second lock, not the only one.
+- **Every call logged**, one JSON line on stdout: the method, the tool, its arguments, the outcome (`ok`, `error`,
+  `unauthorized` or `refused`), the caller's address and a hash prefix of the token presented, never the token.
+  Arguments named like token, secret, password, key or auth are masked at any depth, as is any value that holds the
+  token anywhere, and long values are cut at 200 characters.
+
+On preffect-home, the game's `service.yaml` has the port and the token, and the platform sets `MCP_PORT` from the
+port, as it sets `PORT`:
+
+```yaml
+ports:
+  - { name: web, port: 4400 }
+  - { name: mcp, port: 9090 }
+devAccess: { mcpPort: mcp }
+secrets:
+  - { env: MCP_BEARER_TOKEN, path: <game>/mcp, key: token }
+```
+
+The dev workspace gets the prod MCP's address on `PROD_MCP_URL` and the token on `PROD_MCP_TOKEN`. Its `.mcp.json`
+adds the prod server beside `game-debug`:
+
+```json
+"game-prod": {
+  "type": "http",
+  "url": "${PROD_MCP_URL}",
+  "headers": { "Authorization": "Bearer ${PROD_MCP_TOKEN}" }
+}
+```
+
+A game made before this calls `startProductionMcp` in its `index.ts` after `server.listen`, as the template's does.
 
 ## ha-router integration
 

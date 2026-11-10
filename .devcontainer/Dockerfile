@@ -49,6 +49,9 @@ USER vscode
 RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
 
+# Without this, ng build / test / serve stop at an interactive analytics prompt on a TTY.
+ENV NG_CLI_ANALYTICS=false
+
 # Copy tmux config
 COPY .tmux.conf /tmp/.tmux.conf
 RUN cp /tmp/.tmux.conf /root/.tmux.conf && \

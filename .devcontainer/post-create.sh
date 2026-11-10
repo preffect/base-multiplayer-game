@@ -8,7 +8,7 @@ set -euo pipefail
 #   * git pushes over HTTPS using the mounted host gh auth (no SSH key in the container):
 #     ssh remotes are rewritten to https and gh acts as the credential helper
 #   * git identity from the host's gh account when the container has none
-#   * pnpm install + prettier normalisation
+#   * pnpm install, then build the shared package, which typecheck and test need first
 # System-level git config is used because /home/vscode/.gitconfig may be a read-only mount.
 # ---------------------------------------------------------------------------
 sudo git config --system --add safe.directory /workspace
@@ -22,4 +22,4 @@ if [[ -z "$(git config --get user.name || true)" ]] && gh auth status >/dev/null
 fi
 cd /workspace
 pnpm install
-pnpm exec prettier --write . >/dev/null 2>&1 || true
+pnpm build:shared

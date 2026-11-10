@@ -30,58 +30,58 @@ and read only that line range (`sed -n 'start,endp' docs/FILE.md`). Regenerate a
 - **7. `.env.example` keys to add** (L203–228): Add these to the template's `.env.example` (copy to `.env`, which is gitignored).
 - **8. Pipeline invariants (enforce)** (L229–237): and ask before `sync`.
 
-## ENGINEERING.md (290 lines)
+## ENGINEERING.md (292 lines)
 
-- **Engineering Standards** (L1–290): These are enforceable rules, not suggestions.
-- **1. The Validation Gate (`./validate.sh`)** (L12–65): `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`, or `pnpm --filter ...
-- **2. Testing Standards** (L66–148)
-  - **2.1 Every change is tested** (L68–81): (functions, classes, reducers, state machines, message handlers, math, generation), extract it into pure, testable functions and write tests covering the happy path, edge cases, and error cases.
-  - **2.2 Unit vs integration split** (L82–109): isolation — no cross-subsystem orchestration, runs in <100ms.
-  - **2.3 What must be covered (template-specific)** (L110–129): state + snapshot; invalid input is rejected/ignored.
-  - **2.4 Determinism** (L130–138): simulation is reproducible and tests can assert exact outputs.
-  - **2.5 Coverage floors** (L139–148): Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in `packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and `./validate.sh test` fails when a run drops below it.
-- **3. TypeScript & Lint Strictness** (L149–201)
-  - **3.1 Required tsconfig flags (already set in `tsconfig.base.json`)** (L151–166): Do not weaken these.
-  - **3.2 Lint / format rules** (L167–182): means "intentionally unused" — it is not a license to leave a stub instead of real code.
-  - **3.3 Forbidden escape hatches** (L183–201): without a justification.
-- **4. Architecture Conventions (enforce on every change)** (L202–238): imports from `server` or `client`.
-- **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L239–269): instead of `./validate.sh`.
-- **6. Definition of Done (checklist — ALL must hold)** (L270–290): path, edge cases, and error cases.
+- **Engineering Standards** (L1–292): These are enforceable rules, not suggestions.
+- **1. The Validation Gate (`./validate.sh`)** (L12–67): `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`, or `pnpm --filter ...
+- **2. Testing Standards** (L68–150)
+  - **2.1 Every change is tested** (L70–83): (functions, classes, reducers, state machines, message handlers, math, generation), extract it into pure, testable functions and write tests covering the happy path, edge cases, and error cases.
+  - **2.2 Unit vs integration split** (L84–111): isolation — no cross-subsystem orchestration, runs in <100ms.
+  - **2.3 What must be covered (template-specific)** (L112–131): state + snapshot; invalid input is rejected/ignored.
+  - **2.4 Determinism** (L132–140): simulation is reproducible and tests can assert exact outputs.
+  - **2.5 Coverage floors** (L141–150): Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in `packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and `./validate.sh test` fails when a run drops below it.
+- **3. TypeScript & Lint Strictness** (L151–203)
+  - **3.1 Required tsconfig flags (already set in `tsconfig.base.json`)** (L153–168): Do not weaken these.
+  - **3.2 Lint / format rules** (L169–184): means "intentionally unused" — it is not a license to leave a stub instead of real code.
+  - **3.3 Forbidden escape hatches** (L185–203): without a justification.
+- **4. Architecture Conventions (enforce on every change)** (L204–240): imports from `server` or `client`.
+- **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L241–271): instead of `./validate.sh`.
+- **6. Definition of Done (checklist — ALL must hold)** (L272–292): path, edge cases, and error cases.
 
-## INIT-GAME.md (263 lines)
+## INIT-GAME.md (264 lines)
 
-- **Define Your Multiplayer Game** (L1–263): You are running this prompt against a game scaffolded from `base-multiplayer-game` — a working multiplayer TEMPLATE whose game definition is DEFERRED.
+- **Define Your Multiplayer Game** (L1–264): You are running this prompt against a game scaffolded from `base-multiplayer-game` — a working multiplayer TEMPLATE whose game definition is DEFERRED.
 - **Where this fits in the process** (L26–36): `new-game.sh` already: registered the game in ha-router, built the devcontainer, verified the public URL, and seeded GitHub with the groundwork epics (devcontainer verified, tooling/MCP, team, quality gates, testing foundations, design, architecture/build plan) plus the project board and branch ruleset.
-- **How the template is wired (READ before interviewing)** (L37–97): client runs on 4402 and proxies those three paths to 4400 (`packages/client/proxy.conf.json`).
-- **DEFERRED REQUIREMENTS you must resolve (the 12-item list)** (L98–130): These are the decisions the template intentionally left open.
-- **Interview — ASK THESE QUESTIONS (group sensibly; do NOT generate until answered)** (L131–158): Ask conversationally; you may group related questions.
-- **After answers — PRODUCE `docs/GAME-DESIGN.md` and the first build epic** (L159–263): `docs/GAME-DESIGN.md` holds sections 1, 5 and 6 below plus every rule and number the interview settled (constants named as they will appear in `packages/shared/src/constants/*`).
-  - **1. Game Definition** (L176–180): Name, theme, slug, display title, ports, icon hue, player model, tick model, win/lose, late-join policy, persistence decision, trust boundary.
-  - **2. Shared type edits — `packages/shared/src/types/messages.ts`** (L181–186): Exact `GameInput` interface, exact `GameSnapshot` interface, exact `GameSessionConfig` fields (replacing the `unknown` / `{ maxPlayers }` TODO hooks).
-  - **3. Server edits** (L187–199): `z.unknown()` with the real input schema; add fields to `createGameSchema.config`.
-  - **4. Client edits** (L200–209): drainLatestSnapshot, host?
-  - **5. Ports & config** (L210–218): The ports come from `PORTS.env` (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — do NOT change them.
-  - **6. Public URL** (L219–223): Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the slug from `PORTS.env`.
-  - **7. Verification** (L224–248): Run everything INSIDE the devcontainer (open it from the host with `./dev-container.sh`): `pnpm install`; `./validate.sh all`; `./run.sh`; open two browser tabs on the client port; confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
-  - **8. Cleanup — the game is now defined** (L249–263): As the last action of this session, remove the scaffolding that only made sense before the game existed, in the same PR as `docs/GAME-DESIGN.md`:
+- **How the template is wired (READ before interviewing)** (L37–98): client runs on 4402 and proxies `/api` and `/ws` to 4400 (`packages/client/proxy.conf.json`); `/debug-mcp` is reached on 4400 directly, dev only and loopback only (README, "MCP visibility").
+- **DEFERRED REQUIREMENTS you must resolve (the 12-item list)** (L99–131): These are the decisions the template intentionally left open.
+- **Interview — ASK THESE QUESTIONS (group sensibly; do NOT generate until answered)** (L132–159): Ask conversationally; you may group related questions.
+- **After answers — PRODUCE `docs/GAME-DESIGN.md` and the first build epic** (L160–264): `docs/GAME-DESIGN.md` holds sections 1, 5 and 6 below plus every rule and number the interview settled (constants named as they will appear in `packages/shared/src/constants/*`).
+  - **1. Game Definition** (L177–181): Name, theme, slug, display title, ports, icon hue, player model, tick model, win/lose, late-join policy, persistence decision, trust boundary.
+  - **2. Shared type edits — `packages/shared/src/types/messages.ts`** (L182–187): Exact `GameInput` interface, exact `GameSnapshot` interface, exact `GameSessionConfig` fields (replacing the `unknown` / `{ maxPlayers }` TODO hooks).
+  - **3. Server edits** (L188–200): `z.unknown()` with the real input schema; add fields to `createGameSchema.config`.
+  - **4. Client edits** (L201–210): drainLatestSnapshot, host?
+  - **5. Ports & config** (L211–219): The ports come from `PORTS.env` (`SERVER_PORT`/`CLIENT_PORT`/`SLUG`) — do NOT change them.
+  - **6. Public URL** (L220–224): Already routed by `new-game.sh` (host): `https://<slug>.preffect-ha.preffect-home.net` with the slug from `PORTS.env`.
+  - **7. Verification** (L225–249): Run everything INSIDE the devcontainer (open it from the host with `./dev-container.sh`): `pnpm install`; `./validate.sh all`; `./run.sh`; open two browser tabs on the client port; confirm the lobby → create → join → start → snapshot flow; send `player_input` and observe `game_snapshot`; query `debug_get_game_state` via the `game-debug` MCP server.
+  - **8. Cleanup — the game is now defined** (L250–264): As the last action of this session, remove the scaffolding that only made sense before the game existed, in the same PR as `docs/GAME-DESIGN.md`:
 
-## TEAM.md (159 lines)
+## TEAM.md (174 lines)
 
-- **The agent team** (L1–159): How work on this game is done by a team of AI agents, each running inside the devcontainer as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`; quality bar: `docs/ENGINEERING.md`).
+- **The agent team** (L1–174): How work on this game is done by a team of AI agents, each running inside the devcontainer as one role, coordinated through GitHub tickets and pull requests (process rules: `docs/WORKFLOW.md`; quality bar: `docs/ENGINEERING.md`).
 - **Roles** (L7–28): `.claude/roles/_common.md` is prepended to every prompt: ground rules, git/PR mechanics, how to finish.
 - **Human dial** (L29–46): How much the human steers, set per game in `CLAUDE.md` ("Human dial: N") and changeable per phase.
 - **Running an agent** (L47–88): The roles are Claude Code agent definitions in `.claude/agents/<role>.md`, so inside the devcontainer the team lead spawns them with the Agent tool (`subagent_type: "<role>"`), where they show up in the interface with live progress and can be messaged while running.
-- **Landing a PR: the review loop** (L89–140): In session (Agent tool): spawn all round-one reviewers together — every reviewer role the table below names, each with the PR in its prompt, in one message (within the agent cap; when a builder holds a slot they still start together as soon as it frees) — read `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved threads), spawn ONE engineer for the consolidated fixes across every reviewer's threads, re-spawn only the objecting reviewers for a diff-only round two, resolve the purely mechanical round-two threads yourself, then `gh pr merge --squash --auto`.
-- **Handoffs and artifacts** (L141–154): These names supersede the ones in ticket #18: balance lives with the other constants (`data/` is git-ignored runtime state, so `data/balance.json` cannot be a reviewed artifact), and the design document is `docs/GAME-DESIGN.md` as the design tickets name it.
-- **Definition of Done (per ticket)** (L155–159): `docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or playable) the PR carries evidence from graphics-qa or gameplay-qa.
+- **Landing a PR: the review loop** (L89–155): In session (Agent tool): spawn all round-one reviewers together — every reviewer role the table below names, each with the PR in its prompt, in one message (within the agent cap; when a builder holds a slot they still start together as soon as it frees) — read `scripts/pr-threads.sh state <PR>` (one 1-point query: latest verdict per role + unresolved threads), spawn ONE engineer for the consolidated fixes across every reviewer's threads, re-spawn only the objecting reviewers for a diff-only round two, resolve the purely mechanical round-two threads yourself, then `gh pr merge --squash --auto`.
+- **Handoffs and artifacts** (L156–169): These names supersede the ones in ticket #18: balance lives with the other constants (`data/` is git-ignored runtime state, so `data/balance.json` cannot be a reviewed artifact), and the design document is `docs/GAME-DESIGN.md` as the design tickets name it.
+- **Definition of Done (per ticket)** (L170–174): `docs/ENGINEERING.md` Definition of Done, plus: the PR closed the ticket, every review thread is resolved, docs describing the behaviour were updated in the same PR, and (for anything visible or playable) the PR carries evidence from graphics-qa or gameplay-qa.
 
-## WORKFLOW.md (149 lines)
+## WORKFLOW.md (150 lines)
 
-- **Workflow — GitHub issues, project board, reviews** (L1–149): The single source of truth for how work is tracked and merged in a game built from this template.
+- **Workflow — GitHub issues, project board, reviews** (L1–150): The single source of truth for how work is tracked and merged in a game built from this template.
 - **1. Where things live** (L8–23): GitHub stores Projects under the user/org, not inside the repo; the project is _linked_ to the repo so it appears in the repo's Projects tab and only holds this repo's issues.
 - **2. Labels (category), Status (stage), assignee (ball in court)** (L24–43): design, architecture, gameplay, graphics, networking, ui, audio, qa, docs), `role:*` (the agent role that owns it), `priority:p0|p1|p2`, `epic`, `roadmap`, `needs-decision`, `pending`.
 - **3. Milestones and epics** (L44–59): gates, testing foundations) and `M1 Design` (design docs, architecture, build plan).
 - **4. Keeping the board in sync (no UI workflows)** (L60–71): The Project's UI-only automations (auto-add, auto-close) are replaced by `scripts/project-sync.sh`, which is idempotent and safe to run any time:
 - **5. Branch and PR rules** (L72–95): Every piece of work starts as a ticket — no exceptions, including template and tooling work.
-- **6. Review process (every PR)** (L96–134): and config live, test plan.
-- **7. Scripts** (L135–149): `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).
+- **6. Review process (every PR)** (L96–135): and config live, test plan.
+- **7. Scripts** (L136–150): `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).

@@ -18,4 +18,4 @@ Procedure for a PR review:
 3. Play it: start the servers (`./run.sh`), drive the game through the debug MCP / bot client,
    observe the state, screenshot key moments.
 4. Post ONE review (see code-qa for mechanics): each finding names the rule, the expected
-   behaviour from `docs/`, and what happened. `REQUEST_CHANGES` for rule breaks, `APPROVE` otherwise.
+   behaviour from `docs/`, and what happened, tagged per `docs/TEAM.md` "Reporting a finding". `REQUEST_CHANGES` for rule breaks, `APPROVE` otherwise.

@@ -9,6 +9,7 @@
     "dev:client": "pnpm --filter @base-multiplayer-game/client dev",
     "dev": "pnpm dev:server & pnpm dev:client",
     "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @base-multiplayer-game/shared build",
     "test": "pnpm -r test",
     "test:watch": "vitest",
     "lint": "eslint . && prettier --check .",
@@ -18,9 +19,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
-    "@vitest/coverage-v8": "^3.0.0",
+    "@vitest/coverage-v8": "^4.1.12",
     "angular-eslint": "^21.0.0",
-    "eslint": "^9.0.0",
+    "eslint": "^10.4.0",
     "eslint-plugin-sonarjs": "^4.2.0",
     "eslint-plugin-unicorn": "^74.0.0",
     "jscpd": "^4.0.0",
@@ -29,10 +30,10 @@
     "prettier": "^3.0.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=24.0.0",
-    "pnpm": ">=10.0.0"
+    "pnpm": ">=10.16.0 <11"
   }
 }

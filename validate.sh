@@ -6,7 +6,7 @@
 #   test         Run unit tests with coverage thresholds (pnpm -r test)
 #   integration  Run the *.integration.test.ts / *.integration.spec.ts tier plus the *.gameplay.test.ts scenarios (pnpm -r test:integration)
 #   typecheck    Run type checking (pnpm -r typecheck)
-#   lint         Run linting (eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness)
+#   lint         Run linting (eslint + prettier --check + disable-directive / TODO audit + docs/INDEX.md freshness + lockfile in step with the manifests)
 #   duplication  Run jscpd against .jscpd.json (docs/ENGINEERING.md §3.3)
 #   all          Run lint, duplication, typecheck, test in sequence
 #
@@ -243,7 +243,7 @@ run_cached() {
 
 build_shared() {
   # Build shared package so downstream .d.ts references are fresh
-  pnpm --filter @base-multiplayer-game/shared build > /dev/null 2>&1 || true
+  pnpm build:shared 2>&1
 }
 
 # Source files the standards apply to (docs/ENGINEERING.md); tests included.
@@ -284,6 +284,13 @@ run_one() {
   local output
   local rc=0
 
+  # A failed build is the reason these fail, so report that rather than what follows from it.
+  if [[ "$cmd" == test || "$cmd" == integration || "$cmd" == typecheck ]] && ! output="$(build_shared)"; then
+    RUN_ONE_OUTPUT="$output"
+    echo "$output" | apply_filters
+    return 1
+  fi
+
   case "$cmd" in
     test)
       if [[ $# -gt 0 ]]; then
@@ -294,11 +301,9 @@ run_one() {
       ;;
     integration)
       # Each package's test:integration script selects the *.integration.* tier (docs/ENGINEERING.md §2.2).
-      build_shared
       output="$(pnpm -r --if-present test:integration "$@" 2>&1)" || rc=$?
       ;;
     typecheck)
-      build_shared
       if [[ $# -gt 0 ]]; then
         output="$(pnpm -r typecheck "$@" 2>&1)" || rc=$?
       else
@@ -319,6 +324,7 @@ run_one() {
       local directive_out=""
       local todo_out=""
       local docs_index_out=""
+      local lockfile_out=""
       local audit_rc=0
 
       lint_out="$(pnpm eslint . "$@" 2>&1)" || lint_rc=$?
@@ -326,10 +332,16 @@ run_one() {
       directive_out="$(audit_disable_directives)" || audit_rc=1
       todo_out="$(audit_todo_markers)" || audit_rc=1
       docs_index_out="$(scripts/docs-index.sh --check 2>&1)" || audit_rc=1
+      if [[ -f pnpm-lock.yaml ]]; then
+        lockfile_out="$(pnpm install --frozen-lockfile --lockfile-only 2>&1)" || audit_rc=1
+      else
+        lockfile_out="No pnpm-lock.yaml: run pnpm install first"
+        audit_rc=1
+      fi
 
       output="${lint_out}"
       local extra
-      for extra in "$prettier_out" "$directive_out" "$todo_out" "$docs_index_out"; do
+      for extra in "$prettier_out" "$directive_out" "$todo_out" "$docs_index_out" "$lockfile_out"; do
         if [[ -n "$extra" ]]; then
           output="${output}
 ${extra}"

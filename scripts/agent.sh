@@ -25,7 +25,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
-source "$ROOT/scripts/lib/identity.sh" # CONTAINER_USER / CONTAINER_HOME / CONTAINER_WORKSPACE / container_name_from_dir
+source "$ROOT/scripts/lib/identity.sh" # CONTAINER_USER / CONTAINER_HOME / CONTAINER_WORKSPACE / container_name_from_dir / in_container
 ROLES_DIR=.claude/roles   # _common.md (shared ground rules)
 AGENTS_DIR=.claude/agents # one definition per role; also what the in-session Agent tool uses
 LOG_DIR=.qa/agents
@@ -35,9 +35,10 @@ DEFAULT_TIMEOUT_SECONDS=7200
 # built-in tools plus every MCP server in .mcp.json are pre-approved for the run.
 BUILTIN_TOOLS="Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,Agent,TodoWrite"
 CONTAINER_PATH="$CONTAINER_HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+# Where the agent sees this checkout: here when already in a dev environment, else the container's mount.
+if in_container; then AGENT_WORKSPACE="$ROOT"; else AGENT_WORKSPACE="$CONTAINER_WORKSPACE"; fi
 
 usage() { awk 'BEGIN{n=0} /^# -{20,}/{n++; next} n==1{sub(/^# ?/,""); print} n==2{exit}' "${BASH_SOURCE[0]}"; exit 1; }
-in_container() { [[ -f /.dockerenv ]]; }
 
 run_in_workdir() { # <workdir-relative> <command...> — inside the container, in that directory
   local workdir="$1"; shift
@@ -93,7 +94,7 @@ log_file="$ROOT/$LOG_DIR/$run_id.log"
   cat "$ROOT/$ROLES_DIR/$COMMON_ROLE.md"
   awk 'BEGIN{fm=0} /^---$/ && fm<2 {fm++; next} fm==2' "$role_file" # definition minus its frontmatter
   echo; echo "# Your assignment"; echo
-  echo "- Working directory: $CONTAINER_WORKSPACE/$workdir${branch:+ (branch \`$branch\`)}"
+  echo "- Working directory: $AGENT_WORKSPACE/$workdir${branch:+ (branch \`$branch\`)}"
   [[ ${#tickets[@]} -eq 0 ]] || echo "- Ticket(s): $(printf '#%s ' "${tickets[@]}")"
   [[ -z "$pr" ]] || echo "- Pull request: #$pr"
   echo; echo "## Task"; echo; echo "$task"
@@ -102,7 +103,7 @@ log_file="$ROOT/$LOG_DIR/$run_id.log"
 mcp_tools="$(jq -r '.mcpServers | keys | map("mcp__" + .) | join(",")' "$ROOT/.mcp.json")"
 # (--allowedTools and --mcp-config take lists, so a single-value flag follows each of them)
 claude_args=(--allowedTools "$BUILTIN_TOOLS,$mcp_tools" --permission-mode acceptEdits
-  --mcp-config "$CONTAINER_WORKSPACE/.mcp.json" --output-format text -p)
+  --mcp-config "$AGENT_WORKSPACE/.mcp.json" --output-format text -p)
 [[ -z "$model" ]] || claude_args+=(--model "$model")
 echo "agent: $role -> $log_file"
 run_in_workdir "$workdir" timeout "$timeout_seconds" claude "${claude_args[@]}" <"$prompt_file" 2>&1 \

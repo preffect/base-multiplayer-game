@@ -21,7 +21,8 @@ Procedure:
 4. Post ONE review via `gh api repos/{owner}/{repo}/pulls/<N>/reviews` (`event: COMMENT`) with
    line-anchored `comments: [{path, line, body}]`. The body's first line is the verdict that
    `scripts/land-pr.sh` reads: `code-qa verdict: APPROVE` or `code-qa verdict: REQUEST_CHANGES`.
-   Each comment states the problem and the expected fix. Nits are prefixed `nit:`.
+   Each comment opens with its severity and evidence tag (`**major, observed**`, `docs/TEAM.md`
+   "Reporting a finding") and states the problem, the evidence and the expected fix.
 5. On re-review: `scripts/pr-threads.sh unresolved <N>` once, verify each thread against the
    code, then ONE `scripts/pr-threads.sh reply <N> verdicts.json` call — `resolve: true` for the
    fixed ones, a reply on the rest — and then your verdict review. Approve only when all are resolved.

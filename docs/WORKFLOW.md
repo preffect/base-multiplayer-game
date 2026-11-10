@@ -98,7 +98,8 @@ status.
 1. **Design review** (architect) before code: approach, file plan, interfaces, where constants
    and config live, test plan.
 2. **Code review** against the checklist in `.github/PULL_REQUEST_TEMPLATE.md`. Findings are
-   **line-anchored PR review comments**; reviewers request changes rather than fixing silently.
+   **line-anchored PR review comments**, each tagged with severity and evidence (`docs/TEAM.md`
+   "Reporting a finding"); reviewers request changes rather than fixing silently.
 3. **Domain review** where the change is playable or visible (with screenshots for visuals).
    Which roles review which PR is the table in `docs/TEAM.md`.
 4. The author fixes, **replies on every thread** saying what changed, and the reviewer resolves
@@ -134,16 +135,16 @@ Graphics PRs attach before/after screenshots; gameplay PRs list the balance valu
 
 ## 7. Scripts
 
-| Script                           | Runs on   | Purpose                                                                                                                                                                                    |
-| -------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scripts/github-setup.sh`        | host      | Create/push the repo, labels, milestones, Project + views, ruleset, seed groundwork epics.                                                                                                 |
-| `scripts/project-sync.sh`        | host/cont | Reconcile issues ↔ board (section 4).                                                                                                                                                      |
-| `scripts/issue-status.sh`        | host/cont | `issue-status.sh <Status> <N> [N...]` — move tickets to a Status in two API calls.                                                                                                         |
-| `scripts/pr-threads.sh`          | host/cont | `pr-threads.sh list\|unresolved\|state <PR>`; `reply <PR> actions.json` — read, summarise, and answer/resolve review threads in one request each.                                          |
-| `scripts/agent.sh`               | host/cont | `agent.sh <role> [--ticket N] [--branch B] "<task>"` — run one team role headlessly inside the devcontainer (`docs/TEAM.md`).                                                              |
-| `scripts/worktree.sh`            | host/cont | `worktree.sh add\|remove <branch>` — one git worktree per branch under `.worktrees/` for parallel agents (`docs/TEAM.md`).                                                                 |
-| `scripts/land-pr.sh`             | host/cont | `land-pr.sh <PR> [--reviewers "roles"]` — reviewer roles review, engineer fixes, re-review, then auto-merge (`docs/TEAM.md`).                                                              |
-| `scripts/resume-in-container.sh` | host/cont | Copy a Claude Code transcript under the other side's project key so `claude --resume <id>` continues the same conversation inside the devcontainer (or back on the host).                  |
-| `scripts/sync-from-template.sh`  | host/cont | Pull template-owned files (scripts, devcontainer, process docs) from `base-multiplayer-game` into this game, re-applying its identity; land the diff via a PR. <!-- KEEP_TEMPLATE_NAME --> |
+| Script                           | Runs on   | Purpose                                                                                                                                                                    |
+| -------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/github-setup.sh`        | host      | Create/push the repo, labels, milestones, Project + views, ruleset, seed groundwork epics.                                                                                 |
+| `scripts/project-sync.sh`        | host/cont | Reconcile issues ↔ board (section 4).                                                                                                                                      |
+| `scripts/issue-status.sh`        | host/cont | `issue-status.sh <Status> <N> [N...]` — move tickets to a Status in two API calls.                                                                                         |
+| `scripts/pr-threads.sh`          | host/cont | `pr-threads.sh list\|unresolved\|state <PR>`; `reply <PR> actions.json` — read, summarise, and answer/resolve review threads in one request each.                          |
+| `scripts/agent.sh`               | host/cont | `agent.sh <role> [--ticket N] [--branch B] "<task>"` — run one team role headlessly inside the devcontainer (`docs/TEAM.md`).                                              |
+| `scripts/worktree.sh`            | host/cont | `worktree.sh add\|remove <branch>` — one git worktree per branch under `.worktrees/` for parallel agents (`docs/TEAM.md`).                                                 |
+| `scripts/land-pr.sh`             | host/cont | `land-pr.sh <PR> [--reviewers "roles"]` — reviewer roles review, engineer fixes, re-review, then auto-merge (`docs/TEAM.md`).                                              |
+| `scripts/resume-in-container.sh` | host/cont | Copy a Claude Code transcript under the other side's project key so `claude --resume <id>` continues the same conversation inside the devcontainer (or back on the host).  |
+| `preffect-dev sync-template`     | host/pod  | Pull the template's later fixes into this game: the files `template-files.txt` lists, with this game's identity re-applied. Review with `git diff`, then land it via a PR. |
 
 `gh` needs the `repo` and `project` scopes (`gh auth refresh -h github.com -s project,read:project`).
