@@ -30,23 +30,23 @@ and read only that line range (`sed -n 'start,endp' docs/FILE.md`). Regenerate a
 - **7. `.env.example` keys to add** (L203–228): Add these to the template's `.env.example` (copy to `.env`, which is gitignored).
 - **8. Pipeline invariants (enforce)** (L229–237): and ask before `sync`.
 
-## ENGINEERING.md (289 lines)
+## ENGINEERING.md (292 lines)
 
-- **Engineering Standards** (L1–289): These are enforceable rules, not suggestions.
-- **1. The Validation Gate (`./validate.sh`)** (L12–65): `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`, or `pnpm --filter ...
-- **2. Testing Standards** (L66–148)
-  - **2.1 Every change is tested** (L68–81): (functions, classes, reducers, state machines, message handlers, math, generation), extract it into pure, testable functions and write tests covering the happy path, edge cases, and error cases.
-  - **2.2 Unit vs integration split** (L82–109): isolation — no cross-subsystem orchestration, runs in <100ms.
-  - **2.3 What must be covered (template-specific)** (L110–129): state + snapshot; invalid input is rejected/ignored.
-  - **2.4 Determinism** (L130–138): simulation is reproducible and tests can assert exact outputs.
-  - **2.5 Coverage floors** (L139–148): Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in `packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and `./validate.sh test` fails when a run drops below it.
-- **3. TypeScript & Lint Strictness** (L149–200)
-  - **3.1 Required tsconfig flags (already set in `tsconfig.base.json`)** (L151–166): Do not weaken these.
-  - **3.2 Lint / format rules** (L167–182): means "intentionally unused" — it is not a license to leave a stub instead of real code.
-  - **3.3 Forbidden escape hatches** (L183–200): without a justification.
-- **4. Architecture Conventions (enforce on every change)** (L201–237): imports from `server` or `client`.
-- **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L238–268): instead of `./validate.sh`.
-- **6. Definition of Done (checklist — ALL must hold)** (L269–289): path, edge cases, and error cases.
+- **Engineering Standards** (L1–292): These are enforceable rules, not suggestions.
+- **1. The Validation Gate (`./validate.sh`)** (L12–67): `pnpm -r test`, `pnpm test`, `pnpm typecheck`, `npx tsc`, `pnpm eslint`, `pnpm prettier`, or `pnpm --filter ...
+- **2. Testing Standards** (L68–150)
+  - **2.1 Every change is tested** (L70–83): (functions, classes, reducers, state machines, message handlers, math, generation), extract it into pure, testable functions and write tests covering the happy path, edge cases, and error cases.
+  - **2.2 Unit vs integration split** (L84–111): isolation — no cross-subsystem orchestration, runs in <100ms.
+  - **2.3 What must be covered (template-specific)** (L112–131): state + snapshot; invalid input is rejected/ignored.
+  - **2.4 Determinism** (L132–140): simulation is reproducible and tests can assert exact outputs.
+  - **2.5 Coverage floors** (L141–150): Each package declares the coverage it achieves today — `COVERAGE_THRESHOLDS` in `packages/*/vitest.config.ts`, `coverageThresholds` in `packages/client/angular.json` — and `./validate.sh test` fails when a run drops below it.
+- **3. TypeScript & Lint Strictness** (L151–203)
+  - **3.1 Required tsconfig flags (already set in `tsconfig.base.json`)** (L153–168): Do not weaken these.
+  - **3.2 Lint / format rules** (L169–184): means "intentionally unused" — it is not a license to leave a stub instead of real code.
+  - **3.3 Forbidden escape hatches** (L185–203): without a justification.
+- **4. Architecture Conventions (enforce on every change)** (L204–240): imports from `server` or `client`.
+- **5. Forbidden Shortcuts / Anti-Patterns (reject on sight)** (L241–271): instead of `./validate.sh`.
+- **6. Definition of Done (checklist — ALL must hold)** (L272–292): path, edge cases, and error cases.
 
 ## INIT-GAME.md (264 lines)
 

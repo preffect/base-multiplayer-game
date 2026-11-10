@@ -29,6 +29,8 @@ owned scripts/pr-threads.sh
 owned scripts/pr-threads.test.sh
 owned scripts/docs-index.sh
 owned scripts/validate-cache.test.sh
+owned scripts/duplication-gate.test.sh
+owned scripts/lib/shell-test.sh
 owned .claude/.gitignore
 owned scripts/github/setup_project.py
 owned scripts/github/groundwork-issues.json
