@@ -1,0 +1,10 @@
+# Template-owned. The build copies only what it names; this keeps the rest, and anything built or installed
+# locally, out of its context.
+.git/
+**/node_modules/
+**/dist/
+**/coverage/
+.pnpm-store/
+*.log
+.env
+.env.*

@@ -254,6 +254,17 @@ adds the prod server beside `game-debug`:
 
 A game made before this calls `startProductionMcp` in its `index.ts` after `server.listen`, as the template's does.
 
+## Prod image (`Dockerfile`)
+
+A game deploys to the platform as one service: preffect-home's `docs/deploying-an-app.md` has the steps. The `Dockerfile` builds the server and client, and the image runs the built server, which also serves the built client when `GAME_CLIENT_DIR` names it (`packages/server/src/platform/client-files.ts`). So the page, `/api` and the WebSocket at `/ws` are one port on one origin, as the client expects. Neither MCP is mounted: the image sets no `DEBUG_MCP` or `MCP_PORT`.
+
+The image runs as user 65532, with no package manager left in it. `scripts/check-image.sh` builds it and runs it as the platform does: read-only, with no capabilities and `PORT` set. It checks health, the page, a client-side route, that both MCP paths answer 404, and a WebSocket at `/ws`. CI runs it (`.github/workflows/image.yml`). It needs Docker, so it doesn't run inside a dev pod.
+
+A game made before this gets the owned files by `preffect-dev sync-template`, and then needs two changes of its own, as a sync never touches dependencies or `index.ts`:
+
+- `@fastify/static` in `packages/server`'s dependencies;
+- a call to `serveClientFiles(server)` before `server.listen` in `packages/server/src/index.ts`, as the template's does.
+
 ## ha-router integration
 
 This template targets the local `ha-router` Traefik reverse proxy. Ready-to-copy integration
