@@ -252,7 +252,7 @@ adds the prod server beside `game-debug`:
 }
 ```
 
-A game made before this calls `startProdMcp` in its `index.ts` after `server.listen`, as the template's does.
+A game made before this calls `startProductionMcp` in its `index.ts` after `server.listen`, as the template's does.
 
 ## ha-router integration
 

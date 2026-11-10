@@ -15,25 +15,27 @@ import { HTTP_INTERNAL_SERVER_ERROR, HTTP_METHOD_NOT_ALLOWED, HTTP_UNAUTHORIZED 
  * Template-owned: it takes a server factory and names nothing game-specific.
  */
 
-export const PROD_MCP_PATH = '/mcp';
-export const PROD_MCP_PORT_ENV = 'MCP_PORT';
-export const PROD_MCP_TOKEN_ENV = 'MCP_BEARER_TOKEN';
+export const PRODUCTION_MCP_PATH = '/mcp';
+export const PRODUCTION_MCP_PORT_ENV = 'MCP_PORT';
+export const PRODUCTION_MCP_TOKEN_ENV = 'MCP_BEARER_TOKEN';
 /** Every address: the platform's network policy, not the bind address, decides who reaches the port. */
-export const PROD_MCP_LISTEN_HOST = '0.0.0.0';
+export const PRODUCTION_MCP_LISTEN_HOST = '0.0.0.0';
 export const BEARER_PREFIX = 'Bearer ';
 const HIGHEST_PORT = 65_535;
 /** A token's own hash prefix is only logged for a refused caller, but a short token would still be easy to guess. */
 export const SHORTEST_TOKEN = 32;
+const BYTES_PER_KIBIBYTE = 1024;
 /** MCP calls are small; a bigger body is refused before it's read. */
-export const PROD_MCP_BODY_LIMIT = 64 * 1024;
+const PRODUCTION_MCP_BODY_LIMIT_KIBIBYTES = 64;
+export const PRODUCTION_MCP_BODY_LIMIT = PRODUCTION_MCP_BODY_LIMIT_KIBIBYTES * BYTES_PER_KIBIBYTE;
 const TOOLS_CALL_METHOD = 'tools/call';
 /** Only problems: the call log is the record of calls. */
-const PROD_MCP_LOG_LEVEL = 'warn';
+const PRODUCTION_MCP_LOG_LEVEL = 'warn';
 
-export type ProdMcpServerFactory = () => McpServer;
+export type ProductionMcpServerFactory = () => McpServer;
 export type CallLogWriter = (line: CallLogLine) => void;
 
-export interface ProdMcpSettings {
+export interface ProductionMcpSettings {
   port: number;
   token: string;
 }
@@ -51,18 +53,22 @@ export function writeCallLogLine(line: CallLogLine): void {
 }
 
 /** The port and token, undefined when MCP_PORT is unset. A port without a strong token, or a bad port, stops the start. */
-export function prodMcpSettings(environment: NodeJS.ProcessEnv): ProdMcpSettings | undefined {
-  const portText = environment[PROD_MCP_PORT_ENV];
+export function productionMcpSettings(environment: NodeJS.ProcessEnv): ProductionMcpSettings | undefined {
+  const portText = environment[PRODUCTION_MCP_PORT_ENV];
   if (portText === undefined || portText === '') return undefined;
   const port = Number(portText);
   if (!Number.isInteger(port) || port < 0 || port > HIGHEST_PORT) {
-    throw new Error(`${PROD_MCP_PORT_ENV} isn't a port: ${portText}`);
+    throw new Error(`${PRODUCTION_MCP_PORT_ENV} isn't a port: ${portText}`);
   }
-  const token = environment[PROD_MCP_TOKEN_ENV] ?? '';
+  const token = environment[PRODUCTION_MCP_TOKEN_ENV] ?? '';
   if (token === '')
-    throw new Error(`${PROD_MCP_PORT_ENV} is set, so the prod MCP needs its token on ${PROD_MCP_TOKEN_ENV}`);
+    throw new Error(
+      `${PRODUCTION_MCP_PORT_ENV} is set, so the prod MCP needs its token on ${PRODUCTION_MCP_TOKEN_ENV}`,
+    );
   if (token.length < SHORTEST_TOKEN || token.trim() !== token) {
-    throw new Error(`${PROD_MCP_TOKEN_ENV} has to be at least ${SHORTEST_TOKEN} characters, with no space around it`);
+    throw new Error(
+      `${PRODUCTION_MCP_TOKEN_ENV} has to be at least ${SHORTEST_TOKEN} characters, with no space around it`,
+    );
   }
   return { port, token };
 }
@@ -81,27 +87,31 @@ export function tokenMatches(presented: string, token: string): boolean {
   return presented !== '' && timingSafeEqual(digest(presented), digest(token));
 }
 
+/** A JSON-RPC message as the log reads it: every field may be missing or of the wrong type. */
+interface UncheckedMessage {
+  id?: unknown;
+  method?: unknown;
+  params?: { name?: unknown; arguments?: unknown };
+}
+
+function requestId(id: unknown): string | number | undefined {
+  return typeof id === 'string' || typeof id === 'number' ? id : undefined;
+}
+
+/** One message as a call, or undefined when it isn't a request or notification. */
+function requestedCall(message: unknown): RequestedCall | undefined {
+  if (message === null || typeof message !== 'object') return undefined;
+  const { id, method, params } = message as UncheckedMessage;
+  if (typeof method !== 'string') return undefined;
+  if (method !== TOOLS_CALL_METHOD) return { id: requestId(id), method, tool: undefined, arguments: undefined };
+  const tool = typeof params?.name === 'string' ? params.name : undefined;
+  return { id: requestId(id), method, tool, arguments: params?.arguments };
+}
+
 /** The calls in a POST body: one message or a batch. Anything that isn't a request or notification is skipped. */
 export function requestedCalls(body: unknown): RequestedCall[] {
   const messages: unknown[] = Array.isArray(body) ? body : [body];
-  return messages.flatMap((message): RequestedCall[] => {
-    if (message === null || typeof message !== 'object') return [];
-    const { id, method, params } = message as {
-      id?: unknown;
-      method?: unknown;
-      params?: { name?: unknown; arguments?: unknown };
-    };
-    if (typeof method !== 'string') return [];
-    const isToolCall = method === TOOLS_CALL_METHOD;
-    return [
-      {
-        id: typeof id === 'string' || typeof id === 'number' ? id : undefined,
-        method,
-        tool: isToolCall && typeof params?.name === 'string' ? params.name : undefined,
-        arguments: isToolCall ? params?.arguments : undefined,
-      },
-    ];
-  });
+  return messages.map(requestedCall).filter((call): call is RequestedCall => call !== undefined);
 }
 
 /** A response's outcome: a JSON-RPC error, or a tool result that says it failed, is an error. */
@@ -117,7 +127,7 @@ function responseId(message: JSONRPCMessage): string | number | undefined {
 
 type LogCall = (call: RequestedCall, outcome: CallOutcome) => void;
 
-function callLogger(request: FastifyRequest, settings: ProdMcpSettings, write: CallLogWriter): LogCall {
+function callLogger(request: FastifyRequest, settings: ProductionMcpSettings, write: CallLogWriter): LogCall {
   const presented = presentedToken(request.headers.authorization);
   return (call, outcome) =>
     write(
@@ -151,7 +161,7 @@ function answerFailure(error: unknown, request: FastifyRequest, reply: FastifyRe
  * when it's taken, a request when its response goes out, and any left unanswered as an error.
  */
 async function answerMcpRequest(
-  createServer: ProdMcpServerFactory,
+  createServer: ProductionMcpServerFactory,
   request: FastifyRequest,
   reply: FastifyReply,
   logCall: LogCall,
@@ -192,8 +202,8 @@ async function answerMcpRequest(
 
 function routes(
   app: FastifyInstance,
-  createServer: ProdMcpServerFactory,
-  settings: ProdMcpSettings,
+  createServer: ProductionMcpServerFactory,
+  settings: ProductionMcpSettings,
   write: CallLogWriter,
 ): void {
   // Before the body is read: a caller without the token costs one short line and a 401, whatever it sent.
@@ -209,13 +219,13 @@ function routes(
       .header('www-authenticate', 'Bearer')
       .send(jsonRpcErrorBody(JSON_RPC_SERVER_ERROR, 'The prod MCP needs the app token'));
   });
-  app.post(PROD_MCP_PATH, (request, reply) =>
+  app.post(PRODUCTION_MCP_PATH, (request, reply) =>
     answerMcpRequest(createServer, request, reply, callLogger(request, settings, write)),
   );
   // Stateless mode has no stream to open (GET) or session to end (DELETE).
   app.route({
     method: ['GET', 'DELETE'],
-    url: PROD_MCP_PATH,
+    url: PRODUCTION_MCP_PATH,
     handler: async (request, reply) => {
       callLogger(
         request,
@@ -234,16 +244,16 @@ function routes(
  * Starts the prod MCP on its own port when MCP_PORT is set, and answers the listener, or undefined when it's off.
  * One server is built first, so a broken tool registration fails the start rather than every call.
  */
-export async function startProdMcp(
-  createServer: ProdMcpServerFactory,
+export async function startProductionMcp(
+  createServer: ProductionMcpServerFactory,
   environment: NodeJS.ProcessEnv = process.env,
   write: CallLogWriter = writeCallLogLine,
 ): Promise<FastifyInstance | undefined> {
-  const settings = prodMcpSettings(environment);
+  const settings = productionMcpSettings(environment);
   if (settings === undefined) return undefined;
   await createServer().close();
-  const app = Fastify({ logger: { level: PROD_MCP_LOG_LEVEL }, bodyLimit: PROD_MCP_BODY_LIMIT });
+  const app = Fastify({ logger: { level: PRODUCTION_MCP_LOG_LEVEL }, bodyLimit: PRODUCTION_MCP_BODY_LIMIT });
   routes(app, createServer, settings, write);
-  await app.listen({ port: settings.port, host: PROD_MCP_LISTEN_HOST });
+  await app.listen({ port: settings.port, host: PRODUCTION_MCP_LISTEN_HOST });
   return app;
 }

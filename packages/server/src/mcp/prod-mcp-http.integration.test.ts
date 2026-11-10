@@ -3,14 +3,22 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildEmptyDebugContext } from '../testing/debug-context-builders.js';
 import { TEST_CLIENT_INFO } from '../testing/debug-mcp-builders.js';
-import { PROD_MCP_TEST_TOKEN, prodMcpEnvironment } from '../testing/prod-mcp-builders.js';
+import {
+  PRODUCTION_MCP_TEST_TOKEN,
+  SETTING_TOOL_ANSWER,
+  SETTING_TOOL_NAME,
+  createProbeProductionServer,
+  productionMcpEnvironment,
+} from '../testing/prod-mcp-builders.js';
 import type { CallLogLine } from './call-log.js';
-import { createDebugMcpServer } from './mcp-server.js';
-import { BEARER_PREFIX, PROD_MCP_PATH, startProdMcp } from './prod-mcp-http.js';
+import { BEARER_PREFIX, PRODUCTION_MCP_PATH, startProductionMcp } from './prod-mcp-http.js';
 
-describe('the prod MCP with the game tools', () => {
+/**
+ * Template-owned: the prod MCP through the MCP SDK's own client, with the probe server standing in for a game's
+ * tools. A game's own tools through it are tested beside its server (mcp-server.integration.test.ts).
+ */
+describe('the prod MCP through the MCP client', () => {
   let app: FastifyInstance | undefined;
   let client: Client | undefined;
 
@@ -21,24 +29,21 @@ describe('the prod MCP with the game tools', () => {
     app = undefined;
   });
 
-  it('serves the debug tools to a caller with the token, and logs each call', async () => {
+  it('serves the tools to a caller with the token, and logs each call', async () => {
     const lines: CallLogLine[] = [];
-    const context = buildEmptyDebugContext();
-    app = await startProdMcp(
-      () => createDebugMcpServer(context),
-      prodMcpEnvironment('0'),
-      (line) => lines.push(line),
+    app = await startProductionMcp(createProbeProductionServer, productionMcpEnvironment('0'), (line) =>
+      lines.push(line),
     );
     const port = (app?.server.address() as AddressInfo).port;
     client = new Client(TEST_CLIENT_INFO);
     await client.connect(
-      new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}${PROD_MCP_PATH}`), {
-        requestInit: { headers: { authorization: `${BEARER_PREFIX}${PROD_MCP_TEST_TOKEN}` } },
+      new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}${PRODUCTION_MCP_PATH}`), {
+        requestInit: { headers: { authorization: `${BEARER_PREFIX}${PRODUCTION_MCP_TEST_TOKEN}` } },
       }),
     );
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toContain('debug_list_games');
-    const result = await client.callTool({ name: 'debug_list_games', arguments: {} });
-    expect(result.content).toEqual([{ type: 'text', text: '[]' }]);
-    expect(lines.at(-1)).toMatchObject({ method: 'tools/call', tool: 'debug_list_games', outcome: 'ok' });
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toContain(SETTING_TOOL_NAME);
+    const result = await client.callTool({ name: SETTING_TOOL_NAME, arguments: { value: 'v' } });
+    expect(result.content).toEqual([{ type: 'text', text: SETTING_TOOL_ANSWER }]);
+    expect(lines.at(-1)).toMatchObject({ method: 'tools/call', tool: SETTING_TOOL_NAME, outcome: 'ok' });
   });
 });

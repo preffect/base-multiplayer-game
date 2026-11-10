@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SECRET_ARGUMENT_NAME } from '../testing/prod-mcp-builders.js';
 import {
   CALL_LOG_EVENT,
   DEEPER_MARK,
@@ -7,6 +8,7 @@ import {
   MASKED,
   MORE_KEY,
   MOST_LOGGED_ENTRIES,
+  TOKEN_HASH_FIELD,
   TOKEN_HASH_LENGTH,
   TRUNCATION_MARK,
   callLogLine,
@@ -78,8 +80,8 @@ describe('maskArguments', () => {
 
   it('logs only so many keys and items, and counts the rest', () => {
     const many = MOST_LOGGED_ENTRIES + 3;
-    const fields = Object.fromEntries(Array.from({ length: many }, (_, index) => [`k${index}`, index]));
-    const logged = maskArguments({ fields, items: Array.from({ length: many }, (_, index) => index) }, TOKEN);
+    const fields = Object.fromEntries(Array.from({ length: many }, (_entry, index) => [`k${index}`, index]));
+    const logged = maskArguments({ fields, items: Array.from({ length: many }, (_entry, index) => index) }, TOKEN);
     expect(Object.keys(logged.fields as object)).toHaveLength(MOST_LOGGED_ENTRIES + 1);
     expect((logged.fields as Record<string, unknown>)[MORE_KEY]).toBe('3 more');
     expect(logged.items).toHaveLength(MOST_LOGGED_ENTRIES + 1);
@@ -128,7 +130,7 @@ describe('callLogLine', () => {
         caller: '10.42.0.7',
         method: 'tools/call',
         tool: 'set_value',
-        arguments: { value: 'v', api_key: 'k', note: TOKEN },
+        arguments: { value: 'v', [SECRET_ARGUMENT_NAME]: 'k', note: TOKEN },
         outcome: 'ok',
         presentedToken: TOKEN,
       },
@@ -141,16 +143,16 @@ describe('callLogLine', () => {
       caller: '10.42.0.7',
       method: 'tools/call',
       tool: 'set_value',
-      arguments: { value: 'v', api_key: MASKED, note: MASKED },
+      arguments: { value: 'v', [SECRET_ARGUMENT_NAME]: MASKED, note: MASKED },
       outcome: 'ok',
-      token_sha256: null,
+      [TOKEN_HASH_FIELD]: null,
     });
     expect(JSON.stringify(line)).not.toContain(TOKEN);
   });
 
   it("carries a refused caller's token as a hash, to tell callers apart", () => {
     const refused = callLogLine({ ...FACTS, outcome: 'unauthorized', presentedToken: 'other' }, TOKEN);
-    expect(refused.token_sha256).toBe(tokenHash('other'));
+    expect(refused[TOKEN_HASH_FIELD]).toBe(tokenHash('other'));
   });
 
   it('cuts a long method and tool short', () => {
@@ -172,7 +174,13 @@ describe('callLogLine', () => {
       },
       TOKEN,
     );
-    expect(line).toMatchObject({ caller: null, tool: null, arguments: {}, token_sha256: null, outcome: 'refused' });
+    expect(line).toMatchObject({
+      caller: null,
+      tool: null,
+      arguments: {},
+      [TOKEN_HASH_FIELD]: null,
+      outcome: 'refused',
+    });
   });
 });
 
@@ -198,7 +206,7 @@ describe('safeCallLogLine', () => {
       tool: 'set_value',
       arguments: {},
       outcome: 'ok',
-      token_sha256: null,
+      [TOKEN_HASH_FIELD]: null,
     });
   });
 });

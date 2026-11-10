@@ -10,6 +10,9 @@ import { createHash } from 'node:crypto';
  */
 
 export const CALL_LOG_EVENT = 'mcp_call';
+/** The log line's field for a refused caller's token hash. Named once: it's the line's format, and a game's lint
+ * may hold its own property names to camelCase. */
+export const TOKEN_HASH_FIELD = 'token_sha256';
 export const MASKED = '***';
 /** An argument whose name contains any of these is masked, at any depth. */
 export const SECRET_NAME_PATTERN = /token|secret|password|key|auth/i;
@@ -34,7 +37,7 @@ export interface CallLogLine {
   tool: string | null;
   arguments: Record<string, unknown>;
   outcome: CallOutcome;
-  token_sha256: string | null;
+  [TOKEN_HASH_FIELD]: string | null;
 }
 
 /** The facts about one call, before masking. */
@@ -61,15 +64,21 @@ function moreCount(total: number): string {
   return `${total - MOST_LOGGED_ENTRIES} more`;
 }
 
+function maskString(text: string, secret: string): string {
+  return secret !== '' && text.includes(secret) ? MASKED : cutShort(text);
+}
+
+function maskArray(values: unknown[], secret: string, depth: number): unknown[] {
+  const items = values.slice(0, MOST_LOGGED_ENTRIES).map((item) => maskValue(item, secret, depth + 1));
+  return values.length > MOST_LOGGED_ENTRIES ? [...items, moreCount(values.length)] : items;
+}
+
 function maskValue(value: unknown, secret: string, depth: number): unknown {
-  if (value !== null && typeof value === 'object' && depth >= DEEPEST_LOGGED_LEVEL) return DEEPER_MARK;
-  if (Array.isArray(value)) {
-    const items = value.slice(0, MOST_LOGGED_ENTRIES).map((item) => maskValue(item, secret, depth + 1));
-    return value.length > MOST_LOGGED_ENTRIES ? [...items, moreCount(value.length)] : items;
-  }
-  if (value !== null && typeof value === 'object') return maskObject(value as Record<string, unknown>, secret, depth);
-  if (typeof value === 'string') return secret !== '' && value.includes(secret) ? MASKED : cutShort(value);
-  return value;
+  if (typeof value === 'string') return maskString(value, secret);
+  if (value === null || typeof value !== 'object') return value;
+  if (depth >= DEEPEST_LOGGED_LEVEL) return DEEPER_MARK;
+  if (Array.isArray(value)) return maskArray(value, secret, depth);
+  return maskObject(value as Record<string, unknown>, secret, depth);
 }
 
 function maskObject(object: Record<string, unknown>, secret: string, depth: number): Record<string, unknown> {
@@ -102,7 +111,7 @@ export function callLogLine(facts: CallFacts, secret: string, now: Date = new Da
     tool: facts.tool === undefined ? null : cutShort(facts.tool),
     arguments: maskArguments(facts.arguments, secret),
     outcome: facts.outcome,
-    token_sha256: facts.outcome === 'unauthorized' ? tokenHash(facts.presentedToken) : null,
+    [TOKEN_HASH_FIELD]: facts.outcome === 'unauthorized' ? tokenHash(facts.presentedToken) : null,
   };
 }
 
@@ -119,7 +128,7 @@ export function safeCallLogLine(facts: CallFacts, secret: string, now: Date = ne
       tool: typeof facts.tool === 'string' ? cutShort(facts.tool) : null,
       arguments: {},
       outcome: facts.outcome,
-      token_sha256: null,
+      [TOKEN_HASH_FIELD]: null,
     };
   }
 }
