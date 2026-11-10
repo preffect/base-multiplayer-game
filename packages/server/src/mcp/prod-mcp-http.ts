@@ -1,11 +1,11 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { safeCallLogLine, type CallLogLine, type CallOutcome } from './call-log.js';
-import { JSON_RPC_INTERNAL_ERROR, JSON_RPC_SERVER_ERROR, jsonRpcErrorBody } from './debug-mcp-http.js';
-import { HTTP_INTERNAL_SERVER_ERROR, HTTP_METHOD_NOT_ALLOWED, HTTP_UNAUTHORIZED } from './http-status.js';
+import { JSON_RPC_SERVER_ERROR, answerStatelessMcpRequest, jsonRpcErrorBody } from './debug-mcp-http.js';
+import { HTTP_METHOD_NOT_ALLOWED, HTTP_UNAUTHORIZED } from './http-status.js';
 
 /**
  * The prod MCP: the game's own tools, writes included, for its dev workspace to debug prod (preffect-home #73).
@@ -31,6 +31,8 @@ export const PRODUCTION_MCP_BODY_LIMIT = PRODUCTION_MCP_BODY_LIMIT_KIBIBYTES * B
 const TOOLS_CALL_METHOD = 'tools/call';
 /** Only problems: the call log is the record of calls. */
 const PRODUCTION_MCP_LOG_LEVEL = 'warn';
+/** The prod MCP's name in its log lines. */
+const PRODUCTION_MCP_LABEL = 'prod MCP';
 
 export type ProductionMcpServerFactory = () => McpServer;
 export type CallLogWriter = (line: CallLogLine) => void;
@@ -145,17 +147,6 @@ function callLogger(request: FastifyRequest, settings: ProductionMcpSettings, wr
     );
 }
 
-/** After the hijack Fastify answers nothing, so a failure is answered here: a 500 if possible, else a cut connection. */
-function answerFailure(error: unknown, request: FastifyRequest, reply: FastifyReply): void {
-  request.log.error({ err: error }, 'prod MCP request failed');
-  if (reply.raw.headersSent) {
-    reply.raw.destroy(error instanceof Error ? error : undefined);
-    return;
-  }
-  reply.raw.writeHead(HTTP_INTERNAL_SERVER_ERROR, { 'content-type': 'application/json' });
-  reply.raw.end(JSON.stringify(jsonRpcErrorBody(JSON_RPC_INTERNAL_ERROR, 'Internal server error')));
-}
-
 /**
  * Answers one request statelessly, as the debug MCP does, and logs each call with its outcome: a notification
  * when it's taken, a request when its response goes out, and any left unanswered as an error.
@@ -173,11 +164,7 @@ async function answerMcpRequest(
     pending.forEach((call) => logCall(call, 'error'));
     pending.clear();
   };
-  reply.hijack();
-  const warnOnCloseFailure = (error: unknown) => request.log.warn({ err: error }, 'prod MCP close failed');
-  try {
-    const mcp = createServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  const logResponses = (transport: StreamableHTTPServerTransport): void => {
     const send = transport.send.bind(transport);
     transport.send = async (message, options) => {
       const call = pending.get(responseId(message));
@@ -187,17 +174,13 @@ async function answerMcpRequest(
       }
       return send(message, options);
     };
-    reply.raw.on('close', () => {
-      settle();
-      transport.close().catch(warnOnCloseFailure);
-      mcp.close().catch(warnOnCloseFailure);
-    });
-    await mcp.connect(transport);
-    await transport.handleRequest(request.raw, reply.raw, request.body);
-  } catch (error) {
-    settle();
-    answerFailure(error, request, reply);
-  }
+  };
+  await answerStatelessMcpRequest(createServer, request, reply, {
+    label: PRODUCTION_MCP_LABEL,
+    onTransport: logResponses,
+    onClose: settle,
+    onFailure: settle,
+  });
 }
 
 function routes(
