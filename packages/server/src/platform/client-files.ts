@@ -7,14 +7,17 @@
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance } from 'fastify';
 import { DEBUG_MCP_PATH } from '../mcp/debug-mcp-http.js';
-import { PRODUCTION_MCP_PATH } from '../mcp/prod-mcp-http.js';
 
 /** Where the built client is. Unset, the server serves no page. */
 export const CLIENT_DIR_VARIABLE = 'GAME_CLIENT_DIR';
 /** The page every client-side route loads. */
 export const CLIENT_INDEX = 'index.html';
-/** The server's own paths: the game's API and WebSocket, and its MCPs. An unknown one is a 404, never the page. */
-export const SERVER_PATH_PREFIXES: readonly string[] = ['/api', '/ws', DEBUG_MCP_PATH, PRODUCTION_MCP_PATH];
+/**
+ * The server's own paths on the game port: the game's API and WebSocket, and the debug MCP. An unknown one is a 404,
+ * never the page. The prod MCP is on a port of its own (MCP_PORT), so it isn't here, and this file needs nothing a
+ * game made before it lacks.
+ */
+export const SERVER_PATH_PREFIXES: readonly string[] = ['/api', '/ws', DEBUG_MCP_PATH];
 
 /** Whether a request path is one of the server's own, or under one. */
 export function isServerPath(path: string): boolean {

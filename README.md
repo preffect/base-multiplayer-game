@@ -260,6 +260,8 @@ A game deploys to the platform as one service: preffect-home's `docs/deploying-a
 
 The image runs as user 65532, with no package manager left in it. `scripts/check-image.sh` builds it and runs it as the platform does: read-only, with no capabilities and `PORT` set. It checks health, the page, a client-side route, that both MCP paths answer 404, and a WebSocket at `/ws`. CI runs it (`.github/workflows/image.yml`). It needs Docker, so it doesn't run inside a dev pod.
 
+A top-level `public/`, for a client whose `angular.json` takes assets from it, goes into the build when the game has one. Files `.gitignore` leaves out, such as generated audio, aren't in the image.
+
 A game made before this gets the owned files by `preffect-dev sync-template`, and then needs two changes of its own, as a sync never touches dependencies or `index.ts`:
 
 - `@fastify/static` in `packages/server`'s dependencies;

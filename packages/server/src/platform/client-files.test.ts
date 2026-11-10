@@ -50,7 +50,7 @@ describe('platform/client-files', () => {
   it('leaves the server its own paths', async () => {
     await serverWith({ [CLIENT_DIR_VARIABLE]: builtClient() });
     expect((await server.inject({ url: '/api/health' })).json()).toEqual({ status: 'ok' });
-    for (const url of ['/api/unknown', '/ws', '/ws/x', '/debug-mcp', '/mcp', '/mcp/tools']) {
+    for (const url of ['/api/unknown', '/ws', '/ws/x', '/debug-mcp', '/debug-mcp/x']) {
       const response = await server.inject({ url });
       expect(response.statusCode, url).toBe(404);
       expect(response.body, url).not.toContain('<title>');
@@ -72,7 +72,7 @@ describe('platform/client-files', () => {
     ['/api', true],
     ['/api/x', true],
     ['/ws', true],
-    ['/mcp', true],
+    ['/mcp', false],
     ['/debug-mcp', true],
     ['/apiary', false],
     ['/wsx', false],

@@ -33,7 +33,7 @@ done
 check "It answers /api/health" '{"status":"ok"}' "$health"
 check "It serves the page" yes "$(curl --silent "http://$address/" | grep -qi '<app-root\|<!doctype html' && echo yes || echo no)"
 check "and the page for a client-side route" yes "$(curl --silent "http://$address/some/route" | grep -qi '<!doctype html' && echo yes || echo no)"
-# The image sets GAME_CLIENT_DIR and not DEBUG_MCP, so neither MCP is mounted: not even the page answers there.
+# The image sets GAME_CLIENT_DIR and neither DEBUG_MCP nor MCP_PORT, so no MCP answers a call on the game port.
 for path in /debug-mcp /mcp; do
   check "There's no MCP at $path" 404 "$(curl --silent --output /dev/null --write-out '%{http_code}' --request POST \
     --header 'Content-Type: application/json' --data '{}' "http://$address$path")"
