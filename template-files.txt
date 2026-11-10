@@ -26,6 +26,7 @@ owned scripts/land-pr.sh
 owned scripts/worktree.sh
 owned scripts/resume-in-container.sh
 owned scripts/pr-threads.sh
+owned scripts/pr-threads.test.sh
 owned scripts/docs-index.sh
 owned scripts/validate-cache.test.sh
 owned .claude/.gitignore
