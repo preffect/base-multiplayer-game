@@ -46,19 +46,37 @@ reply_threads() { # <pr> <actions.json>
         "r\(.key): addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:\(.value.thread|tojson), body:\(.value.body|tojson)}){ comment { id } }"
         + (if .value.resolve then " s\(.key): resolveReviewThread(input:{threadId:\(.value.thread|tojson)}){ thread { isResolved } }" else "" end)
       ) | "mutation { " + join(" ") + " }"' "$2")"
-    # A batch that GitHub rejects for its size is retried one thread at a time; nothing is lost or
-    # posted twice because a rejected mutation writes nothing.
     if ! gh api graphql -f query="$mutation" >/dev/null 2>&1; then
-      local single
-      for ((single = start; single < start + BATCH_SIZE && single < total; single++)); do
-        local one; one="$(jq -r --argjson i "$single" '
-          .[$i] | "mutation { r0: addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:\(.thread|tojson), body:\(.body|tojson)}){ comment { id } }"
-          + (if .resolve then " s0: resolveReviewThread(input:{threadId:\(.thread|tojson)}){ thread { isResolved } }" else "" end) + " }"' "$2")"
-        gh api graphql -f query="$one" >/dev/null || { echo "error: reply to thread $single failed" >&2; return 1; }
-      done
+      retry_batch "$1" "$2" "$start" || return 1
     fi
   done
   echo "$total thread(s) replied"
+}
+
+# A batch GitHub rejects is retried one thread at a time. A rejected batch may still have written some of its
+# replies and resolves (partial posts), so the threads are read again first and nothing that landed is sent twice:
+# a thread whose last comment is this account's reply with the same body isn't replied to again, and one that's
+# resolved isn't resolved again.
+retry_batch() { # <pr> <actions.json> <first action of the batch>
+  local login threads total single one
+  login="$(gh api graphql -f query='query{ viewer{ login } }' --jq .data.viewer.login)" || return 1
+  threads="$(list_threads "$1" false)" || return 1
+  total="$(jq length "$2")"
+  for ((single = $3; single < $3 + BATCH_SIZE && single < total; single++)); do
+    one="$(jq -r --argjson i "$single" --arg login "$login" --argjson threads "$threads" '
+      def trimmed: sub("\\s+$"; "");
+      .[$i] as $action
+      | ($threads | map(select(.id == $action.thread)) | first) as $thread
+      | ($thread | if . == null then null else ((.replies | last) // {author, body}) end) as $last
+      | ($last != null and $last.author == $login and ($last.body | trimmed) == ($action.body | trimmed)) as $replied
+      | [ if $replied then empty
+          else "r0: addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:\($action.thread|tojson), body:\($action.body|tojson)}){ comment { id } }" end,
+          if $action.resolve and ($thread.isResolved | not)
+          then "s0: resolveReviewThread(input:{threadId:\($action.thread|tojson)}){ thread { isResolved } }" else empty end ]
+      | if length == 0 then "" else "mutation { " + join(" ") + " }" end' "$2")"
+    [[ -n "$one" ]] || continue
+    gh api graphql -f query="$one" >/dev/null || { echo "error: reply to thread $single failed" >&2; return 1; }
+  done
 }
 
 # Latest verdict per reviewer role (first line of each review body: "<role> verdict: APPROVE|REQUEST_CHANGES")
