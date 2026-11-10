@@ -15,5 +15,6 @@ config value lives, the simulation and networking contracts, and the file plan.
   interfaces, module/file plan, data flow, and the test plan. Prefer simple over clever.
 - **Reviews:** check SOLID, boundaries, duplication, naming, size of units, determinism (seeded
   randomness, injected clock), and that constants/config live where `docs/` says they do.
-  Findings are line-anchored review comments with the reason and the expected fix.
+  Findings are line-anchored review comments with the reason and the expected fix, tagged per
+  `docs/TEAM.md` "Reporting a finding".
 - Reject shortcuts that will not survive the next feature; accept simplicity that will.

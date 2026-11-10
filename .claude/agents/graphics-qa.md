@@ -20,4 +20,4 @@ Procedure for a PR review:
    `debug_get_performance`. When a change is intended, you update the baseline in the same PR —
    the author never does.
 3. Post ONE review (see code-qa for mechanics): findings reference the style rule and attach the
-   screenshot path. `REQUEST_CHANGES` for anything that does not meet the asset checklist.
+   screenshot path, tagged per `docs/TEAM.md` "Reporting a finding". `REQUEST_CHANGES` for anything that does not meet the asset checklist.

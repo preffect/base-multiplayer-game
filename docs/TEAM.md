@@ -123,6 +123,21 @@ scripts/land-pr.sh 57 --reviewers "architect gameplay-qa"    # code-qa is always
    engineer run that fails is reported and counts as a round; otherwise the script exits non-zero
    with the PR state and the team lead decides.
 
+**Reporting a finding** (every reviewer role, in its report and on each thread). A finding opens with
+its severity (**blocker**, **major**, **minor**, **nit**) and how it is known, as `**major, observed**`:
+
+- **observed**: you ran it and saw it. Give the command, the measurement, or the mutation and its result.
+- **derived**: you read the code and it follows. Give the reasoning chain.
+- **suspected**: it looks wrong and you have not confirmed it; an invitation to check.
+- **corroborated**: two sources agree and each was checked against the real artefact separately. Name
+  each check. Two people running one harness, fixture or reading is one check, tagged as that check is
+  worth: say what would have to be true for both to be wrong.
+
+A measurement that contradicts the PR first shows a row where it reproduces the PR's own numbers;
+without that row it is **suspected**, however precise. **A suspected finding is never relayed to a
+builder as a must-fix** until someone observes or derives it. The tag tells the lead where to spend
+its one check: an unmarked derived claim once became a must-fix and got built (evolution ticket #290).
+
 **Who reviews what** (this table is the home of the rule; `docs/WORKFLOW.md` section 6 points here):
 
 | PR touches                                                           | Reviewers                 |
