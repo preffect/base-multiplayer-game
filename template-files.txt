@@ -36,6 +36,10 @@ owned scripts/github/setup_project.py
 owned scripts/github/groundwork-issues.json
 owned scripts/github/main-ruleset.json
 owned .github/workflows/pr-links-issue.yml
+owned .github/workflows/image.yml
+owned Dockerfile
+owned .dockerignore
+owned scripts/check-image.sh
 owned .devcontainer/Dockerfile
 owned .devcontainer/devcontainer.json
 owned .devcontainer/.tmux.conf
@@ -62,6 +66,8 @@ owned packages/server/src/mcp/debug-mcp-http.integration.test.ts
 owned packages/server/src/mcp/loopback-guard.test.ts
 owned packages/server/src/mcp/prod-mcp-http.ts
 owned packages/server/src/mcp/call-log.ts
+owned packages/server/src/platform/client-files.ts
+owned packages/server/src/platform/client-files.test.ts
 owned packages/server/src/mcp/prod-mcp-http.test.ts
 owned packages/server/src/mcp/prod-mcp-http.integration.test.ts
 owned packages/server/src/mcp/call-log.test.ts

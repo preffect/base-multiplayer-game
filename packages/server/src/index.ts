@@ -8,6 +8,7 @@ import { DEBUG_MCP_PATH } from './mcp/debug-mcp-http.js';
 import { createDebugMcpServer, mountDebugMcp } from './mcp/mcp-server.js';
 import { PRODUCTION_MCP_PATH, startProductionMcp } from './mcp/prod-mcp-http.js';
 import { defaultGameModuleFactory } from './game/game-module.js'; // TODO(init): swap for real factory
+import { serveClientFiles } from './platform/client-files.js';
 
 const PORT = Number(process.env.PORT) || DEFAULT_SERVER_PORT;
 
@@ -41,6 +42,11 @@ async function main(): Promise<void> {
   // TODO(init): wire `getRoomGameState` to expose real game state per room.
   if (mountDebugMcp(server, { lobbyManager, connections })) {
     server.log.info(`Debug MCP on ${DEBUG_MCP_PATH}`);
+  }
+
+  // The built client, when the prod image names its folder: one port for the page, /api and /ws (Dockerfile).
+  if (await serveClientFiles(server)) {
+    server.log.info('Serving the built client');
   }
 
   await server.listen({ port: PORT, host: '0.0.0.0' });

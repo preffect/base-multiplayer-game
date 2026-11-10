@@ -1,0 +1,20 @@
+# Builds the game's prod image and runs it as the platform does (scripts/check-image.sh), on every pull request and
+# on main, off the game box. Template-owned.
+name: image
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: scripts/check-image.sh
