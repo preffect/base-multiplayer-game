@@ -7,6 +7,7 @@
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance } from 'fastify';
 import { DEBUG_MCP_PATH } from '../mcp/debug-mcp-http.js';
+import { HTTP_NOT_FOUND } from '../mcp/http-status.js';
 
 /** Where the built client is. Unset, the server serves no page. */
 export const CLIENT_DIR_VARIABLE = 'GAME_CLIENT_DIR';
@@ -38,7 +39,7 @@ export async function serveClientFiles(
   server.setNotFoundHandler(async (request, reply) => {
     const path = request.url.split('?')[0] ?? '';
     if (request.method !== 'GET' || isServerPath(path)) {
-      return reply.code(404).send({ error: 'not found' });
+      return reply.code(HTTP_NOT_FOUND).send({ error: 'not found' });
     }
     return reply.sendFile(CLIENT_INDEX);
   });
