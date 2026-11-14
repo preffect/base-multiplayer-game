@@ -19,12 +19,12 @@ function builtClient(): string {
 describe('platform/client-files', () => {
   let server: FastifyInstance;
 
-  async function serverWith(environment: NodeJS.ProcessEnv): Promise<{ served: boolean }> {
+  async function serverWith(environment: NodeJS.ProcessEnv): Promise<{ isServed: boolean }> {
     server = Fastify();
     server.get('/api/health', async () => ({ status: 'ok' }));
-    const served = await serveClientFiles(server, environment);
+    const isServed = await serveClientFiles(server, environment);
     await server.ready();
-    return { served };
+    return { isServed };
   }
 
   afterEach(async () => {
@@ -32,14 +32,14 @@ describe('platform/client-files', () => {
   });
 
   it('serves nothing when the client folder is not set, as in dev', async () => {
-    const { served } = await serverWith({});
-    expect(served).toBe(false);
+    const { isServed } = await serverWith({});
+    expect(isServed).toBe(false);
     expect((await server.inject({ url: '/' })).statusCode).toBe(404);
   });
 
   it('serves the page, its files, and the page again for a client-side route', async () => {
-    const { served } = await serverWith({ [CLIENT_DIR_VARIABLE]: builtClient() });
-    expect(served).toBe(true);
+    const { isServed } = await serverWith({ [CLIENT_DIR_VARIABLE]: builtClient() });
+    expect(isServed).toBe(true);
     expect((await server.inject({ url: '/' })).body).toBe(PAGE);
     expect((await server.inject({ url: '/assets/main.js' })).body).toBe(SCRIPT);
     const route = await server.inject({ url: '/lobby/abc?x=1' });
@@ -78,5 +78,5 @@ describe('platform/client-files', () => {
     ['/wsx', false],
     ['/', false],
     ['/lobby', false],
-  ])('knows %s is the server’s own: %s', (path, own) => expect(isServerPath(path)).toBe(own));
+  ])('knows %s is the server’s own: %s', (path, isOwn) => expect(isServerPath(path)).toBe(isOwn));
 });
