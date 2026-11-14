@@ -22,15 +22,19 @@ RUN --mount=type=bind,target=/context for folder in public patches; do \
 # Built with everything, then installed again with production dependencies only.
 RUN pnpm install --frozen-lockfile && pnpm -r build \
   && rm -rf node_modules packages/*/node_modules && pnpm install --prod --frozen-lockfile --offline
-# What runs: the dependencies, the shared package and the server, built, and the client's files. A package with no
+# What runs: the dependencies, every built package but the client (shared, the server, and any other a game's server
+# imports), and the client's files: Angular's build puts them in dist/browser, Vite's in dist. A package with no
 # dependencies of its own has no node_modules, so this is a script, not COPY lines.
 RUN mkdir -p /out/packages \
   && cp -a node_modules package.json /out/ \
-  && for package in shared server; do \
-       mkdir -p "/out/packages/$package" && cp -a "packages/$package/package.json" "packages/$package/dist" "/out/packages/$package/" \
-       && if [ -d "packages/$package/node_modules" ]; then cp -a "packages/$package/node_modules" "/out/packages/$package/"; fi; \
+  && for folder in packages/*/; do \
+       package="$(basename "$folder")"; \
+       if [ "$package" = client ] || [ ! -d "${folder}dist" ]; then continue; fi; \
+       mkdir -p "/out/packages/$package" && cp -a "${folder}package.json" "${folder}dist" "/out/packages/$package/" \
+       && if [ -d "${folder}node_modules" ]; then cp -a "${folder}node_modules" "/out/packages/$package/"; fi; \
      done \
-  && cp -a packages/client/dist/browser /out/client
+  && if [ -d packages/client/dist/browser ]; then cp -a packages/client/dist/browser /out/client; \
+     else cp -a packages/client/dist /out/client; fi
 
 FROM ${NODE_IMAGE}
 # The game needs only node: no package manager, and none of their bundled packages' CVEs.
