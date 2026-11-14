@@ -14,8 +14,11 @@ ADD --checksum=sha256:b568bc5ee2b68a9735743c1b9f09b3d3065de64befaf186c5d01b2f084
 RUN npm install --global --no-fund --no-audit /tmp/pnpm.tgz
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages ./packages
-# A game whose client takes assets from a top-level public/ (angular.json's assets) gets it too, when it has one.
-RUN --mount=type=bind,target=/context if [ -d /context/public ]; then cp -a /context/public ./public; fi
+# Top-level folders a game has only sometimes, copied when it has them: public/, which a client may take assets from
+# (angular.json's assets), and patches/, which pnpm-workspace.yaml's patchedDependencies name and the install needs.
+RUN --mount=type=bind,target=/context for folder in public patches; do \
+    if [ -d "/context/$folder" ]; then cp -a "/context/$folder" "./$folder"; fi; \
+  done
 # Built with everything, then installed again with production dependencies only.
 RUN pnpm install --frozen-lockfile && pnpm -r build \
   && rm -rf node_modules packages/*/node_modules && pnpm install --prod --frozen-lockfile --offline
