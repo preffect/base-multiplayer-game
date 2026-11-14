@@ -221,8 +221,12 @@ do_create() {
     sleep infinity
 
   # git trust/push setup, pnpm install and the shared build — the same script devcontainer.json runs.
+  # The host's GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL, when set, become the container's git identity.
   blue "Running post-create (git setup, pnpm install, shared build)..."
-  docker exec -u "$CONTAINER_USER" -w "$CONTAINER_WORKSPACE" "$CONTAINER_NAME" bash .devcontainer/post-create.sh \
+  local identity_env=()
+  [[ -n "${GIT_AUTHOR_NAME:-}" ]] && identity_env+=(-e "GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME}")
+  [[ -n "${GIT_AUTHOR_EMAIL:-}" ]] && identity_env+=(-e "GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL}")
+  docker exec -u "$CONTAINER_USER" -w "$CONTAINER_WORKSPACE" "${identity_env[@]}" "$CONTAINER_NAME" bash .devcontainer/post-create.sh \
     || yellow "post-create had issues — run 'bash .devcontainer/post-create.sh' inside the container"
 
   green "Container created and ready."
