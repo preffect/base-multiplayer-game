@@ -349,8 +349,9 @@ def main() -> None:
     problem = command_problem(event.get("tool_input", {}).get("command", ""))
     if problem:
         reason = (
-            f"Blocked by .claude/hooks/git_guard.py: {problem}. Destructive git commands are never run by an agent; "
-            "ask the user to run it themselves if it's really needed."
+            f"Blocked by .claude/hooks/git_guard.py: {problem}. Agents never run git that destroys work or history. "
+            "Take the safe route: push the rewritten work to a new branch instead of force-pushing, and commit or "
+            "stash instead of reset --hard or clean. If nothing else will do, stop and tell the user why."
         )
         json.dump(
             {
