@@ -32,11 +32,14 @@ owned scripts/validate-cache.test.sh
 owned scripts/duplication-gate.test.sh
 owned scripts/lib/shell-test.sh
 owned .claude/.gitignore
+owned .claude/hooks/git_guard.py
+owned .claude/hooks/test_git_guard.py
 owned scripts/github/setup_project.py
 owned scripts/github/groundwork-issues.json
 owned scripts/github/main-ruleset.json
 owned .github/workflows/pr-links-issue.yml
 owned .github/workflows/image.yml
+owned .github/workflows/claude-hooks.yml
 owned Dockerfile
 owned .dockerignore
 owned scripts/check-image.sh

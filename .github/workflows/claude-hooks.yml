@@ -1,0 +1,21 @@
+# Tests the Claude Code hooks in .claude/hooks, such as git_guard.py, which blocks destructive git commands.
+name: claude-hooks
+on:
+  pull_request:
+    paths: [.claude/hooks/**, .github/workflows/claude-hooks.yml]
+  push:
+    branches: [main]
+    paths: [.claude/hooks/**, .github/workflows/claude-hooks.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -B -m unittest discover --start-directory .claude/hooks --verbose
