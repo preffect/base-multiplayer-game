@@ -8,7 +8,7 @@ newlines, `$(...)`, `bash -c`, env prefixes, wrappers such as sudo, and git's ow
   git push      with --force, -f, --force-with-lease (any form), --force-if-includes, --mirror, --delete, -d,
                 --prune, a +refspec, or a :refspec that deletes a remote branch
   git reset     --hard
-  git clean     any
+  git clean     any, apart from a dry run (-n, --dry-run)
   git branch    deleting main or master (-d, -D, --delete)
   git filter-branch, git filter-repo
 
@@ -268,11 +268,22 @@ def branch_problem(arguments: list[str]) -> str | None:
     deleting = any(argument in {"--delete", "-D"} or "d" in short_flags(argument).lower() for argument in arguments)
     if not deleting:
         return None
+    # A remote-tracking branch (-r) is named with its remote, as in origin/main; a local one by itself.
+    remote = any(argument in {"--remotes", "-r"} or "r" in short_flags(argument) for argument in arguments)
     for argument in arguments:
-        name = re.sub(r"^(refs/heads/|refs/remotes/)", "", argument).rsplit("/", 1)[-1]
+        name = re.sub(r"^refs/(heads|remotes)/", "", argument)
+        if remote:
+            name = name.split("/", 1)[-1]
         if not argument.startswith("-") and name in PROTECTED_BRANCHES:
             return f"git branch deleting {argument}"
     return None
+
+
+def clean_problem(arguments: list[str]) -> str | None:
+    # -n or --dry-run only lists what would go, even alongside -f.
+    if any(argument == "--dry-run" or "n" in short_flags(argument) for argument in arguments):
+        return None
+    return "git clean deletes untracked files"
 
 
 def inline_aliases(words: list[str]) -> dict[str, str]:
@@ -300,7 +311,7 @@ def git_problem(words: list[str], depth: int = 0) -> str | None:
     if subcommand == "reset" and "--hard" in arguments:
         return "git reset --hard throws away uncommitted work"
     if subcommand == "clean":
-        return "git clean deletes untracked files"
+        return clean_problem(arguments)
     if subcommand == "branch":
         return branch_problem(arguments)
     if subcommand in {"filter-branch", "filter-repo"}:
